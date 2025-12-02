@@ -1,0 +1,162 @@
+#include "autopilot/cascade_controller.hpp"
+
+#include "autopilot/geometric_controller.hpp"
+
+namespace autopilot {
+
+namespace {
+
+Eigen::Quaterniond forceToAttitude(const Eigen::Vector3d& force, double yaw) {
+  // 1. Collective Thrust (Project onto Body Z, or Norm)
+  // Norm is safer for aggressive maneuvers (Swing-Twist decomposition)
+  double collective_thrust = force.norm();
+
+  // 2. Orientation Construction
+  if (collective_thrust < 1e-3) {
+    // Singularity check: Zero thrust -> keep current attitude or level
+    return Eigen::Quaterniond::Identity();
+  }
+
+  Eigen::Vector3d z_b = force / collective_thrust;
+
+  // Desired Heading Vector (in XY plane)
+  Eigen::Vector3d y_c(-std::sin(yaw), std::cos(yaw), 0.0);
+
+  Eigen::Vector3d x_b = y_c.cross(z_b);
+  if (x_b.norm() < 1e-3) {
+    // Gimbal Lock Case (Force is straight up/down, can't determine heading)
+    // Fallback to purely Level + Yaw
+    return Eigen::Quaterniond(
+        Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()));  // simplified
+  }
+  x_b.normalize();
+
+  Eigen::Vector3d y_b = z_b.cross(x_b);
+
+  Eigen::Matrix3d rotation;
+  rotation << x_b, y_b, z_b;
+  return Eigen::Quaterniond(rotation);
+}
+}  // namespace
+
+CascadeController::CascadeController(
+    const std::shared_ptr<QuadrotorModel>& model,
+    const std::shared_ptr<spdlog::logger>& logger)
+    : ControllerBase("CascadedController", model, logger) {
+  // Initialize sub-controllers (could be injected via ctor in future)
+  // For now, we assume standard PID implementations
+  position_controller_ =
+      std::make_shared<GeometricPositionController>(model, logger);
+  attitude_controller_ =
+      std::make_shared<GeometricAttitudeController>(model, logger);
+}
+
+expected<std::size_t, std::error_code> CascadeController::compute(
+    const QuadrotorState& state, std::span<const QuadrotorCommand> setpoints,
+    std::span<QuadrotorCommand> outputs) {
+  if (outputs.empty() || setpoints.empty()) {
+    logger()->error(
+        "Empty input or output buffers provided to CascadeController.");
+    return unexpected(make_error_code(AutopilotErrc::kInvalidBufferSize));
+  }
+
+  const auto& setpoint_cmd = setpoints[0];
+  QuadrotorCommand& out_cmd = outputs[0];
+  // 1. Divider Logic (Run Position Controller at e.g. 50Hz)
+  // --------------------------------------------------------
+  const bool run_pos_loop = (static_cast<int>(ticks_) % pos_divider_ == 0);
+
+  if (run_pos_loop) {
+    // A. Extract "Horizon 0" Setpoint
+
+    // B. Populate Locked-Down Reference struct
+    // This acts as the "Sanitizer" for the raw command
+    PositionReference pos_ref;
+    pos_ref.position = setpoint_cmd.position();
+    pos_ref.velocity = setpoint_cmd.velocity();
+    pos_ref.acceleration_ff = setpoint_cmd.acceleration();
+
+    // C. Run Position Kernel
+    PositionOutput pos_out;
+    if (auto err = position_controller_->compute(state, pos_ref, pos_out);
+        err != std::error_code()) {
+      return unexpected(err);
+    }
+
+    if (auto ec = out_cmd.setForce(pos_out.target_force);
+        ec != std::error_code()) {
+      return unexpected(ec);
+    }
+
+    // Project desired force into body Z axis; NOT simply norm of desired force
+    collective_thrust_ =
+        (state.odometry.pose().rotation().inverse() * pos_out.target_force).z();
+    if (auto ec = out_cmd.setCollectiveThrust(collective_thrust_);
+        ec != std::error_code()) {
+      return unexpected(ec);
+    }
+
+    // D. Geometric Conversion (Force Vector -> Attitude Quaternion)
+    // This updates the "held" reference for the fast loop
+    last_att_ref_.orientation =
+        forceToAttitude(pos_out.target_force, setpoint_cmd.yaw());
+  }
+
+  // Pass through feedthrough independent of position loop
+  last_att_ref_.body_rate = setpoint_cmd.bodyRate();
+  last_att_ref_.angular_accel = setpoint_cmd.angularAcceleration();
+
+  // 2. Run Attitude Controller (Every Tick, e.g. 500Hz)
+  // ---------------------------------------------------
+  AttitudeOutput att_out;
+  // Always use FRESH state, but potentially STALE (held) reference
+  if (auto ec = attitude_controller_->compute(state, last_att_ref_, att_out)) {
+    return unexpected(ec);
+  }
+
+  // 3. Output Generation (The Mixer)
+  // ---------------------------------------------------
+  // In a real system, Mixer might be its own module.
+  // Here we do a simple allocation or pass torque/thrust if the drone handles
+  // mixing.
+
+  out_cmd.setTimestamp(state.timestamp_secs + dt_);  // dt of the fast loop
+
+  // If we have a mixer:
+  Eigen::Vector4d thrust_moments;
+  thrust_moments << collective_thrust_, att_out.torque;
+  if (auto ec = out_cmd.setMotorThrusts(
+          model()->momentsToMotorThrusts(thrust_moments));
+      ec != std::error_code()) {
+    return unexpected(ec);
+  }
+
+  if (auto ec = out_cmd.setBodyRate(att_out.body_rate);
+      ec != std::error_code()) {
+    return unexpected(ec);
+  }
+
+  // If we output wrench (for simulator):
+  if (auto ec = out_cmd.setTorque(att_out.torque); ec != std::error_code()) {
+    return unexpected(ec);
+  }
+  // Note: You might want a dedicated field for Torque in QuadrotorState
+
+  ticks_++;
+  return 1U;  // We produced 1 valid step
+}
+
+void CascadeController::reset() {
+  ticks_ = 0;
+  // Reset the inner controllers (assuming they expose reset)
+  position_controller_->reset();
+  attitude_controller_->reset();
+
+  // Reset the "Hold" value to hover
+  last_att_ref_ =
+      AttitudeReference{.orientation = Eigen::Quaterniond::Identity(),
+                        .body_rate = Eigen::Vector3d::Zero(),
+                        .angular_accel = Eigen::Vector3d::Zero()};
+}
+}  // namespace autopilot

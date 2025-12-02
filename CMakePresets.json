@@ -1,0 +1,198 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release;Sanitize",
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON"
+      }
+    },
+    {
+      "name": "linux-base",
+      "hidden": true,
+      "inherits": ["base"],
+      "generator": "Ninja Multi-Config",
+      "installDir": "$env{HOME}/.local",
+      "cacheVariables": {
+        "CMAKE_WARN_DEPRECATED": "OFF",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS_DEBUG": "-g",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG"
+      },
+
+      "condition": {
+        "type": "anyOf",
+        "conditions": [
+          {
+            "type": "equals",
+            "lhs": "${hostSystemName}",
+            "rhs": "Linux"
+          },
+          {
+            "type": "equals",
+            "lhs": "${hostSystemName}",
+            "rhs": "Darwin"
+          }
+        ]
+      }
+    },
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "inherits": ["base"],
+      "generator": "Ninja Multi-Config",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install"
+      }
+    },
+    {
+      "name": "linux-warn-flags",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat=2 -Wundef -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast -fdiagnostics-color=auto"
+      }
+    },
+    {
+      "name": "linux-sanitize-flags",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_SANITIZE": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_LINKER_FLAGS_SANITIZE": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "linux-cicd-flags",
+      "inherits": ["linux-warn-flags"],
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_CLANG_TIDY": "clang-tidy;--header-filter=^${sourceDir}/"
+      }
+    },
+    {
+      "name": "linux-default",
+      "inherits": ["linux-base", "linux-warn-flags"],
+      "displayName": "Linux Default (Build/Release)",
+      "description": "Default preset for a desktop Linux development environment"
+    },
+    {
+      "name": "linux-cicd",
+      "inherits": ["linux-base", "linux-cicd-flags"],
+      "displayName": "Linux CI (Build/Release)",
+      "description": "Preset for Continuous Integration on a desktop Linux development environment"
+    },
+    {
+      "name": "linux-sanitize",
+      "inherits": ["linux-base", "linux-warn-flags", "linux-sanitize-flags"],
+      "displayName": "Linux Sanitize (ASan/UBSan)",
+      "description": "Enables AddressSanitizer + UndefinedBehaviorSanitizer"
+    },
+    {
+      "name": "windows-warn-flags",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/W4 /permissive- /Zc:__cplusplus /Zc:inline /Zc:throwingNew /Zc:preprocessor /Zc:externConstexpr /Zc:lambda /utf-8 /EHsc /MP /diagnostics:caret /external:anglebrackets /external:W0 /wd4324 /wd4996"
+      }
+    },
+    {
+      "name": "windows-sanitize-flags",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_SANITIZE": "/Od /Zi /fsanitize=address /Oy- /RTC1",
+        "CMAKE_LINKER_FLAGS_SANITIZE": "/INCREMENTAL:NO /DEBUG"
+      }
+    },
+    {
+      "name": "windows-default",
+      "inherits": ["windows-base", "windows-warn-flags"],
+      "displayName": "Windows Default (Build/Release)",
+      "description": "Default preset for a desktop Windows development environment",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS_DEBUG": "/ZI /Od /RTC1 /JMC",
+        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /GL /Gy /Gw /guard:cf /DNDEBUG",
+        "CMAKE_EXE_LINKER_FLAGS_RELEASE": "/LTCG /OPT:REF /OPT:ICF /GUARD:CF",
+        "CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/LTCG /OPT:REF /OPT:ICF /GUARD:CF"
+      }
+    },
+    {
+      "name": "windows-cicd",
+      "inherits": ["windows-default"],
+      "displayName": "Windows CI (Build/Release)",
+      "description": "Preset for Continuous Integration on a desktop Windows development environment"
+    },
+    {
+      "name": "windows-sanitize",
+      "inherits": [
+        "windows-base",
+        "windows-warn-flags",
+        "windows-sanitize-flags"
+      ],
+      "displayName": "Windows Sanitize (ASan)",
+      "description": "Enables AddressSanitizer on Windows (MSVC)"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-debug",
+      "displayName": "Build in Debug mode",
+      "configurePreset": "linux-default",
+      "configuration": "Debug"
+    },
+    {
+      "name": "build-release",
+      "displayName": "Build in Release mode",
+      "configurePreset": "linux-default",
+      "configuration": "Release"
+    },
+    {
+      "name": "build-cicd",
+      "displayName": "Build for CI",
+      "configurePreset": "linux-cicd",
+      "configuration": "Debug",
+      "targets": ["all"]
+    },
+    {
+      "name": "build-sanitize",
+      "displayName": "Build with Sanitizers (ASan/UBSan)",
+      "description": "Debug build with sanitizers and tests",
+      "configurePreset": "linux-sanitize",
+      "configuration": "Sanitize",
+      "targets": ["all"]
+    },
+    {
+      "name": "windows-build-debug",
+      "displayName": "Windows: Build in Debug mode",
+      "configurePreset": "windows-default",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-build-release",
+      "displayName": "Windows: Build in Release mode",
+      "configurePreset": "windows-default",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-build-sanitize",
+      "displayName": "Windows: Build with AddressSanitizer",
+      "description": "Debug build with AddressSanitizer and tests",
+      "configurePreset": "windows-sanitize",
+      "configuration": "Sanitize",
+      "targets": ["all"]
+    }
+  ]
+}
