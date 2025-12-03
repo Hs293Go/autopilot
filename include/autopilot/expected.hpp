@@ -1,6 +1,6 @@
 
-#ifndef INCLUDE_AUTOPILOT_EXPECTED_HPP_
-#define INCLUDE_AUTOPILOT_EXPECTED_HPP_
+#ifndef AUTOPILOT_EXPECTED_HPP_
+#define AUTOPILOT_EXPECTED_HPP_
 
 #if __has_include(<expected>)
 #include <expected>
@@ -19,4 +19,4 @@ using tl::unexpected;
 }  // namespace autopilot
 #endif
 
-#endif  // INCLUDE_AUTOPILOT_EXPECTED_HPP_
+#endif  // AUTOPILOT_EXPECTED_HPP_

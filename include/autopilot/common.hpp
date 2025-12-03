@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_CONCEPTS_HPP_
-#define INCLUDE_AUTOPILOT_CONCEPTS_HPP_
+#ifndef AUTOPILOT_CONCEPTS_HPP_
+#define AUTOPILOT_CONCEPTS_HPP_
 
 #include <utility>
 
@@ -108,4 +108,4 @@ static_assert(
       { make_error_code(ec) } -> std::same_as<std::error_code>;
     }, "Cannot convert AutopilotErrc to error_code");
 
-#endif  // INCLUDE_AUTOPILOT_CONCEPTS_HPP_
+#endif  // AUTOPILOT_CONCEPTS_HPP_

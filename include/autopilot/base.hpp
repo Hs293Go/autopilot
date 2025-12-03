@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_BASE_HPP_
-#define INCLUDE_AUTOPILOT_BASE_HPP_
+#ifndef AUTOPILOT_BASE_HPP_
+#define AUTOPILOT_BASE_HPP_
 
 #include <memory>
 #include <span>
@@ -26,4 +26,4 @@ class ControllerBase : public Module {
 };
 }  // namespace autopilot
 
-#endif  // INCLUDE_AUTOPILOT_BASE_HPP_
+#endif  // AUTOPILOT_BASE_HPP_

@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_CASCADE_CONTROLLER_HPP_
-#define INCLUDE_AUTOPILOT_CASCADE_CONTROLLER_HPP_
+#ifndef AUTOPILOT_CASCADE_CONTROLLER_HPP_
+#define AUTOPILOT_CASCADE_CONTROLLER_HPP_
 
 #include <utility>
 
@@ -91,4 +91,4 @@ class CascadeController : public ControllerBase {
 
 }  // namespace autopilot
 
-#endif  // INCLUDE_AUTOPILOT_CASCADE_CONTROLLER_HPP_
+#endif  // AUTOPILOT_CASCADE_CONTROLLER_HPP_

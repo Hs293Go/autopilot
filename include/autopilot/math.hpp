@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_ROTATION_HPP_
-#define INCLUDE_AUTOPILOT_ROTATION_HPP_
+#ifndef AUTOPILOT_ROTATION_HPP_
+#define AUTOPILOT_ROTATION_HPP_
 
 #include "Eigen/Dense"
 #include "autopilot/common.hpp"
@@ -80,4 +80,4 @@ Eigen::Vector3<typename Derived::Scalar> QuaternionToRollPitchYaw(
 }
 }  // namespace autopilot
 
-#endif  // INCLUDE_AUTOPILOT_ROTATION_HPP_
+#endif  // AUTOPILOT_ROTATION_HPP_

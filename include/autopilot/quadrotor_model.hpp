@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_QUADROTOR_MODEL_HPP_
-#define INCLUDE_AUTOPILOT_QUADROTOR_MODEL_HPP_
+#ifndef AUTOPILOT_QUADROTOR_MODEL_HPP_
+#define AUTOPILOT_QUADROTOR_MODEL_HPP_
 
 #include <cmath>
 #include <memory>
@@ -145,4 +145,4 @@ class QuadrotorModel {
 };
 }  // namespace autopilot
 
-#endif  // INCLUDE_AUTOPILOT_QUADROTOR_MODEL_HPP_
+#endif  // AUTOPILOT_QUADROTOR_MODEL_HPP_

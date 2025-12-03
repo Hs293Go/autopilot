@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_MODULE_HPP_
-#define INCLUDE_AUTOPILOT_MODULE_HPP_
+#ifndef AUTOPILOT_MODULE_HPP_
+#define AUTOPILOT_MODULE_HPP_
 
 #include <memory>
 #include <string>
@@ -52,4 +52,4 @@ class Module {
 
 }  // namespace autopilot
 
-#endif  // INCLUDE_AUTOPILOT_MODULE_HPP_
+#endif  // AUTOPILOT_MODULE_HPP_

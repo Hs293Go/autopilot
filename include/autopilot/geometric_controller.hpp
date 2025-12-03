@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
-#define INCLUDE_AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
+#ifndef AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
+#define AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
 
 #include <utility>
 
@@ -78,4 +78,4 @@ class GeometricAttitudeController : public AttitudeControllerBase {
 };
 }  // namespace autopilot
 
-#endif  // INCLUDE_AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
+#endif  // AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_

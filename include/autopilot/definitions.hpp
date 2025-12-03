@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTOPILOT_DEFINITION_HPP_
-#define INCLUDE_AUTOPILOT_DEFINITION_HPP_
+#ifndef AUTOPILOT_DEFINITION_HPP_
+#define AUTOPILOT_DEFINITION_HPP_
 
 #include <cstdint>
 
@@ -123,4 +123,4 @@ class QuadrotorCommand {
 };
 
 }  // namespace autopilot
-#endif  // INCLUDE_AUTOPILOT_DEFINITION_HPP_
+#endif  // AUTOPILOT_DEFINITION_HPP_
