@@ -127,7 +127,7 @@ expected<std::size_t, std::error_code> CascadeController::compute(
   Eigen::Vector4d thrust_moments;
   thrust_moments << collective_thrust_, att_out.torque;
   if (auto ec = out_cmd.setMotorThrusts(
-          model()->momentsToMotorThrusts(thrust_moments));
+          model()->thrustTorqueToMotorThrusts(thrust_moments));
       ec != std::error_code()) {
     return unexpected(ec);
   }

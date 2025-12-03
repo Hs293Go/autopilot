@@ -9,6 +9,7 @@ target_sources(
   autopilot
   PRIVATE src/geometric_controller.cpp src/quadrotor_model.cpp
           src/cascade_controller.cpp src/definitions.cpp
+          src/quadrotor_simulator.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
@@ -23,6 +24,7 @@ target_sources(
          include/autopilot/math.hpp
          include/autopilot/module.hpp
          include/autopilot/geometric_controller.hpp
+         include/autopilot/quadrotor_simulator.hpp
          include/autopilot/quadrotor_model.hpp
          include/autopilot/third_party/tl/expected.hpp)
 target_compile_features(autopilot PUBLIC cxx_std_23)

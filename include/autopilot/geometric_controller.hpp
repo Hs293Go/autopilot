@@ -1,8 +1,6 @@
 #ifndef AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
 #define AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
 
-#include <utility>
-
 #include "autopilot/cascade_controller.hpp"
 namespace autopilot {
 // =================================================================

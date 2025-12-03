@@ -1,17 +1,9 @@
 #include "autopilot/quadrotor_model.hpp"
 
 #include "autopilot/common.hpp"
+#include "autopilot/geometry.hpp"
 
 namespace autopilot {
-
-Eigen::Vector4d QuadrotorModel::momentsToMotorThrusts(
-    const Eigen::Ref<const Eigen::Vector4d>& moments) const {
-  return inv_allocation_matrix_ * moments;
-}
-Eigen::Vector4d QuadrotorModel::motorThrustsToMoments(
-    const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts) const {
-  return allocation_matrix_ * motor_thrusts;
-}
 
 std::error_code QuadrotorModelCfg::setMass(double mass) {
   if (!std::isfinite(mass)) {
@@ -79,6 +71,43 @@ std::error_code QuadrotorModelCfg::setTorqueConstant(double torque_constant) {
     return make_error_code(AutopilotErrc::kPhysicallyInvalid);
   }
   torque_constant_ = torque_constant;
+  return {};
+}
+
+std::error_code QuadrotorModelCfg::setMotorTimeConstantUp(
+    double time_constant_up) {
+  if (!std::isfinite(time_constant_up)) {
+    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+  }
+  if (time_constant_up <= 0.0) {
+    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+  }
+  motor_time_constant_up_ = time_constant_up;
+  return {};
+}
+
+std::error_code QuadrotorModelCfg::setMotorTimeConstantDown(
+    double time_constant_down) {
+  if (!std::isfinite(time_constant_down)) {
+    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+  }
+  if (time_constant_down <= 0.0) {
+    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+  }
+  motor_time_constant_down_ = time_constant_down;
+  return {};
+}
+
+std::error_code QuadrotorModelCfg::setThrustCurveCoeff(
+    double thrust_curve_coeff) {
+  if (!std::isfinite(thrust_curve_coeff)) {
+    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+  }
+
+  if (thrust_curve_coeff <= 0.0) {
+    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+  }
+  thrust_curve_coeff_ = thrust_curve_coeff;
   return {};
 }
 
@@ -196,6 +225,80 @@ void QuadrotorModel::updateMixerMatrix() {
       break;
   }
   inv_allocation_matrix_ = allocation_matrix_.inverse();
+}
+
+Eigen::Vector4d QuadrotorModel::thrustTorqueToMotorThrusts(
+    const Eigen::Ref<const Eigen::Vector4d>& moments) const {
+  return inv_allocation_matrix_ * moments;
+}
+
+Eigen::Vector4d QuadrotorModel::thrustTorqueToMotorThrusts(
+    const ThrustTorque& thrust_torque) const {
+  Eigen::Vector4d moments;
+  moments(0) = thrust_torque.collective_thrust;
+  moments.tail<3>() = thrust_torque.torque;
+  return thrustTorqueToMotorThrusts(moments);
+}
+
+Eigen::Vector4d QuadrotorModel::motorThrustsToThrustTorqueVector(
+    const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts) const {
+  return allocation_matrix_ * motor_thrusts;
+}
+
+ThrustTorque QuadrotorModel::motorThrustsToThrustTorque(
+    const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts) const {
+  return {.collective_thrust = motor_thrusts.sum(),
+          .torque = allocation_matrix_.bottomRows<3>() * motor_thrusts};
+}
+
+typename OdometryF64::ParamVector QuadrotorModel::rigidBodyDynamics(
+    const Eigen::Ref<const typename OdometryF64::ParamVector>& state,
+    const Eigen::Ref<const typename WrenchF64::ParamVector>& input) const {
+  using RigidBodyState = typename OdometryF64::ParamVector;
+  OdometryViewF64 odom(state.data());
+  WrenchViewF64 wrench_view(input.data());
+
+  const Eigen::Ref<const Eigen::Vector3d> velocity = odom.twist().linear();
+  const Eigen::Ref<const Eigen::Vector3d> body_rate = odom.twist().angular();
+
+  Eigen::Quaterniond qw;  // Purely imaginary quaternion for angular velocity
+  qw.coeffs() << body_rate / 2.0, 0.0;
+
+  RigidBodyState state_dot;
+  state_dot << velocity,                             // position part
+      (odom.pose().rotation() * qw).coeffs(),        // orientation part
+      wrench_view.force() / mass() - grav_vector(),  // linear acceleration part
+      invInertia() *
+          (wrench_view.torque() - body_rate.cross(inertia() * body_rate));
+  return state_dot;
+}
+
+OdometryF64 QuadrotorModel::rigidBodyDynamics(const OdometryF64& state,
+                                              const WrenchF64& input) const {
+  using RigidBodyState = typename OdometryF64::ParamVector;
+  const Eigen::Ref<const Eigen::Vector3d> velocity = state.twist().linear();
+  const Eigen::Ref<const Eigen::Vector3d> body_rate = state.twist().angular();
+
+  Eigen::Quaterniond qw;  // Purely imaginary quaternion for angular velocity
+  qw.coeffs() << body_rate / 2.0, 0.0;
+
+  RigidBodyState state_dot;
+  state_dot << velocity,                        // position part
+      (state.pose().rotation() * qw).coeffs(),  // orientation part
+      input.force() / mass() - grav_vector(),   // linear acceleration part
+      invInertia() * (input.torque() - body_rate.cross(inertia() * body_rate));
+  return OdometryViewF64(state_dot.data());
+}
+
+Eigen::Vector4d QuadrotorModel::motorSpeedDynamics(
+    const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_curr,
+    const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_sp) const {
+  return motor_speeds_sp.binaryExpr(
+      motor_speeds_curr, [this](auto speed, auto speed_sp) {
+        const double speed_change = speed_sp - speed;
+        return speed_change / (speed_change > 0.0 ? motor_time_constant_up()
+                                                  : motor_time_constant_down());
+      });
 }
 
 }  // namespace autopilot

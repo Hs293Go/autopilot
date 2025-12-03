@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "Eigen/Dense"
+#include "autopilot/geometry.hpp"
 
 namespace autopilot {
 
@@ -49,6 +50,10 @@ class QuadrotorModelCfg {
 
   double torque_constant() const { return torque_constant_; }
 
+  double motor_time_constant_up() const { return motor_time_constant_up_; }
+  double motor_time_constant_down() const { return motor_time_constant_down_; }
+  double thrust_curve_coeff() const { return thrust_curve_coeff_; }
+
   double min_collective_thrust() const { return min_collective_thrust_; }
 
   double max_collective_thrust() const { return max_collective_thrust_; }
@@ -71,6 +76,12 @@ class QuadrotorModelCfg {
 
   std::error_code setTorqueConstant(double torque_constant);
 
+  std::error_code setMotorTimeConstantUp(double time_constant_up);
+
+  std::error_code setMotorTimeConstantDown(double time_constant_down);
+
+  std::error_code setThrustCurveCoeff(double thrust_curve_coeff);
+
   std::error_code setMinCollectiveThrust(double min_thrust);
 
   std::error_code setMaxCollectiveThrust(double max_thrust);
@@ -87,13 +98,17 @@ class QuadrotorModelCfg {
   InertiaElements inertia_elems_ = {0.005, 0.005, 0.009, 0.0, 0.0, 0.0};
 
   // Mixer parameters
+  MotorLayout motor_layout_ = MotorLayout::kBetaflight;
   Eigen::Vector2d front_motor_position_ =
       Eigen::Vector2d::Constant(kMiniquad250SideLength / 2.0);
   Eigen::Vector2d back_motor_position_ =
       Eigen::Vector2d::Constant(kMiniquad250SideLength / 2.0);
   double torque_constant_ = 0.01;
 
-  MotorLayout motor_layout_ = MotorLayout::kBetaflight;
+  double motor_time_constant_up_ = 0.02;    // seconds
+  double motor_time_constant_down_ = 0.02;  // seconds
+  double thrust_curve_coeff_ = 8.54858e-6;  // N/(rad/s)^2
+
   double min_collective_thrust_ = 0.0;
   double max_collective_thrust_ = 15.0;
 
@@ -101,6 +116,11 @@ class QuadrotorModelCfg {
                                     kFullRotation};
 
   Eigen::Vector3d grav_vector_ = Eigen::Vector3d::UnitZ() * 9.81;
+};
+
+struct ThrustTorque {
+  double collective_thrust;
+  Eigen::Vector3d torque;
 };
 
 class QuadrotorModel {
@@ -117,17 +137,42 @@ class QuadrotorModel {
 
   const Eigen::Matrix3d& invInertia() const { return inv_inertia_; }
 
+  double motor_time_constant_up() const {
+    return cfg_->motor_time_constant_up();
+  }
+  double motor_time_constant_down() const {
+    return cfg_->motor_time_constant_down();
+  }
+  double thrust_curve_coeff() const { return cfg_->thrust_curve_coeff(); }
+
   double min_collective_thrust() const { return cfg_->min_collective_thrust(); }
 
   double max_collective_thrust() const { return cfg_->max_collective_thrust(); }
 
   const Eigen::Vector3d& grav_vector() const { return cfg_->grav_vector(); }
 
-  [[nodiscard]] Eigen::Vector4d momentsToMotorThrusts(
+  [[nodiscard]] Eigen::Vector4d thrustTorqueToMotorThrusts(
       const Eigen::Ref<const Eigen::Vector4d>& moments) const;
 
-  Eigen::Vector4d motorThrustsToMoments(
+  [[nodiscard]] Eigen::Vector4d thrustTorqueToMotorThrusts(
+      const ThrustTorque& thrust_torque) const;
+
+  [[nodiscard]] Eigen::Vector4d motorThrustsToThrustTorqueVector(
       const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts) const;
+
+  [[nodiscard]] ThrustTorque motorThrustsToThrustTorque(
+      const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts) const;
+
+  typename OdometryF64::ParamVector rigidBodyDynamics(
+      const Eigen::Ref<const typename OdometryF64::ParamVector>& state,
+      const Eigen::Ref<const typename WrenchF64::ParamVector>& input) const;
+
+  OdometryF64 rigidBodyDynamics(const OdometryF64& state,
+                                const WrenchF64& input) const;
+
+  Eigen::Vector4d motorSpeedDynamics(
+      const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_curr,
+      const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_sp) const;
 
  private:
   void updateDerivedState();

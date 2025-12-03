@@ -36,7 +36,10 @@ class TransformBase {
   using RotationMatrix = Eigen::Matrix3<Scalar>;
   using TransformValue = Transform<Scalar>;
   using TransformMatrix = Eigen::Matrix4<Scalar>;
-  using ParamVector = Eigen::Vector<Scalar, 7>;
+
+  static constexpr int kNumParams =
+      +Vector::SizeAtCompileTime + Quaternion::Coefficients::SizeAtCompileTime;
+  using ParamVector = Eigen::Vector<Scalar, kNumParams>;
 
   template <typename OD>
   Derived& operator=(const TransformBase<OD>& t) {
@@ -137,6 +140,7 @@ template <std::floating_point T>
 class Transform : public TransformBase<Transform<T>> {
  public:
   using Base = TransformBase<Transform<T>>;
+  using Base::kNumParams;
   Transform() = default;
 
   template <Vector3Like TDerived, typename RDerived>
@@ -178,6 +182,8 @@ struct TransformTraits<TransformView<T>> {
 template <std::floating_point T>
 class TransformView : public TransformBase<TransformView<T>> {
  public:
+  using Base = TransformBase<TransformView<T>>;
+  using Base::kNumParams;
   TransformView() = default;
 
   TransformView(const T* data) : translation_(data), rotation_(data + 3) {}
@@ -213,7 +219,8 @@ class TwistBase {
   using DerivedVector = typename TwistTraits<Derived>::Vector;
   using Vector = Eigen::Vector3<Scalar>;
   using TwistValue = Twist<Scalar>;
-  using ParamVector = Eigen::Vector<Scalar, 6>;
+  static constexpr int kNumParams = Vector::SizeAtCompileTime * 2;
+  using ParamVector = Eigen::Vector<Scalar, kNumParams>;
 
   template <typename OD>
   Derived& operator=(const TwistBase<OD>& other) {
@@ -325,6 +332,8 @@ struct TwistTraits<Twist<T>> {
 template <std::floating_point T>
 class Twist : public TwistBase<Twist<T>> {
  public:
+  using Base = TwistBase<Twist<T>>;
+  using Base::kNumParams;
   Twist() = default;
 
   template <Vector3Like LDerived, Vector3Like ADerived>
@@ -369,6 +378,9 @@ struct TwistTraits<TwistView<T>> {
 template <std::floating_point T>
 class TwistView : public TwistBase<TwistView<T>> {
  public:
+  using Base = TwistBase<TwistView<T>>;
+  using Base::kNumParams;
+
   TwistView(T const* data) : linear_(data), angular_(data + 3) {}
   const Eigen::Map<const Eigen::Vector3<T>>& linear() const { return linear_; }
   const Eigen::Map<const Eigen::Vector3<T>>& angular() const {
@@ -397,8 +409,10 @@ class AccelBase {
  public:
   using Scalar = typename AccelTraits<Derived>::Scalar;
   using DerivedVector = typename AccelTraits<Derived>::Vector;
-  using Vector = Eigen::Vector<Scalar, 3>;
+  using Vector = Eigen::Vector3<Scalar>;
   using AccelValue = Accel<Scalar>;
+
+  static constexpr int kNumParams = Vector::SizeAtCompileTime * 2;
   using ParamVector = Eigen::Vector<Scalar, 6>;
 
   template <typename OD>
@@ -489,6 +503,8 @@ class AccelBase {
 template <std::floating_point T>
 class Accel : public AccelBase<Accel<T>> {
  public:
+  using Base = AccelBase<Accel<T>>;
+  using Base::kNumParams;
   Accel() = default;
 
   template <Vector3Like LDerived, Vector3Like ADerived>
@@ -532,6 +548,8 @@ struct AccelTraits<Accel<T>> {
 template <std::floating_point T>
 class AccelView : public AccelBase<AccelView<T>> {
  public:
+  using Base = AccelBase<AccelView<T>>;
+  using Base::kNumParams;
   AccelView(T const* data) : linear_(data), angular_(data + 3) {}
   const Eigen::Map<const Eigen::Vector3<T>>& linear() const { return linear_; }
   const Eigen::Map<const Eigen::Vector3<T>>& angular() const {
@@ -568,7 +586,8 @@ class WrenchBase {
   using DerivedVector = typename WrenchTraits<Derived>::Vector;
   using Vector = Eigen::Vector<Scalar, 3>;
   using WrenchValue = Wrench<Scalar>;
-  using ParamVector = Eigen::Vector<Scalar, 6>;
+  static constexpr int kNumParams = Vector::SizeAtCompileTime * 2;
+  using ParamVector = Eigen::Vector<Scalar, kNumParams>;
 
   template <typename OD>
   Derived& operator=(const WrenchBase<OD>& other) {
@@ -667,6 +686,9 @@ struct WrenchTraits<Wrench<T>> {
 template <std::floating_point T>
 class Wrench : public WrenchBase<Wrench<T>> {
  public:
+  using Base = WrenchBase<Wrench<T>>;
+  using Base::kNumParams;
+
   Wrench() = default;
   Wrench(const Eigen::Vector3<T>& f, const Eigen::Vector3<T>& t)
       : force_(f), torque_(t) {}
@@ -707,6 +729,9 @@ struct WrenchTraits<WrenchView<T>> {
 template <std::floating_point T>
 class WrenchView : public WrenchBase<WrenchView<T>> {
  public:
+  using Base = WrenchBase<WrenchView<T>>;
+  using Base::kNumParams;
+
   WrenchView(T const* data) : force_(data), torque_(data + 3) {}
   const Eigen::Map<const Eigen::Vector3<T>>& force() const { return force_; }
   const Eigen::Map<const Eigen::Vector3<T>>& torque() const { return torque_; }
@@ -728,7 +753,9 @@ class OdometryBase {
   using Scalar = typename OdometryTraits<Derived>::Scalar;
   using TransformType = typename OdometryTraits<Derived>::TransformType;
   using TwistType = typename OdometryTraits<Derived>::TwistType;
-  using ParamVector = Eigen::Vector<Scalar, 13>;
+  static constexpr int kNumParams =
+      TransformType::kNumParams + TwistType::kNumParams;
+  using ParamVector = Eigen::Vector<Scalar, kNumParams>;
 
   Derived& operator=(const OdometryBase<Derived>& other) {
     pose() = other.pose();
@@ -786,6 +813,7 @@ template <std::floating_point T>
 class Odometry : public OdometryBase<Odometry<T>> {
  public:
   using Base = OdometryBase<Odometry<T>>;
+  using Base::kNumParams;
   Odometry() = default;
   Odometry(const Transform<T>& p, const Twist<T>& t) : pose_(p), twist_(t) {}
 
@@ -820,6 +848,9 @@ struct OdometryTraits<OdometryView<T>> {
 template <std::floating_point T>
 class OdometryView : public OdometryBase<OdometryView<T>> {
  public:
+  using Base = OdometryBase<OdometryView<T>>;
+  using Base::kNumParams;
+
   OdometryView() = default;
   OdometryView(const T* data) : pose_(data), twist_(data + 7) {}
   const TransformView<T>& pose() const { return pose_; }
@@ -854,6 +885,15 @@ using WrenchF32 = Wrench<float>;
 using WrenchViewF32 = WrenchView<float>;
 using WrenchF64 = Wrench<double>;
 using WrenchViewF64 = WrenchView<double>;
+
+static_assert(requires {
+  { TransformF64::kNumParams } -> std::convertible_to<int>;
+  { TransformViewF64::kNumParams } -> std::convertible_to<int>;
+  { TwistF64::kNumParams } -> std::convertible_to<int>;
+  { TwistViewF64::kNumParams } -> std::convertible_to<int>;
+  { OdometryF64::kNumParams } -> std::convertible_to<int>;
+  { OdometryViewF64::kNumParams } -> std::convertible_to<int>;
+});
 
 }  // namespace autopilot
 
