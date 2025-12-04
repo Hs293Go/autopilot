@@ -1,7 +1,2 @@
-
-add_library(test_integration src/integration/test_cascade_controller_sim.cpp)
-target_link_libraries(
-  test_integration
-  PRIVATE
-  autopilot
-)
+add_executable(test_integration src/integration/test_cascade_controller_sim.cpp)
+target_link_libraries(test_integration PRIVATE autopilot::autopilot)

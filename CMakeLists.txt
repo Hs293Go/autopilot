@@ -4,9 +4,9 @@ project(autopilot)
 find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 
-add_library(autopilot)
+add_library(autopilot_autopilot)
 target_sources(
-  autopilot
+  autopilot_autopilot
   PRIVATE src/geometric_controller.cpp src/quadrotor_model.cpp
           src/cascade_controller.cpp src/definitions.cpp
           src/quadrotor_simulator.cpp src/sensors.cpp
@@ -28,7 +28,17 @@ target_sources(
          include/autopilot/quadrotor_model.hpp
          include/autopilot/sensors.hpp
          include/autopilot/third_party/tl/expected.hpp)
-target_compile_features(autopilot PUBLIC cxx_std_23)
-target_link_libraries(autopilot PUBLIC Eigen3::Eigen)
+target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
+target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog)
 
-add_subdirectory(tests)
+add_library(autopilot::autopilot ALIAS autopilot_autopilot)
+set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
+
+option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests" ON)
+set(BUILD_TESTING ${AUTOPILOT_BUILD_TESTING})
+
+include(CTest)
+
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()
