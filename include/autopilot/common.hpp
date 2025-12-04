@@ -22,7 +22,7 @@ using std::to_underlying;
 #else
 template <typename Enum>
 constexpr auto to_underlying(Enum e) noexcept {
-  return static_cast<std::underlying_type_t<Enum> >(e);
+  return static_cast<std::underlying_type_t<Enum>>(e);
 }
 #endif
 
@@ -72,7 +72,7 @@ class AutopilotErrcCategory : public std::error_category {
       case AutopilotErrc::kNumericallyNonFinite:
         return "Numerically non-finite value";
       case AutopilotErrc::kPhysicallyInvalid:
-        return "Physically invalid configuration";
+        return "Physically invalid value";
       case AutopilotErrc::kOutOfBounds:
         return "Value out of bounds";
       default:

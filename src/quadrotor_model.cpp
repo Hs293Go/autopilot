@@ -18,12 +18,12 @@ std::error_code QuadrotorModelCfg::setInertiaElements(
   if (!std::isfinite(inertia_elems.ixx) || !std::isfinite(inertia_elems.iyy) ||
       !std::isfinite(inertia_elems.izz) || !std::isfinite(inertia_elems.ixy) ||
       !std::isfinite(inertia_elems.ixz) || !std::isfinite(inertia_elems.iyz)) {
-    return (make_error_code(AutopilotErrc::kNumericallyNonFinite));
+    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
   }
 
   if (inertia_elems.ixx <= 0.0 || inertia_elems.iyy <= 0.0 ||
       inertia_elems.izz <= 0.0) {
-    return (make_error_code(AutopilotErrc::kPhysicallyInvalid));
+    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
   }
 
   if (inertia_elems.ixx + inertia_elems.iyy < inertia_elems.izz ||
