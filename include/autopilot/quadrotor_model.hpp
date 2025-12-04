@@ -68,8 +68,16 @@ class QuadrotorModelCfg {
 
   void setMotorLayout(MotorLayout layout) { motor_layout_ = layout; }
 
+  std::error_code setFrontMotorPosition(double x, double y) {
+    return setFrontMotorPosition(Eigen::Vector2d{x, y});
+  }
+
   std::error_code setFrontMotorPosition(
       const Eigen::Ref<const Eigen::Vector2d>& position);
+
+  std::error_code setBackMotorPosition(double x, double y) {
+    return setBackMotorPosition(Eigen::Vector2d{x, y});
+  }
 
   std::error_code setBackMotorPosition(
       const Eigen::Ref<const Eigen::Vector2d>& position);
@@ -91,6 +99,10 @@ class QuadrotorModelCfg {
 
   std::error_code setGravVector(
       const Eigen::Ref<const Eigen::Vector3d>& grav_vector);
+
+  std::error_code setGravAcceleration(double grav_accel_magnitude) {
+    return setGravVector(Eigen::Vector3d::UnitZ() * grav_accel_magnitude);
+  }
 
  private:
   // Physical parameters

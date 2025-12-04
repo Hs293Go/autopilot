@@ -30,3 +30,5 @@ target_sources(
          include/autopilot/third_party/tl/expected.hpp)
 target_compile_features(autopilot PUBLIC cxx_std_23)
 target_link_libraries(autopilot PUBLIC Eigen3::Eigen)
+
+add_subdirectory(tests)

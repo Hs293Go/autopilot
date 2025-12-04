@@ -13,8 +13,8 @@ class GeometricPositionController : public PositionControllerBase {
   // 1. Matched Config Struct (Distinct)
   struct Config {
     // Gains (PD style, as this acts on R^3 errors)
-    Eigen::Vector3d kp = Eigen::Vector3d::Zero();
-    Eigen::Vector3d kv = Eigen::Vector3d::Zero();
+    Eigen::Vector3d kp = Eigen::Vector3d::Constant(1.0);
+    Eigen::Vector3d kv = Eigen::Vector3d::Constant(0.1);
   };
 
   GeometricPositionController(std::shared_ptr<QuadrotorModel> model,
@@ -47,8 +47,8 @@ class GeometricAttitudeController : public AttitudeControllerBase {
   // 1. Matched Config Struct (Distinct)
   struct Config {
     // Gains (Geometric style, acting on SO(3) metric)
-    Eigen::Vector3d kR = Eigen::Vector3d::Zero();
-    Eigen::Vector3d kOmega = Eigen::Vector3d::Zero();
+    Eigen::Vector3d kR = Eigen::Vector3d::Constant(1.0);
+    Eigen::Vector3d kOmega = Eigen::Vector3d::Constant(0.1);
 
     // Toggle Strategy
     // true = Use current state to cancel nonlinearities (Lee 2010). Sensitive

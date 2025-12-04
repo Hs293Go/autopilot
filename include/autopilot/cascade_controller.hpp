@@ -73,6 +73,14 @@ class CascadeController : public ControllerBase {
   // Safety Critical: Clear Integrators
   void reset() override;
 
+  std::shared_ptr<PositionControllerBase> positionController() {
+    return position_controller_;
+  }
+
+  std::shared_ptr<AttitudeControllerBase> attitudeController() {
+    return attitude_controller_;
+  }
+
  private:
   // Configuration
   int pos_divider_ = 10;  // 500Hz / 10 = 50Hz
