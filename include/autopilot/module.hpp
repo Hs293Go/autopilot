@@ -19,7 +19,7 @@ class Module {
 
   virtual ~Module() = default;
 
-  std::string name() const { return logger_->name(); }
+  virtual std::string name() const { return logger_->name(); }
 
   std::shared_ptr<const QuadrotorModel> model() const { return model_; }
 

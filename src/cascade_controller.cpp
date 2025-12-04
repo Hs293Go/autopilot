@@ -1,6 +1,7 @@
 #include "autopilot/cascade_controller.hpp"
 
 #include "autopilot/geometric_controller.hpp"
+#include "fmt/ranges.h"
 
 namespace autopilot {
 
@@ -126,14 +127,19 @@ expected<std::size_t, std::error_code> CascadeController::compute(
   // If we have a mixer:
   Eigen::Vector4d thrust_moments;
   thrust_moments << collective_thrust_, att_out.torque;
-  if (auto ec = out_cmd.setMotorThrusts(
-          model()->thrustTorqueToMotorThrusts(thrust_moments));
+  const Eigen::Vector4d motor_thrusts =
+      model()->thrustTorqueToMotorThrusts(thrust_moments).cwiseMax(0.0);
+  if (auto ec = out_cmd.setMotorThrusts(motor_thrusts);
       ec != std::error_code()) {
+    logger()->error("Failed to set motor thrusts: {}, reason: {}",
+                    motor_thrusts, ec.message());
     return unexpected(ec);
   }
 
   if (auto ec = out_cmd.setBodyRate(att_out.body_rate);
       ec != std::error_code()) {
+    logger()->error("Failed to set body rate: {}, reason: {}",
+                    att_out.body_rate, ec.message());
     return unexpected(ec);
   }
 
