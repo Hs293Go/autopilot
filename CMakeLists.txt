@@ -40,5 +40,9 @@ set(BUILD_TESTING ${AUTOPILOT_BUILD_TESTING})
 include(CTest)
 
 if(BUILD_TESTING)
+  add_subdirectory(validation)
+endif()
+
+if(BUILD_TESTING)
   add_subdirectory(tests)
 endif()
