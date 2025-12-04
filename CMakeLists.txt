@@ -35,14 +35,24 @@ add_library(autopilot::autopilot ALIAS autopilot_autopilot)
 set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
 
 option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests" ON)
+option(AUTOPILOT_BUILD_EXAMPLES "Build the autopilot examples" ON)
+include(CMakeDependentOption)
+cmake_dependent_option(
+  AUTOPILOT_SKIP_BUILD_VALIDATION
+  "Skip building the autopilot validation suite" OFF
+  "NOT AUTOPILOT_BUILD_TESTING;NOT AUTOPILOT_BUILD_EXAMPLES" OFF)
 set(BUILD_TESTING ${AUTOPILOT_BUILD_TESTING})
 
 include(CTest)
 
-if(BUILD_TESTING)
+if(NOT AUTOPILOT_SKIP_BUILD_VALIDATION)
   add_subdirectory(validation)
 endif()
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
+endif()
+
+if(AUTOPILOT_BUILD_EXAMPLES)
+  add_subdirectory(examples)
 endif()

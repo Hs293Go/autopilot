@@ -61,7 +61,7 @@ SimulationResult MissionRunner::run() {
     // 4. Record
     res.time_history.push_back(state.timestamp_secs);
     res.state_history.push_back(state);
-    res.command_history.push_back(out_buf[0]);
+    res.command_history.push_back(sp_buf[0]);
   }
   return res;
 }
