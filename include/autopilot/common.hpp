@@ -22,7 +22,7 @@ using std::to_underlying;
 #else
 template <typename Enum>
 constexpr auto to_underlying(Enum e) noexcept {
-  return static_cast<std::underlying_type_t<Enum>>(e);
+  return static_cast<std::underlying_type_t<Enum> >(e);
 }
 #endif
 
@@ -42,7 +42,13 @@ template <typename Derived>
 concept Matrix4Like = static_cast<bool>(Derived::RowsAtCompileTime == 4 &&
                                         Derived::ColsAtCompileTime == 4);
 
+namespace heapless {
+template <typename Scalar, Eigen::Index MaxSize>
+using VectorX = Eigen::Matrix<Scalar, Eigen::Dynamic, 1, 0, MaxSize, 1>;
+}
+
 enum class AutopilotErrc {
+  kInvalidDimension,
   kInvalidBufferSize,
   kInvalidOrdering,
   kNumericallyNonFinite,
@@ -57,6 +63,8 @@ class AutopilotErrcCategory : public std::error_category {
 
   std::string message(int ev) const override {
     switch (static_cast<AutopilotErrc>(ev)) {
+      case AutopilotErrc::kInvalidDimension:
+        return "Invalid dimension";
       case AutopilotErrc::kInvalidBufferSize:
         return "Invalid buffer size";
       case AutopilotErrc::kInvalidOrdering:

@@ -5,16 +5,36 @@
 #include "autopilot/definitions.hpp"
 #include "autopilot/module.hpp"
 #include "autopilot/quadrotor_model.hpp"
+#include "autopilot/sensors.hpp"
 
 namespace autopilot {
 
+struct QuadrotorSimulatorConfig {
+  ImuNoiseConfig imu;
+  GpsNoiseConfig gps;
+  unsigned int random_seed = 0;
+  // Environment
+  Eigen::Vector3d gravity = Eigen::Vector3d::UnitZ() * 9.81;
+};
+
+struct SensorData {
+  struct {
+    Eigen::Vector3d accel;  // m/s^2 (Body Frame)
+    Eigen::Vector3d gyro;   // rad/s (Body Frame)
+  } imu;
+
+  struct {
+    Eigen::Vector3d position;  // m (World Frame)
+    Eigen::Vector3d velocity;  // m/s (World Frame)
+  } gps;
+};
+
 class QuadrotorSimulator : public Module {
  public:
-  struct Config {
-    std::uint32_t random_seed = 0;
-  };
+  using Config = QuadrotorSimulatorConfig;
+
   QuadrotorSimulator(std::shared_ptr<QuadrotorModel> model,
-                     std::shared_ptr<Config> cfg,
+                     std::shared_ptr<Config> config,
                      std::shared_ptr<spdlog::logger> logger = nullptr);
 
   // Initialize state
@@ -27,6 +47,9 @@ class QuadrotorSimulator : public Module {
   // input_cmd: expects motor_thrusts to be populated
   void step(const QuadrotorCommand& input_cmd, double dt);
 
+  // New method to get noisy measurements
+  SensorData getSensorMeasurements(double dt);
+
  private:
   // Derivative function for RK4
 
@@ -35,11 +58,23 @@ class QuadrotorSimulator : public Module {
   SimStateVector computeSystemDerivative(
       const SimStateVector& x, const Eigen::Vector4d& target_motor_speeds);
 
-  std::shared_ptr<Config> cfg_;
+  std::shared_ptr<Config> config_;
 
   QuadrotorState state_;
   Eigen::Vector4d motor_speeds_ =
       Eigen::Vector4d::Zero();  // Internal state: rad/s
+
+  // True acceleration (calculated during step) used for IMU generation
+  Eigen::Vector3d true_linear_accel_world_ = Eigen::Vector3d::Zero();
+
+  // Noise Processes
+  MultivariableNoiseProcess accel_noise_{
+      MultivariableNoiseProcess::Dimension<3>()};
+  MultivariableNoiseProcess gyro_noise_{
+      MultivariableNoiseProcess::Dimension<3>()};
+
+  // GPS Noise is simple white noise, so we just keep the generator
+  std::mt19937 gps_rng_;
 };
 
 }  // namespace autopilot
