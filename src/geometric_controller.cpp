@@ -40,13 +40,11 @@ std::error_code GeometricPositionController::compute(
   const Eigen::Vector3d velocity_error = v - ref.velocity;
 
   // --- 2. Control Law (PD + FF) ---
-  // F_des = -Kp*ep - Kv*ev + mg*e3 + m*a_ref
-  // Note: We use the model's mass (Objective Truth)
-
-  // The desired acceleration vector in Inertial Frame
+  // F_des = -Kp*ep - Kv*ev - m*g + m*a_ref (g is gravity vector in inertial
+  // frame and subtracted)
   const Eigen::Vector3d a_des = -config_->kp.cwiseProduct(position_error) -
                                 config_->kv.cwiseProduct(velocity_error) +
-                                ref.acceleration_ff + model()->grav_vector();
+                                ref.acceleration_ff - model()->grav_vector();
 
   Eigen::Vector3d f_des = model()->mass() * a_des;
   // --- 3. Safety/Sanity Limits ---

@@ -40,7 +40,7 @@ class PositionControllerBase : public Module {
 
   virtual std::error_code compute(const QuadrotorState& state,
                                   const PositionReference& ref,
-                                  PositionOutput& command) const;
+                                  PositionOutput& command) const = 0;
 
   virtual void reset() {}
 };
@@ -55,7 +55,7 @@ class AttitudeControllerBase : public Module {
 
   virtual std::error_code compute(const QuadrotorState& attitude,
                                   const AttitudeReference& ref,
-                                  AttitudeOutput& command) const;
+                                  AttitudeOutput& command) const = 0;
 
   virtual void reset() {}
 };

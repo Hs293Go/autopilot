@@ -26,10 +26,10 @@ std::error_code QuadrotorModelCfg::setInertiaElements(
     return (make_error_code(AutopilotErrc::kPhysicallyInvalid));
   }
 
-  if (inertia_elems.ixx * inertia_elems.iyy < inertia_elems.izz ||
-      inertia_elems.ixx * inertia_elems.izz < inertia_elems.iyy ||
-      inertia_elems.iyy * inertia_elems.izz < inertia_elems.ixx) {
-    return (make_error_code(AutopilotErrc::kPhysicallyInvalid));
+  if (inertia_elems.ixx + inertia_elems.iyy < inertia_elems.izz ||
+      inertia_elems.ixx + inertia_elems.izz < inertia_elems.iyy ||
+      inertia_elems.iyy + inertia_elems.izz < inertia_elems.ixx) {
+    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
   }
 
   inertia_elems_ = inertia_elems;
@@ -267,7 +267,7 @@ typename OdometryF64::ParamVector QuadrotorModel::rigidBodyDynamics(
   RigidBodyState state_dot;
   state_dot << velocity,                             // position part
       (odom.pose().rotation() * qw).coeffs(),        // orientation part
-      wrench_view.force() / mass() - grav_vector(),  // linear acceleration part
+      wrench_view.force() / mass() + grav_vector(),  // linear acceleration part
       invInertia() *
           (wrench_view.torque() - body_rate.cross(inertia() * body_rate));
   return state_dot;
@@ -285,7 +285,7 @@ OdometryF64 QuadrotorModel::rigidBodyDynamics(const OdometryF64& state,
   RigidBodyState state_dot;
   state_dot << velocity,                        // position part
       (state.pose().rotation() * qw).coeffs(),  // orientation part
-      input.force() / mass() - grav_vector(),   // linear acceleration part
+      input.force() / mass() + grav_vector(),   // linear acceleration part
       invInertia() * (input.torque() - body_rate.cross(inertia() * body_rate));
   return OdometryViewF64(state_dot.data());
 }
@@ -293,11 +293,11 @@ OdometryF64 QuadrotorModel::rigidBodyDynamics(const OdometryF64& state,
 Eigen::Vector4d QuadrotorModel::motorSpeedDynamics(
     const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_curr,
     const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_sp) const {
-  return motor_speeds_sp.binaryExpr(
-      motor_speeds_curr, [this](auto speed, auto speed_sp) {
-        const double speed_change = speed_sp - speed;
-        return speed_change / (speed_change > 0.0 ? motor_time_constant_up()
-                                                  : motor_time_constant_down());
+  return motor_speeds_curr.binaryExpr(
+      motor_speeds_sp, [this](auto speed, auto speed_sp) {
+        const double change = speed_sp - speed;
+        return change / (change > 0.0 ? motor_time_constant_up()
+                                      : motor_time_constant_down());
       });
 }
 
