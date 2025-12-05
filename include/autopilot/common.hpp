@@ -7,6 +7,9 @@
 
 namespace autopilot {
 
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
+using std::unreachable;
+#else
 [[noreturn]] inline void unreachable() {
 #if defined(__GNUC__) || defined(__clang__)
   __builtin_unreachable();
@@ -16,6 +19,7 @@ namespace autopilot {
   throw std::logic_error("Reached unreachable code");
 #endif
 }
+#endif
 
 #if defined(__cpp_lib_to_underlying) && __cpp_lib_to_underlying >= 202102L
 using std::to_underlying;
@@ -59,9 +63,11 @@ enum class AutopilotErrc {
 namespace detail {
 class AutopilotErrcCategory : public std::error_category {
  public:
-  const char* name() const noexcept override { return "autopilot_error"; }
+  [[nodiscard]] const char* name() const noexcept override {
+    return "autopilot_error";
+  }
 
-  std::string message(int ev) const override {
+  [[nodiscard]] std::string message(int ev) const override {
     switch (static_cast<AutopilotErrc>(ev)) {
       case AutopilotErrc::kInvalidDimension:
         return "Invalid dimension";
@@ -81,7 +87,8 @@ class AutopilotErrcCategory : public std::error_category {
     unreachable();
   }
 
-  std::error_condition default_error_condition(int ev) const noexcept override {
+  [[nodiscard]] std::error_condition default_error_condition(
+      int ev) const noexcept override {
     switch (static_cast<AutopilotErrc>(ev)) {
       case AutopilotErrc::kOutOfBounds:
         return std::make_error_condition(std::errc::result_out_of_range);

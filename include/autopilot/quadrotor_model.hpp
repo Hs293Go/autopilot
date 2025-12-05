@@ -34,33 +34,49 @@ class QuadrotorModelCfg {
  public:
   QuadrotorModelCfg() = default;
 
-  double mass() const { return mass_; }
+  [[nodiscard]] double mass() const { return mass_; }
 
-  const InertiaElements& inertia_elems() const { return inertia_elems_; }
+  [[nodiscard]] const InertiaElements& inertia_elems() const {
+    return inertia_elems_;
+  }
 
-  MotorLayout motor_layout() const { return motor_layout_; }
+  [[nodiscard]] MotorLayout motor_layout() const { return motor_layout_; }
 
-  const Eigen::Vector2d& front_motor_position() const {
+  [[nodiscard]] const Eigen::Vector2d& front_motor_position() const {
     return front_motor_position_;
   }
 
-  const Eigen::Vector2d& back_motor_position() const {
+  [[nodiscard]] const Eigen::Vector2d& back_motor_position() const {
     return back_motor_position_;
   }
 
-  double torque_constant() const { return torque_constant_; }
+  [[nodiscard]] double torque_constant() const { return torque_constant_; }
 
-  double motor_time_constant_up() const { return motor_time_constant_up_; }
-  double motor_time_constant_down() const { return motor_time_constant_down_; }
-  double thrust_curve_coeff() const { return thrust_curve_coeff_; }
+  [[nodiscard]] double motor_time_constant_up() const {
+    return motor_time_constant_up_;
+  }
+  [[nodiscard]] double motor_time_constant_down() const {
+    return motor_time_constant_down_;
+  }
+  [[nodiscard]] double thrust_curve_coeff() const {
+    return thrust_curve_coeff_;
+  }
 
-  double min_collective_thrust() const { return min_collective_thrust_; }
+  [[nodiscard]] double min_collective_thrust() const {
+    return min_collective_thrust_;
+  }
 
-  double max_collective_thrust() const { return max_collective_thrust_; }
+  [[nodiscard]] double max_collective_thrust() const {
+    return max_collective_thrust_;
+  }
 
-  const Eigen::Vector3d& max_body_rate() const { return max_body_rate_; }
+  [[nodiscard]] const Eigen::Vector3d& max_body_rate() const {
+    return max_body_rate_;
+  }
 
-  const Eigen::Vector3d& grav_vector() const { return grav_vector_; }
+  [[nodiscard]] const Eigen::Vector3d& grav_vector() const {
+    return grav_vector_;
+  }
 
   std::error_code setMass(double mass);
 
@@ -143,25 +159,35 @@ class QuadrotorModel {
     updateDerivedState();
   }
 
-  double mass() const { return cfg_->mass(); }
+  [[nodiscard]] double mass() const { return cfg_->mass(); }
 
-  const Eigen::Matrix3d& inertia() const { return inertia_; }
+  [[nodiscard]] const Eigen::Matrix3d& inertia() const { return inertia_; }
 
-  const Eigen::Matrix3d& invInertia() const { return inv_inertia_; }
+  [[nodiscard]] const Eigen::Matrix3d& invInertia() const {
+    return inv_inertia_;
+  }
 
-  double motor_time_constant_up() const {
+  [[nodiscard]] double motor_time_constant_up() const {
     return cfg_->motor_time_constant_up();
   }
-  double motor_time_constant_down() const {
+  [[nodiscard]] double motor_time_constant_down() const {
     return cfg_->motor_time_constant_down();
   }
-  double thrust_curve_coeff() const { return cfg_->thrust_curve_coeff(); }
+  [[nodiscard]] double thrust_curve_coeff() const {
+    return cfg_->thrust_curve_coeff();
+  }
 
-  double min_collective_thrust() const { return cfg_->min_collective_thrust(); }
+  [[nodiscard]] double min_collective_thrust() const {
+    return cfg_->min_collective_thrust();
+  }
 
-  double max_collective_thrust() const { return cfg_->max_collective_thrust(); }
+  [[nodiscard]] double max_collective_thrust() const {
+    return cfg_->max_collective_thrust();
+  }
 
-  const Eigen::Vector3d& grav_vector() const { return cfg_->grav_vector(); }
+  [[nodiscard]] const Eigen::Vector3d& grav_vector() const {
+    return cfg_->grav_vector();
+  }
 
   [[nodiscard]] Eigen::Vector4d thrustTorqueToMotorThrusts(
       const Eigen::Ref<const Eigen::Vector4d>& moments) const;
@@ -175,14 +201,14 @@ class QuadrotorModel {
   [[nodiscard]] ThrustTorque motorThrustsToThrustTorque(
       const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts) const;
 
-  typename OdometryF64::ParamVector rigidBodyDynamics(
+  [[nodiscard]] typename OdometryF64::ParamVector rigidBodyDynamics(
       const Eigen::Ref<const typename OdometryF64::ParamVector>& state,
       const Eigen::Ref<const typename WrenchF64::ParamVector>& input) const;
 
-  OdometryF64 rigidBodyDynamics(const OdometryF64& state,
-                                const WrenchF64& input) const;
+  [[nodiscard]] OdometryF64 rigidBodyDynamics(const OdometryF64& state,
+                                              const WrenchF64& input) const;
 
-  Eigen::Vector4d motorSpeedDynamics(
+  [[nodiscard]] Eigen::Vector4d motorSpeedDynamics(
       const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_curr,
       const Eigen::Ref<const Eigen::Vector4d>& motor_speeds_sp) const;
 

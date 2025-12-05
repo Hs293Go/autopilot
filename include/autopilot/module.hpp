@@ -19,13 +19,17 @@ class Module {
 
   virtual ~Module() = default;
 
-  virtual std::string name() const { return logger_->name(); }
+  [[nodiscard]] virtual std::string name() const { return logger_->name(); }
 
-  std::shared_ptr<const QuadrotorModel> model() const { return model_; }
+  [[nodiscard]] std::shared_ptr<const QuadrotorModel> model() const {
+    return model_;
+  }
 
-  std::shared_ptr<QuadrotorModel> model() { return model_; }
+  [[nodiscard]] std::shared_ptr<QuadrotorModel> model() { return model_; }
 
-  std::shared_ptr<spdlog::logger> logger() const { return logger_; }
+  [[nodiscard]] std::shared_ptr<spdlog::logger> logger() const {
+    return logger_;
+  }
 
  private:
   static std::shared_ptr<spdlog::logger> InitLogger(
