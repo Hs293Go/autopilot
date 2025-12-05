@@ -78,6 +78,110 @@ Eigen::Vector3<typename Derived::Scalar> QuaternionToRollPitchYaw(
 
   return angles;
 }
+
+template <Vector3Like Derived>
+Eigen::Quaternion<typename Derived::Scalar> AngleAxisToQuaternion(
+    const Eigen::MatrixBase<Derived>& angle_axis) {
+  using Scalar = typename Derived::Scalar;
+  using std::abs;
+  using std::cos;
+  using std::sin;
+  using std::sqrt;
+
+  const Scalar theta_sq = angle_axis.squaredNorm();
+
+  Scalar imag_factor;
+  Scalar real_factor;
+
+  if (IsClose(theta_sq, Scalar(0))) {
+    const Scalar theta_po4 = theta_sq * theta_sq;
+    imag_factor = Scalar(0.5) - Scalar(1.0 / 48.0) * theta_sq +
+                  Scalar(1.0 / 3840.0) * theta_po4;
+    real_factor = Scalar(1) - Scalar(1.0 / 8.0) * theta_sq +
+                  Scalar(1.0 / 384.0) * theta_po4;
+  } else {
+    const Scalar theta = sqrt(theta_sq);
+    const Scalar half_theta = Scalar(0.5) * theta;
+    const Scalar sin_half_theta = sin(half_theta);
+    imag_factor = sin_half_theta / theta;
+    real_factor = cos(half_theta);
+  }
+
+  Eigen::Quaternion<Scalar> quaternion;
+  quaternion.w() = real_factor;
+  quaternion.vec() = imag_factor * angle_axis;
+  return quaternion;
+}
+
+template <Vector3Like Derived>
+Eigen::Matrix3<typename Derived::Scalar> AngleAxisToRotationMatrix(
+    const Eigen::MatrixBase<Derived>& angle_axis) {
+  using std::cos;
+  using std::sin;
+  using std::sqrt;
+  using Scalar = typename Derived::Scalar;
+
+  const Scalar theta_sq = angle_axis.squaredNorm();
+  Eigen::Matrix3<Scalar> rotation_matrix = Eigen::Matrix3<Scalar>::Identity();
+  const Eigen::Matrix3<Scalar> hat_phi = hat(angle_axis);
+  const Eigen::Matrix3<Scalar> hat_phi_sq = hat_phi * hat_phi;
+
+  if (IsClose(theta_sq, Scalar(0))) {
+    rotation_matrix += hat_phi + hat_phi_sq / Scalar(2);
+  } else {
+    const Scalar theta = sqrt(theta_sq);
+    const Scalar cos_theta = cos(theta);
+    const Scalar sin_theta = sin(theta);
+
+    rotation_matrix += (Scalar(1) - cos_theta) / theta_sq * hat_phi_sq +
+                       sin_theta / theta * hat_phi;
+  }
+
+  return rotation_matrix;
+}
+
+template <typename Derived>
+Eigen::Vector3<typename Derived::Scalar> QuaternionToAngleAxis(
+    const Eigen::QuaternionBase<Derived>& quaternion) {
+  using Scalar = typename Derived::Scalar;
+
+  using std::atan2;
+  using std::sqrt;
+  const Scalar squared_n = quaternion.vec().squaredNorm();
+  const Scalar& w = quaternion.w();
+
+  Scalar two_atan_nbyw_by_n;
+
+  if (IsClose(squared_n, Scalar(0))) {
+    // If quaternion is normalized and n=0, then w should be 1;
+    // w=0 should never happen here!
+    const Scalar squared_w = w * w;
+    two_atan_nbyw_by_n =
+        Scalar(2.0) / w - Scalar(2.0 / 3.0) * (squared_n) / (w * squared_w);
+  } else {
+    const Scalar n = sqrt(squared_n);
+
+    // w < 0 ==> cos(theta/2) < 0 ==> theta > pi
+    //
+    // By convention, the condition |theta| < pi is imposed by wrapping theta
+    // to pi; The wrap operation can be folded inside evaluation of atan2
+    //
+    // theta - pi = atan(sin(theta - pi), cos(theta - pi))
+    //            = atan(-sin(theta), -cos(theta))
+    //
+    const Scalar atan_nbyw = (w < Scalar(0)) ? atan2(-n, -w) : atan2(n, w);
+    two_atan_nbyw_by_n = Scalar(2) * atan_nbyw / n;
+  }
+
+  return two_atan_nbyw_by_n * quaternion.vec();
+}
+
+template <Matrix3Like Derived>
+Eigen::Vector3<typename Derived::Scalar> RotationMatrixToAngleAxis(
+    const Eigen::MatrixBase<Derived>& R) {
+  return QuaternionToAngleAxis(Eigen::Quaternion<typename Derived::Scalar>(R));
+}
+
 }  // namespace autopilot
 
 #endif  // AUTOPILOT_ROTATION_HPP_
