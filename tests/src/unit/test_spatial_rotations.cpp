@@ -41,33 +41,29 @@ inline constexpr double kSmallAngle = 1e-2;
 static inline const double kTinyAngle =
     std::pow(std::numeric_limits<double>::min(), 0.75);
 
-static const Eigen::IOFormat kFmt(Eigen::StreamPrecision, 0, ",", ";\n", "", "",
-                                  "[", "]");
-template <typename Derived1, typename Derived2>
-bool AllClose(const Eigen::MatrixBase<Derived1>& lhs,
-              const Eigen::MatrixBase<Derived2>& rhs) {
-  return lhs
-      .binaryExpr(rhs, [](auto&& l, auto&& r) { return ap::IsClose(l, r); })
-      .all();
-}
-
 static constexpr auto kNumTrials = 1000;
+
+using testing::DoubleNear;
+using testing::Pointwise;
 
 MATCHER_P(QuaternionIsClose, expected, ::testing::PrintToString(expected)) {
   return ap::IsClose(arg.angularDistance(expected), 0.0);
 }
 
-MATCHER_P(AllClose, expected,
-          testing::PrintToString(expected.transpose().format(kFmt))) {
-  return AllClose(arg, expected);
+MATCHER_P(AllClose, expected, "") {
+  // reshaped() (ravel) arguments so that Eigen iterate through them
+  // element-wise
+  return ExplainMatchResult(Pointwise(DoubleNear(1e-6), expected.reshaped()),
+                            arg.reshaped(), result_listener);
 }
 
-MATCHER_P(AngleAxisIsClose, expected,
-          ::testing::PrintToString(expected.transpose().format(kFmt))) {
-  if (ap::IsClose(expected.norm(), std::numbers::pi)) {
-    return AllClose(arg, expected) || AllClose(arg, -expected);
-  }
-  return AllClose(arg, expected);
+MATCHER_P(AngleAxisIsClose, expected, "") {
+  return ExplainMatchResult(
+      testing::Conditional(
+          ap::IsClose(arg.norm(), std::numbers::pi),
+          testing::AnyOf(AllClose(-expected), AllClose(expected)),
+          AllClose(expected)),
+      arg, result_listener);
 }
 
 MATCHER(IsOrthogonal,
