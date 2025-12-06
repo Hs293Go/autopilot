@@ -1,8 +1,12 @@
 #include "autopilot/cascade_controller.hpp"
 
 #include "autopilot/geometric_controller.hpp"
-#include "fmt/ranges.h"
 
+#if __has_include(<spdlog/fmt/ranges.h>)
+#include "spdlog/fmt/ranges.h"
+#else
+#include "fmt/ranges.h"
+#endif
 namespace autopilot {
 
 namespace {
