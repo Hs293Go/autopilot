@@ -1,0 +1,134 @@
+#ifndef AUTOPILOT_ESKF_HPP_
+#define AUTOPILOT_ESKF_HPP_
+
+#include "autopilot/async_estimator.hpp"
+
+namespace autopilot {
+
+// Key intrinsic dimensions related to state and data layouts
+constexpr auto kPositionError = BlockDef<0, 3>{};
+constexpr auto kRotationError = NextBlock<3>(kPositionError);
+constexpr auto kVelocityError = NextBlock<3>(kRotationError);
+constexpr auto kAccelBiasError = NextBlock<3>(kVelocityError);
+constexpr auto kGyroBiasError = NextBlock<3>(kAccelBiasError);
+
+constexpr auto kPoseError = BlockDef<0, 6>{};
+constexpr auto kTwistError = NextBlock<6>(kPoseError);
+
+constexpr int kNumErrorStates =
+    SumSizes(kPositionError, kRotationError, kVelocityError, kAccelBiasError,
+             kGyroBiasError);
+
+using ErrorState = Eigen::Vector<double, kNumErrorStates>;
+using ErrorCov = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
+
+struct ErrorStateKalmanFilterConfig {
+  // Process Noise (Continuous Time)
+  double accel_noise_density = 1.86e-3;
+  double gyro_noise_density = 1.87e-4;
+  double accel_bias_random_walk = 4.33e-4;
+  double gyro_bias_random_walk = 2.66e-5;
+  double gps_confidence_level_warning = 0.97;
+  double gps_confidence_level_error = 0.95;  // 3-sigma
+  double mag_confidence_level_warning = 0.97;
+  double mag_confidence_level_error = 0.95;  // 3-sigma
+};
+enum class OutlierClassification { kNormal, kWarning, kError };
+
+class OutlierClassifier {
+ public:
+  OutlierClassifier(double warning_threshold, double error_threshold)
+      : warning_threshold_(warning_threshold),
+        error_threshold_(error_threshold) {}
+
+  OutlierClassification classify(double mahalanobis_distance) const {
+    if (mahalanobis_distance > error_threshold_) {
+      return OutlierClassification::kError;
+    }
+    if (mahalanobis_distance > warning_threshold_) {
+      return OutlierClassification::kWarning;
+    }
+    return OutlierClassification::kNormal;
+  }
+
+  double warning_threshold() const { return warning_threshold_; }
+
+  double error_threshold() const { return error_threshold_; }
+
+ private:
+  double warning_threshold_ = 0.0;
+  double error_threshold_ = 0.0;
+};
+
+class ErrorStateKalmanFilter : public AsyncEstimator {
+ public:
+  using Config = ErrorStateKalmanFilterConfig;
+
+  ErrorStateKalmanFilter(std::shared_ptr<QuadrotorModel> model,
+                         const Config& config = {},
+                         std::shared_ptr<spdlog::logger> logger = nullptr);
+
+  // Lifecycle
+  void reset(const QuadrotorState& initial_state) override;
+
+ protected:
+  // Core Async Logic (Worker Thread)
+  std::error_code extracted();
+  std::error_code processInput(const InputBase& u) override;
+  std::error_code processMeasurement(const MeasurementBase& z) override;
+
+  // Latency Compensation (Control Thread)
+  QuadrotorState extrapolateState(const QuadrotorState& state,
+                                  double t) const override;
+
+ private:
+  template <int N>
+  struct InnovStats {
+    double mahalanobis_distance;
+    Eigen::LLT<Eigen::Matrix<double, N, N>> llt_fac;
+  };
+
+  template <int N>
+  InnovStats<N> computeMahalanobisDistance(
+      const Eigen::Vector<double, N>& innovation,
+      const Eigen::Matrix<double, N, N>& innov_cov);
+
+  // Internal Prediction Implementations
+  // Returns true if state was updated, false if skipped (e.g. dt=0)
+  std::error_code predictKinematics(QuadrotorState& state,
+                                    const Eigen::Vector3d& accel,
+                                    const Eigen::Vector3d& gyro,
+                                    double dt) const;
+
+  std::error_code predictCovariance(const Eigen::Vector3d& accel,
+                                    const Eigen::Vector3d& gyro, double dt);
+
+  // Correction Implementations
+  // Returns success/failure code
+  std::error_code correctGps(const class GpsData& z);
+  std::error_code correctMag(const class MagData& z);
+
+  // Helpers
+  void injectError(const ErrorState& dx);
+  void resetError(const ErrorState& dx);
+
+  // Configuration & State
+  Config config_;
+  QuadrotorState nominal_state_;
+  ErrorCov P_ = ErrorCov::Identity();
+
+  // Internal Biases (Not in QuadrotorState)
+  Eigen::Vector3d accel_bias_ = Eigen::Vector3d::Zero();
+  Eigen::Vector3d gyro_bias_ = Eigen::Vector3d::Zero();
+
+  // Cache for extrapolation
+  Eigen::Vector3d last_accel_ = Eigen::Vector3d::Zero();
+  Eigen::Vector3d last_gyro_ = Eigen::Vector3d::Zero();
+
+  OutlierClassifier gps_outlier_classifier_;
+  OutlierClassifier mag_outlier_classifier_;
+};
+
+}  // namespace autopilot
+
+#endif  // AUTOPILOT_ESKF_HPP_

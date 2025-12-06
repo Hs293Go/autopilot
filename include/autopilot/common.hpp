@@ -51,6 +51,36 @@ template <typename Scalar, Eigen::Index MaxSize>
 using VectorX = Eigen::Matrix<Scalar, Eigen::Dynamic, 1, 0, MaxSize, 1>;
 }
 
+namespace ix = Eigen::indexing;
+
+template <int Start, int N>
+struct BlockDef {
+  static_assert(Start >= 0, "Starting index must be greater or equal to 0");
+  static_assert(N > 0, "Size must be greater than 0");
+
+  static constexpr int kStart = Start;
+  static constexpr int kEnd = Start + N;
+  static constexpr int kN = N;
+
+  [[nodiscard]] constexpr std::size_t size() const { return N; }
+  /**
+   * @brief Creates a sequence object for slicing Eigen Vectors, i.e.
+   *
+   * @return auto
+   */
+  auto operator()() const { return ix::seqN(ix::fix<kStart>, ix::fix<kN>); }
+};
+
+template <int N, typename PrevBlock>
+constexpr auto NextBlock(PrevBlock /* prev_block */) {
+  return BlockDef<PrevBlock::kEnd, N>{};
+}
+
+template <typename... Ts>
+constexpr auto SumSizes(Ts... xs) {
+  return (std::size(xs) + ...);
+}
+
 enum class AutopilotErrc {
   kInvalidDimension,
   kInvalidBufferSize,
@@ -58,6 +88,11 @@ enum class AutopilotErrc {
   kNumericallyNonFinite,
   kPhysicallyInvalid,
   kOutOfBounds,
+  kTimestampOutOfOrder,
+  kUnknownSensorType,
+  kNumericalInstability,
+  kNumericalOutlier,
+  kLinalgError,
 };
 
 namespace detail {
@@ -81,6 +116,14 @@ class AutopilotErrcCategory : public std::error_category {
         return "Physically invalid value";
       case AutopilotErrc::kOutOfBounds:
         return "Value out of bounds";
+      case AutopilotErrc::kTimestampOutOfOrder:
+        return "Timestamp out of order";
+      case AutopilotErrc::kUnknownSensorType:
+        return "Unknown sensor type";
+      case AutopilotErrc::kNumericalInstability:
+        return "Numerical instability encountered";
+      case AutopilotErrc::kNumericalOutlier:
+        return "Numerical outlier detected";
       default:
         return "Unknown error";
     }

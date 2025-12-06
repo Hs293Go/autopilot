@@ -3,6 +3,7 @@ project(autopilot)
 
 find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(Boost REQUIRED)
 
 add_library(autopilot_autopilot)
 target_sources(
@@ -14,6 +15,7 @@ target_sources(
           src/definitions.cpp
           src/quadrotor_simulator.cpp
           src/sensors.cpp
+          src/eskf.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
@@ -24,6 +26,7 @@ target_sources(
          include/autopilot/cascade_controller.hpp
          include/autopilot/common.hpp
          include/autopilot/definitions.hpp
+         include/autopilot/eskf.hpp
          include/autopilot/expected.hpp
          include/autopilot/geometry.hpp
          include/autopilot/math.hpp
@@ -34,7 +37,8 @@ target_sources(
          include/autopilot/sensors.hpp
          include/autopilot/third_party/tl/expected.hpp)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
-target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog)
+target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog
+                                                 Boost::boost)
 
 add_library(autopilot::autopilot ALIAS autopilot_autopilot)
 set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
