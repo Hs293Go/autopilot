@@ -25,7 +25,7 @@ Eigen::Quaterniond forceToAttitude(const Eigen::Vector3d& force, double yaw) {
   Eigen::Vector3d z_b = force / collective_thrust;
 
   // Desired Heading Vector (in XY plane)
-  Eigen::Vector3d y_c(-std::sin(yaw), std::cos(yaw), 0.0);
+  const Eigen::Vector3d y_c(-std::sin(yaw), std::cos(yaw), 0.0);
 
   Eigen::Vector3d x_b = y_c.cross(z_b);
   if (x_b.norm() < 1e-3) {
@@ -37,7 +37,7 @@ Eigen::Quaterniond forceToAttitude(const Eigen::Vector3d& force, double yaw) {
   }
   x_b.normalize();
 
-  Eigen::Vector3d y_b = z_b.cross(x_b);
+  const Eigen::Vector3d y_b = z_b.cross(x_b);
 
   Eigen::Matrix3d rotation;
   rotation << x_b, y_b, z_b;
@@ -77,20 +77,24 @@ expected<std::size_t, std::error_code> CascadeController::compute(
 
     // B. Populate Locked-Down Reference struct
     // This acts as the "Sanitizer" for the raw command
-    PositionReference pos_ref;
-    pos_ref.position = setpoint_cmd.position();
-    pos_ref.velocity = setpoint_cmd.velocity();
-    pos_ref.acceleration_ff = setpoint_cmd.acceleration();
+    const PositionReference pos_ref = {
+        .position = setpoint_cmd.position(),
+        .velocity = setpoint_cmd.velocity(),
+        .acceleration_ff = setpoint_cmd.acceleration(),
+    };
 
     // C. Run Position Kernel
     PositionOutput pos_out;
     if (auto err = position_controller_->compute(state, pos_ref, pos_out);
         err != std::error_code()) {
+      logger()->error("Position controller failed, reason: {}", err.message());
       return unexpected(err);
     }
 
     if (auto ec = out_cmd.setForce(pos_out.target_force);
         ec != std::error_code()) {
+      logger()->error("Failed to set force: {::.4f}, reason: {}",
+                      pos_out.target_force, ec.message());
       return unexpected(ec);
     }
 
@@ -99,6 +103,8 @@ expected<std::size_t, std::error_code> CascadeController::compute(
         (state.odometry.pose().rotation().inverse() * pos_out.target_force).z();
     if (auto ec = out_cmd.setCollectiveThrust(collective_thrust_);
         ec != std::error_code()) {
+      logger()->error("Failed to set collective thrust: {:.4f}, reason: {}",
+                      collective_thrust_, ec.message());
       return unexpected(ec);
     }
 
@@ -117,6 +123,7 @@ expected<std::size_t, std::error_code> CascadeController::compute(
   AttitudeOutput att_out;
   // Always use FRESH state, but potentially STALE (held) reference
   if (auto ec = attitude_controller_->compute(state, last_att_ref_, att_out)) {
+    logger()->error("Attitude controller failed, reason: {}", ec.message());
     return unexpected(ec);
   }
 

@@ -129,11 +129,11 @@ SensorData QuadrotorSimulator::getSensorMeasurements(double dt) {
   // --- IMU ---
   // 1. Ideal Measurements
   // Specific Force: f_b = R.inv() * (a_world - g_world)
-  Eigen::Vector3d g_world = model()->grav_vector();  // e.g. [0, 0, -9.81]
-  Eigen::Vector3d ideal_accel = state_.odometry.pose().rotation().inverse() *
-                                (true_linear_accel_world_ - g_world);
+  const Eigen::Vector3d ideal_accel =
+      state_.odometry.pose().rotation().inverse() *
+      (true_linear_accel_world_ - model()->grav_vector());
 
-  Eigen::Vector3d ideal_gyro = state_.odometry.twist().angular();
+  const Eigen::Vector3d& ideal_gyro = state_.odometry.twist().angular();
 
   // 2. Corrupt Measurements
   data.imu.accel = ideal_accel;
