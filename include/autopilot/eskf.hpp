@@ -32,6 +32,7 @@ struct ErrorStateKalmanFilterConfig {
   double gps_confidence_level_error = 0.95;  // 3-sigma
   double mag_confidence_level_warning = 0.97;
   double mag_confidence_level_error = 0.95;  // 3-sigma
+  double max_sum_error_variance = 1e6;
 };
 enum class OutlierClassification { kNormal, kWarning, kError };
 
@@ -69,7 +70,15 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
                          std::shared_ptr<spdlog::logger> logger = nullptr);
 
   // Lifecycle
-  void reset(const QuadrotorState& initial_state) override;
+  std::error_code reset(
+      const QuadrotorState& initial_state,
+      const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) override;
+
+  bool isHealthy() const override;
+
+  Eigen::Ref<const Eigen::MatrixXd> getCovariance() const override {
+    return P_;
+  }
 
  protected:
   // Core Async Logic (Worker Thread)
@@ -118,7 +127,9 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
   std::shared_ptr<Config> config_;
   QuadrotorState nominal_state_;
   ErrorCov P_ = ErrorCov::Identity();
+  std::atomic_bool initialized_ = false;
 
+  mutable std::mutex extrapolation_mutex_;
   // Internal Biases (Not in QuadrotorState)
   Eigen::Vector3d accel_bias_ = Eigen::Vector3d::Zero();
   Eigen::Vector3d gyro_bias_ = Eigen::Vector3d::Zero();

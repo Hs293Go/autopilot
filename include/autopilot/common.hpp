@@ -26,7 +26,7 @@ using std::to_underlying;
 #else
 template <typename Enum>
 constexpr auto to_underlying(Enum e) noexcept {
-  return static_cast<std::underlying_type_t<Enum>>(e);
+  return static_cast<std::underlying_type_t<Enum> >(e);
 }
 #endif
 
@@ -93,6 +93,7 @@ enum class AutopilotErrc {
   kNumericalInstability,
   kNumericalOutlier,
   kLinalgError,
+  kEstimatorUninitialized,
 };
 
 namespace detail {
@@ -126,6 +127,9 @@ class AutopilotErrcCategory : public std::error_category {
         return "Numerical outlier detected";
       case AutopilotErrc::kLinalgError:
         return "Linear algebra error";
+      case AutopilotErrc::kEstimatorUninitialized:
+        return "Estimator not initialized";
+
       default:
         return "Unknown error";
     }

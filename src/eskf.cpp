@@ -47,16 +47,58 @@ ErrorStateKalmanFilter::ErrorStateKalmanFilter(
           boost::math::quantile(kDist, config_->mag_confidence_level_warning),
           boost::math::quantile(kDist, config_->mag_confidence_level_error)) {}
 
-void ErrorStateKalmanFilter::reset(const QuadrotorState& initial_state) {
+std::error_code ErrorStateKalmanFilter::reset(
+    const QuadrotorState& initial_state,
+    const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) {
   // Lock handled by AsyncEstimator base if needed, or we assume this
   // is called before start().
   nominal_state_ = initial_state;
+
+  {
+    std::scoped_lock lock(extrapolation_mutex_);
+    P_ = initial_cov;
+    accel_bias_.setZero();
+    gyro_bias_.setZero();
+    last_accel_.setZero();
+    last_gyro_.setZero();
+    if (initial_cov.rows() != kNumErrorStates ||
+        initial_cov.cols() != kNumErrorStates) {
+      return make_error_code(AutopilotErrc::kInvalidDimension);
+    }
+  }
   updateCommittedState(initial_state);
-  P_.setIdentity();
-  accel_bias_.setZero();
-  gyro_bias_.setZero();
-  last_accel_.setZero();
-  last_gyro_.setZero();
+  initialized_ = true;
+  return {};
+}
+
+bool ErrorStateKalmanFilter::isHealthy() const {
+  // 2. Check Initialization (Frankenstate Guard)
+  if (!initialized_) {
+    return false;
+  }
+
+  // 3. Check Mathematical Stability
+  // Access P_ directly (Thread-safe? P_ is modified on worker, read here on
+  // control thread?) Ideally, we should check a 'committed_health_' flag
+  // updated by the worker, or grab the state_mutex_ if P_ is protected.
+  // Assuming P_ is effectively atomic or we accept a tearing read for a
+  // health check:
+
+  if (!P_.allFinite()) {
+    return false;
+  }
+
+  // Check diagonal positivity (Standard Variance constraint)
+  if (P_.diagonal().minCoeff() < 0) {
+    return false;
+  }
+
+  // Optional: Check trace magnitude (Is uncertainty exploding?)
+  if (P_.trace() > config_->max_sum_error_variance) {
+    return false;
+  }
+
+  return true;
 }
 
 void reportObservationStats(
@@ -94,6 +136,11 @@ void reportPosteriorStats(const std::shared_ptr<spdlog::logger>& logger,
 // -----------------------------------------------------------------------------
 std::error_code ErrorStateKalmanFilter::processInput(
     const std::shared_ptr<const InputBase>& u) {
+  if (!initialized_) {
+    logger()->warn("ESKF: Ignoring input before initialization");
+    return make_error_code(AutopilotErrc::kEstimatorUninitialized);
+  }
+
   // Dispatch
   if (const auto imu = std::dynamic_pointer_cast<const ImuData>(u)) {
     // 1. Compute dt
@@ -104,23 +151,26 @@ std::error_code ErrorStateKalmanFilter::processInput(
       return make_error_code(AutopilotErrc::kTimestampOutOfOrder);
     }  // Out of order or duplicate
 
-    // 2. Predict Nominal State (Kinematics)
-    QuadrotorState next_state = nominal_state_;
-    if (auto ec = predictKinematics(next_state, imu->accel, imu->gyro, dt)) {
-      return ec;
-    }
+    {
+      std::scoped_lock lock(extrapolation_mutex_);
+      // 2. Predict Error Covariance
+      if (auto ec = predictCovariance(imu->accel, imu->gyro, dt); ec) {
+        return ec;
+      }
 
-    // 3. Predict Error Covariance
-    if (auto ec = predictCovariance(imu->accel, imu->gyro, dt); ec) {
-      return ec;
-    }
+      // 3. Predict Nominal State (Kinematics)
+      if (auto ec =
+              predictKinematics(nominal_state_, imu->accel, imu->gyro, dt)) {
+        return ec;
+      }
 
+      // Cache for extrapolation
+      last_accel_ = imu->accel;
+      last_gyro_ = imu->gyro;
+    }
     // 4. Commit
-    updateCommittedState(next_state);
+    updateCommittedState(nominal_state_);
 
-    // Cache for extrapolation
-    last_accel_ = imu->accel;
-    last_gyro_ = imu->gyro;
     return {};
   }
 
@@ -162,6 +212,7 @@ QuadrotorState ErrorStateKalmanFilter::extrapolateState(
   // Use last known inputs to predict forward.
   // Biases are applied inside predictKinematics using internal members.
   if (dt > 0) {
+    std::scoped_lock lock(extrapolation_mutex_);
     if (auto ec = predictKinematics(pred_state, last_accel_, last_gyro_, dt)) {
       logger()->warn("ESKF Extrapolation Failed at t={:.3} (dt={:.3}): {}", t,
                      dt, ec.message());

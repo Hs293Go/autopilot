@@ -130,9 +130,13 @@ class EstimatorBase : public Module {
   virtual expected<QuadrotorState, std::error_code> getStateAt(
       double timestamp_s = 0.0) const = 0;
 
+  virtual Eigen::Ref<const Eigen::MatrixXd> getCovariance() const = 0;
+
   // 3. Lifecycle
   // Reset filter to a known initial state (e.g., waiting on tarmac)
-  virtual void reset(const QuadrotorState& initial_state) = 0;
+  virtual std::error_code reset(
+      const QuadrotorState& initial_state,
+      const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) = 0;
 
   // Check if the filter has converged enough to fly
   [[nodiscard]] virtual bool isHealthy() const = 0;
