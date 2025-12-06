@@ -1,6 +1,8 @@
 
 #include "autopilot/eskf.hpp"
 
+#include <utility>
+
 #include "autopilot/sensor_data.hpp"
 // Assuming math headers are merged as discussed
 #include "autopilot/geometry.hpp"
@@ -29,17 +31,17 @@ using RotationErrorResetCov =
 
 static const boost::math::inverse_chi_squared kDist(3);
 ErrorStateKalmanFilter::ErrorStateKalmanFilter(
-    std::shared_ptr<QuadrotorModel> model, const Config& config,
+    std::shared_ptr<QuadrotorModel> model, std::shared_ptr<Config> config,
     std::shared_ptr<spdlog::logger> logger)
     : AsyncEstimator("ESKF", std::move(model), std::move(logger)),
-      config_(config),
+      config_(std::move(config)),
       gps_outlier_classifier_(
-          boost::math::quantile(kDist, config_.gps_confidence_level_warning),
+          boost::math::quantile(kDist, config_->gps_confidence_level_warning),
 
-          boost::math::quantile(kDist, config_.gps_confidence_level_error)),
+          boost::math::quantile(kDist, config_->gps_confidence_level_error)),
       mag_outlier_classifier_(
-          boost::math::quantile(kDist, config_.mag_confidence_level_warning),
-          boost::math::quantile(kDist, config_.mag_confidence_level_error)) {}
+          boost::math::quantile(kDist, config_->mag_confidence_level_warning),
+          boost::math::quantile(kDist, config_->mag_confidence_level_error)) {}
 
 void ErrorStateKalmanFilter::reset(const QuadrotorState& initial_state) {
   // Lock handled by AsyncEstimator base if needed, or we assume this
@@ -86,9 +88,10 @@ void reportPosteriorStats(const std::shared_ptr<spdlog::logger>& logger,
 // -----------------------------------------------------------------------------
 // WORKER THREAD: Input Handling
 // -----------------------------------------------------------------------------
-std::error_code ErrorStateKalmanFilter::processInput(const InputBase& u) {
+std::error_code ErrorStateKalmanFilter::processInput(
+    const std::shared_ptr<const InputBase>& u) {
   // Dispatch
-  if (const auto* imu = dynamic_cast<const ImuData*>(&u)) {
+  if (const auto imu = std::dynamic_pointer_cast<const ImuData>(u)) {
     // 1. Compute dt
     // In a robust system, we track last_imu_time. For now, trust the sequence.
     // If this is the first packet, we can't integrate.
@@ -125,13 +128,13 @@ std::error_code ErrorStateKalmanFilter::processInput(const InputBase& u) {
 // WORKER THREAD: Measurement Handling
 // -----------------------------------------------------------------------------
 std::error_code ErrorStateKalmanFilter::processMeasurement(
-    const MeasurementBase& z) {
+    const std::shared_ptr<const MeasurementBase>& z) {
   std::error_code ec;
 
-  if (const auto* gps = dynamic_cast<const GpsData*>(&z)) {
-    ec = correctGps(*gps);
-  } else if (const auto* mag = dynamic_cast<const MagData*>(&z)) {
-    ec = correctMag(*mag);
+  if (const auto gps = std::dynamic_pointer_cast<const GpsData>(z)) {
+    ec = correctGps(gps);
+  } else if (const auto mag = std::dynamic_pointer_cast<const MagData>(z)) {
+    ec = correctMag(mag);
   } else {
     logger()->warn("ESKF: Unknown measurement type");
     return make_error_code(AutopilotErrc::kUnknownSensorType);
@@ -278,13 +281,13 @@ std::error_code ErrorStateKalmanFilter::predictCovariance(
   ProcNoiseCov proc_cov = ProcNoiseCov::Zero();
 
   proc_cov(kVelocityError(), kVelocityError()) =
-      dt * dt_eye * config_.accel_noise_density;
+      dt * dt_eye * config_->accel_noise_density;
   proc_cov(kRotationError(), kRotationError()) =
-      dt * dt_eye * config_.gyro_noise_density;
+      dt * dt_eye * config_->gyro_noise_density;
   proc_cov(kAccelBiasError(), kAccelBiasError()) =
-      dt_eye * config_.accel_bias_random_walk;
+      dt_eye * config_->accel_bias_random_walk;
   proc_cov(kGyroBiasError(), kGyroBiasError()) =
-      dt_eye * config_.gyro_bias_random_walk;
+      dt_eye * config_->gyro_bias_random_walk;
 
   P_ = fjac * P_ * fjac.transpose() + proc_cov;
 
@@ -298,10 +301,11 @@ std::error_code ErrorStateKalmanFilter::predictCovariance(
 // -----------------------------------------------------------------------------
 // Math: Corrections
 // -----------------------------------------------------------------------------
-std::error_code ErrorStateKalmanFilter::correctGps(const GpsData& z) {
+std::error_code ErrorStateKalmanFilter::correctGps(
+    const std::shared_ptr<const GpsData>& z) {
   // 1. Residual
   Eigen::Vector3d y =
-      z.position_enu - nominal_state_.odometry.pose().translation();
+      z->position_enu - nominal_state_.odometry.pose().translation();
 
   // 2. Jacobian H
   EnuPositionJacobian hjac = EnuPositionJacobian::Zero();
@@ -310,13 +314,13 @@ std::error_code ErrorStateKalmanFilter::correctGps(const GpsData& z) {
   // 3. Kalman Update
   // S = HPH' + R
   const Eigen::Matrix3d innov_cov =
-      hjac * P_ * hjac.transpose() + z.covariance();
+      hjac * P_ * hjac.transpose() + z->covariance();
 
   // Invert S using LLT
   const auto [m2_dist, llt_fac] = computeMahalanobisDistance(y, innov_cov);
   auto report_details = std::bind_front(
       reportObservationStats, logger(), innov_cov,
-      nominal_state_.odometry.pose().translation(), z.position_enu);
+      nominal_state_.odometry.pose().translation(), z->position_enu);
   switch (gps_outlier_classifier_.classify(m2_dist)) {
     case OutlierClassification::kNormal:
       break;
@@ -350,7 +354,7 @@ std::error_code ErrorStateKalmanFilter::correctGps(const GpsData& z) {
   const ErrorCov cov_update = ErrorCov::Identity() - kalman_gain * hjac;
   const ErrorCov cand_posterior =
       cov_update * P_ * cov_update.transpose() +
-      kalman_gain * z.covariance() * kalman_gain.transpose();
+      kalman_gain * z->covariance() * kalman_gain.transpose();
   if (!cand_posterior.allFinite()) {
     reportPosteriorStats(logger(), cand_posterior);
     return make_error_code(AutopilotErrc::kNumericallyNonFinite);
@@ -372,12 +376,13 @@ std::error_code ErrorStateKalmanFilter::correctGps(const GpsData& z) {
   return {};
 }
 
-std::error_code ErrorStateKalmanFilter::correctMag(const MagData& z) {
+std::error_code ErrorStateKalmanFilter::correctMag(
+    const std::shared_ptr<const MagData>& z) {
   // Predict: b_body = R^T * b_ref
   const Eigen::Vector3d b_pred =
-      nominal_state_.odometry.pose().rotation().inverse() * z.ref_field_enu;
+      nominal_state_.odometry.pose().rotation().inverse() * z->ref_field_enu;
 
-  Eigen::Vector3d y = z.field_body - b_pred;
+  Eigen::Vector3d y = z->field_body - b_pred;
 
   // H w.r.t Rot Error = [b_pred]_x
   MagJacobian hjac = MagJacobian::Zero();
@@ -385,11 +390,11 @@ std::error_code ErrorStateKalmanFilter::correctMag(const MagData& z) {
 
   // Standard Update (Same structure as GPS, simplified here)
   const Eigen::Matrix3d innov_cov =
-      hjac * P_ * hjac.transpose() + z.covariance();
+      hjac * P_ * hjac.transpose() + z->covariance();
   const auto [mahalanobis_distance, llt_fac] =
       computeMahalanobisDistance(y, innov_cov);
   auto report_details = std::bind_front(reportObservationStats, logger(),
-                                        innov_cov, b_pred, z.field_body);
+                                        innov_cov, b_pred, z->field_body);
   switch (mag_outlier_classifier_.classify(mahalanobis_distance)) {
     case OutlierClassification::kNormal:
       break;
@@ -419,7 +424,7 @@ std::error_code ErrorStateKalmanFilter::correctMag(const MagData& z) {
   const ErrorCov cov_update = ErrorCov::Identity() - kalman_gain * hjac;
   const ErrorCov cand_posterior =
       cov_update * P_ * cov_update.transpose() +
-      kalman_gain * z.covariance() * kalman_gain.transpose();
+      kalman_gain * z->covariance() * kalman_gain.transpose();
   if (!cand_posterior.allFinite()) {
     reportPosteriorStats(logger(), cand_posterior);
     return make_error_code(AutopilotErrc::kNumericallyNonFinite);

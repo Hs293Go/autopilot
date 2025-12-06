@@ -65,7 +65,7 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
   using Config = ErrorStateKalmanFilterConfig;
 
   ErrorStateKalmanFilter(std::shared_ptr<QuadrotorModel> model,
-                         const Config& config = {},
+                         std::shared_ptr<Config> config = nullptr,
                          std::shared_ptr<spdlog::logger> logger = nullptr);
 
   // Lifecycle
@@ -74,8 +74,10 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
  protected:
   // Core Async Logic (Worker Thread)
   std::error_code extracted();
-  std::error_code processInput(const InputBase& u) override;
-  std::error_code processMeasurement(const MeasurementBase& z) override;
+  std::error_code processInput(
+      const std::shared_ptr<const InputBase>& u) override;
+  std::error_code processMeasurement(
+      const std::shared_ptr<const MeasurementBase>& z) override;
 
   // Latency Compensation (Control Thread)
   QuadrotorState extrapolateState(const QuadrotorState& state,
@@ -105,15 +107,15 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
 
   // Correction Implementations
   // Returns success/failure code
-  std::error_code correctGps(const class GpsData& z);
-  std::error_code correctMag(const class MagData& z);
+  std::error_code correctGps(const std::shared_ptr<const class GpsData>& z);
+  std::error_code correctMag(const std::shared_ptr<const class MagData>& z);
 
   // Helpers
   void injectError(const ErrorState& dx);
   void resetError(const ErrorState& dx);
 
   // Configuration & State
-  Config config_;
+  std::shared_ptr<Config> config_;
   QuadrotorState nominal_state_;
   ErrorCov P_ = ErrorCov::Identity();
 

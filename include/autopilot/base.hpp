@@ -96,7 +96,7 @@ class EstimatorBase : public Module {
    * @param data A shared pointer to the EstimatorData object containing the
    *             new data.
    */
-  virtual void push(const std::shared_ptr<const EstimatorData>& data);
+  virtual void push(const std::shared_ptr<const EstimatorData>& data) = 0;
 
   /** Processes control input data.
    *
@@ -107,7 +107,8 @@ class EstimatorBase : public Module {
    *              input data.
    * @return An std::error_code indicating success or failure of the processing.
    */
-  virtual std::error_code processInput(const InputBase& input) = 0;
+  virtual std::error_code processInput(
+      const std::shared_ptr<const InputBase>& input) = 0;
 
   /** Processes measurement data.
    *
@@ -118,7 +119,8 @@ class EstimatorBase : public Module {
    *             measurement data.
    * @return An std::error_code indicating success or failure of the processing.
    */
-  virtual std::error_code processMeasurement(const MeasurementBase& meas) = 0;
+  virtual std::error_code processMeasurement(
+      const std::shared_ptr<const MeasurementBase>& meas) = 0;
 
   // 2. State Retrieval (The "Pull")
   // "Give me the state at time 't'".

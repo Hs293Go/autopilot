@@ -67,15 +67,14 @@ void AsyncEstimator::workerLoop() {
     switch (packet.data->type()) {
       case EstimatorData::Type::kInput:
         if (auto ec = processInput(
-                *std::static_pointer_cast<const InputBase>(packet.data))) {
+                std::static_pointer_cast<const InputBase>(packet.data))) {
           logger()->error("AsyncEstimator processInput failed: {}",
                           ec.message());
         }
         break;
       case EstimatorData::Type::kMeasurement:
         if (auto ec = processMeasurement(
-                *std::static_pointer_cast<const MeasurementBase>(
-                    packet.data))) {
+                std::static_pointer_cast<const MeasurementBase>(packet.data))) {
           logger()->error("AsyncEstimator processMeasurement failed: {}",
                           ec.message());
         }
