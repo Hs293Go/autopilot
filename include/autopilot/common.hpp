@@ -124,6 +124,8 @@ class AutopilotErrcCategory : public std::error_category {
         return "Numerical instability encountered";
       case AutopilotErrc::kNumericalOutlier:
         return "Numerical outlier detected";
+      case AutopilotErrc::kLinalgError:
+        return "Linear algebra error";
       default:
         return "Unknown error";
     }
