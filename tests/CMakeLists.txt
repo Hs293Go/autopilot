@@ -11,7 +11,7 @@ FetchContent_MakeAvailable(GTest)
 add_executable(test_integration src/integration/test_cascade_controller_sim.cpp)
 target_link_libraries(
   test_integration PRIVATE autopilot::autopilot autopilot::validation
-                           GTest::gtest GTest::gtest_main)
+                           GTest::gtest GTest::gmock GTest::gtest_main)
 
 add_executable(test_unit src/unit/test_spatial_rotations.cpp)
 target_link_libraries(test_unit PRIVATE autopilot::autopilot GTest::gtest

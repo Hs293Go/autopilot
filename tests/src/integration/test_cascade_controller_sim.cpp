@@ -4,8 +4,17 @@
 #include "autopilot/geometric_controller.hpp"
 #include "autopilot/quadrotor_model.hpp"
 #include "autopilot/quadrotor_simulator.hpp"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "validation/mission_runner.hpp"
+
+MATCHER(IsEmptyErrorCode, "") {
+  if (arg == std::error_code()) {
+    return true;
+  }
+  *result_listener << "which is error code: " << arg.message();
+  return false;
+}
 
 namespace ap = autopilot;
 class TestIntegrationCascadeControllerSim : public ::testing::Test {
@@ -17,7 +26,7 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     // Setup Model
     // ===========
     auto model_cfg = std::make_shared<ap::QuadrotorModelCfg>();
-    ASSERT_EQ(model_cfg->setMass(1.0), std::error_code());
+    ASSERT_THAT(model_cfg->setMass(1.0), IsEmptyErrorCode());
 
     // Rust: diag(0.025, 0.025, 0.043)
     ASSERT_EQ(
@@ -25,19 +34,21 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
         std::error_code());
 
     // Rust: k_f = 1.56252e-6, time_constant = 0.033
-    ASSERT_EQ(model_cfg->setThrustCurveCoeff(1.56252e-6), std::error_code());
-    ASSERT_EQ(model_cfg->setMotorTimeConstantUp(0.033), std::error_code());
-    ASSERT_EQ(model_cfg->setMotorTimeConstantDown(0.033), std::error_code());
+    ASSERT_THAT(model_cfg->setThrustCurveCoeff(1.56252e-6), IsEmptyErrorCode());
+    ASSERT_THAT(model_cfg->setMotorTimeConstantUp(0.033), IsEmptyErrorCode());
+    ASSERT_THAT(model_cfg->setMotorTimeConstantDown(0.033), IsEmptyErrorCode());
 
     // Rust: arm lengths ~0.17? Derived from [0.075, 0.1] vectors
-    ASSERT_EQ(model_cfg->setFrontMotorPosition(0.075, 0.1), std::error_code());
-    ASSERT_EQ(model_cfg->setBackMotorPosition(0.075, 0.1), std::error_code());
-    ASSERT_EQ(model_cfg->setTorqueConstant(0.01386), std::error_code());
+    ASSERT_THAT(model_cfg->setFrontMotorPosition(0.075, 0.1),
+                IsEmptyErrorCode());
+    ASSERT_THAT(model_cfg->setBackMotorPosition(0.075, 0.1),
+                IsEmptyErrorCode());
+    ASSERT_THAT(model_cfg->setTorqueConstant(0.01386), IsEmptyErrorCode());
 
     // Allow aggressive flight
-    ASSERT_EQ(model_cfg->setMaxCollectiveThrust(40.0), std::error_code());
+    ASSERT_THAT(model_cfg->setMaxCollectiveThrust(40.0), IsEmptyErrorCode());
     // Gravity points DOWN
-    ASSERT_EQ(model_cfg->setGravAcceleration(-9.81), std::error_code());
+    ASSERT_THAT(model_cfg->setGravAcceleration(-9.81), IsEmptyErrorCode());
 
     // Setup Simulator
     // ===============
@@ -60,8 +71,8 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     auto att_ctrl = std::dynamic_pointer_cast<ap::GeometricAttitudeController>(
         controller->attitudeController());  // << Requires accessor
 
-    ASSERT_NE(pos_ctrl, nullptr);
-    ASSERT_NE(att_ctrl, nullptr);
+    ASSERT_THAT(pos_ctrl, testing::NotNull());
+    ASSERT_THAT(att_ctrl, testing::NotNull());
 
     // Rust: k_position: [1.0, 1.0, 4.0], k_velocity: [1.8, 1.8, 8.0]
     pos_ctrl->config()->kp = Eigen::Vector3d(1.0, 1.0, 3.0);
@@ -87,7 +98,7 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
 
     runner =
         std::make_shared<ap::MissionRunner>(simulator, controller, waypoints);
-    ASSERT_NE(runner, nullptr);
+    ASSERT_THAT(runner, testing::NotNull());
   }
 
   std::shared_ptr<ap::QuadrotorSimulator> simulator;
