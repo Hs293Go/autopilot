@@ -62,6 +62,17 @@ class InputBase : public EstimatorData {
 class MeasurementBase : public EstimatorData {
  public:
   Type type() const final { return Type::kMeasurement; }
+
+  /** Returns the measurement covariance matrix.
+   *
+   * This pure virtual function must be implemented by derived classes to
+   * provide a view of a concrete covariance matrix associated with the
+   * measurement.
+   *
+   * @return An Eigen::Ref to a constant Eigen::MatrixXd representing the
+   *         measurement covariance.
+   */
+  virtual Eigen::Ref<const Eigen::MatrixXd> covariance() const = 0;
 };
 
 class EstimatorBase : public Module {
@@ -71,11 +82,42 @@ class EstimatorBase : public Module {
       : Module(fmt::format("Estimator.{}", name), std::move(model),
                std::move(logger)) {}
 
-  // 1. Data Ingestion (The "Push")
-  // We separate Prediction inputs (IMU/Control) from Corrections (GPS/Mag)
-  // because they fundamentally drive the filter phases differently.
+  /** Pushes new data into the estimator (The "Push")
+   *
+   * This function is called whenever new sensor data or control inputs arrive.
+   * The estimator should process this data and update its internal state
+   * accordingly.
+   *
+   * @details A naive implementation might simply call processInput or
+   * processMeasurement based on the type of data. More sophisticated
+   * implementations might buffer data, handle out-of-order timestamps, or
+   * perform other preprocessing steps.
+   *
+   * @param data A shared pointer to the EstimatorData object containing the
+   *             new data.
+   */
+  virtual void push(const std::shared_ptr<const EstimatorData>& data);
+
+  /** Processes control input data.
+   *
+   * This pure virtual function must be implemented by derived classes to
+   * handle control input data.
+   *
+   * @param input A reference to the InputBase object containing the control
+   *              input data.
+   * @return An std::error_code indicating success or failure of the processing.
+   */
   virtual std::error_code processInput(const InputBase& input) = 0;
 
+  /** Processes measurement data.
+   *
+   * This pure virtual function must be implemented by derived classes to
+   * handle measurement data.
+   *
+   * @param meas A reference to the MeasurementBase object containing the
+   *             measurement data.
+   * @return An std::error_code indicating success or failure of the processing.
+   */
   virtual std::error_code processMeasurement(const MeasurementBase& meas) = 0;
 
   // 2. State Retrieval (The "Pull")

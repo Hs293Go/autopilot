@@ -7,14 +7,19 @@ find_package(spdlog REQUIRED)
 add_library(autopilot_autopilot)
 target_sources(
   autopilot_autopilot
-  PRIVATE src/geometric_controller.cpp src/quadrotor_model.cpp
-          src/cascade_controller.cpp src/definitions.cpp
-          src/quadrotor_simulator.cpp src/sensors.cpp
+  PRIVATE src/async_estimator.cpp
+          src/geometric_controller.cpp
+          src/quadrotor_model.cpp
+          src/cascade_controller.cpp
+          src/definitions.cpp
+          src/quadrotor_simulator.cpp
+          src/sensors.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
          include
          FILES
+         include/autopilot/async_estimator.hpp
          include/autopilot/base.hpp
          include/autopilot/cascade_controller.hpp
          include/autopilot/common.hpp
