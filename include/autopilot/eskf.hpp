@@ -66,7 +66,7 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
   using Config = ErrorStateKalmanFilterConfig;
 
   ErrorStateKalmanFilter(std::shared_ptr<QuadrotorModel> model,
-                         std::shared_ptr<Config> config = nullptr,
+                         std::shared_ptr<Config> config,
                          std::shared_ptr<spdlog::logger> logger = nullptr);
 
   // Lifecycle

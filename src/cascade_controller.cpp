@@ -93,7 +93,7 @@ expected<std::size_t, std::error_code> CascadeController::compute(
 
     if (auto ec = out_cmd.setForce(pos_out.target_force);
         ec != std::error_code()) {
-      logger()->error("Failed to set force: {::.4f}, reason: {}",
+      logger()->error("Failed to set force: {}, reason: {}",
                       pos_out.target_force, ec.message());
       return unexpected(ec);
     }

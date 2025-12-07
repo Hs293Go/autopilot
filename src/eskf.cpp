@@ -7,7 +7,7 @@
 // Assuming math headers are merged as discussed
 #include "autopilot/geometry.hpp"
 #include "autopilot/math.hpp"
-#include "boost/math/distributions/inverse_chi_squared.hpp"
+#include "boost/math/distributions/chi_squared.hpp"
 #if __has_include(<spdlog/fmt/ranges.h>)
 #include "spdlog/fmt/ranges.h"
 #else
@@ -33,7 +33,8 @@ using MagKalmanGain = Eigen::Matrix<double, kNumErrorStates, 3>;
 using RotationErrorResetCov =
     Eigen::Matrix<double, kRotationError.size(), kRotationError.size()>;
 
-static const boost::math::inverse_chi_squared kDist(3);
+static const boost::math::chi_squared kDist(3);
+
 ErrorStateKalmanFilter::ErrorStateKalmanFilter(
     std::shared_ptr<QuadrotorModel> model, std::shared_ptr<Config> config,
     std::shared_ptr<spdlog::logger> logger)

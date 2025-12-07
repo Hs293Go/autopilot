@@ -67,6 +67,14 @@ QuadrotorSimulator::QuadrotorSimulator(std::shared_ptr<QuadrotorModel> model,
   // Config parameters are now assumed to be in model_->cfg()
   state_.timestamp_secs = 0.0;
   state_.odometry.pose().rotation().setIdentity();
+  std::ignore = accel_noise_.configure(
+      Eigen::Vector3d::Constant(config_->imu.accel_noise_density),
+      Eigen::Vector3d::Constant(config_->imu.accel_random_walk),
+      Eigen::Vector3d::Constant(config_->imu.accel_bias_correlation_time));
+  std::ignore = gyro_noise_.configure(
+      Eigen::Vector3d::Constant(config_->imu.gyro_noise_density),
+      Eigen::Vector3d::Constant(config_->imu.gyro_random_walk),
+      Eigen::Vector3d::Constant(config_->imu.gyro_bias_correlation_time));
 }
 
 void QuadrotorSimulator::setState(const QuadrotorState& state) {

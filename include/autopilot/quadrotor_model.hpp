@@ -143,7 +143,7 @@ class QuadrotorModelCfg {
   Eigen::Vector3d max_body_rate_ = {kHalfRotation, kHalfRotation,
                                     kFullRotation};
 
-  Eigen::Vector3d grav_vector_ = Eigen::Vector3d::UnitZ() * 9.81;
+  Eigen::Vector3d grav_vector_ = -Eigen::Vector3d::UnitZ() * 9.81;
 };
 
 struct ThrustTorque {
