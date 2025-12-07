@@ -27,7 +27,7 @@ class AsyncEstimator : public EstimatorBase {
   AsyncEstimator(const std::string& name, std::shared_ptr<QuadrotorModel> model,
                  std::shared_ptr<spdlog::logger> = nullptr);
 
-  void start();
+  void start() override;
 
   ~AsyncEstimator() override;
 

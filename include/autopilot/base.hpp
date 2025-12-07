@@ -82,6 +82,8 @@ class EstimatorBase : public Module {
       : Module(fmt::format("Estimator.{}", name), std::move(model),
                std::move(logger)) {}
 
+  virtual void start() {}
+
   /** Pushes new data into the estimator (The "Push")
    *
    * This function is called whenever new sensor data or control inputs arrive.
