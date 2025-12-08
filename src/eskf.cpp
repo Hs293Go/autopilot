@@ -54,18 +54,19 @@ std::error_code ErrorStateKalmanFilter::reset(
   // Lock handled by AsyncEstimator base if needed, or we assume this
   // is called before start().
   nominal_state_ = initial_state;
+  if (initial_cov.rows() != kNumErrorStates ||
+      initial_cov.cols() != kNumErrorStates) {
+    return make_error_code(AutopilotErrc::kInvalidDimension);
+  }
 
   {
     std::scoped_lock lock(extrapolation_mutex_);
     P_ = initial_cov;
     accel_bias_.setZero();
     gyro_bias_.setZero();
-    last_accel_.setZero();
+    const auto& q = initial_state.odometry.pose().rotation();
+    last_accel_ = -(q.inverse() * model()->grav_vector());
     last_gyro_.setZero();
-    if (initial_cov.rows() != kNumErrorStates ||
-        initial_cov.cols() != kNumErrorStates) {
-      return make_error_code(AutopilotErrc::kInvalidDimension);
-    }
   }
   updateCommittedState(initial_state);
   initialized_ = true;
