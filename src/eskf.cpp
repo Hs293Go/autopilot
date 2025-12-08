@@ -278,6 +278,7 @@ std::error_code ErrorStateKalmanFilter::predictKinematics(
   cand.pose().translation() = p + v * dt + 0.5 * acc_world * dt * dt;
   cand.pose().rotation() = q * AngleAxisToQuaternion(gyr_unbiased * dt);
   cand.twist().linear() = v + acc_world * dt;
+  cand.twist().angular() = gyr_unbiased;
 
   if (!p.allFinite() || !q.coeffs().allFinite() || !v.allFinite()) {
     logger()->warn("ESKF: Non-finite state in kinematics prediction");
