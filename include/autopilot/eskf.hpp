@@ -24,10 +24,10 @@ using ErrorCov = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
 
 struct ErrorStateKalmanFilterConfig {
   // Process Noise (Continuous Time)
-  double accel_noise_density = 1.86e-3;
-  double gyro_noise_density = 1.87e-4;
-  double accel_bias_random_walk = 4.33e-4;
-  double gyro_bias_random_walk = 2.66e-5;
+  double accel_noise_density = 0.1;
+  double gyro_noise_density = 0.1;
+  double accel_bias_random_walk = 0.01;
+  double gyro_bias_random_walk = 0.01;
   double gps_confidence_level_warning = 0.97;
   double gps_confidence_level_error = 0.95;  // 3-sigma
   double mag_confidence_level_warning = 0.97;
