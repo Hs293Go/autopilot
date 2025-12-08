@@ -518,20 +518,17 @@ std::error_code ErrorStateKalmanFilter::correctMag(
 // Helpers
 // -----------------------------------------------------------------------------
 void ErrorStateKalmanFilter::injectError(const ErrorState& dx) {
-  auto working_state = nominal_state_;
+  nominal_state_.odometry.pose().translation() += dx(kPositionError());
 
-  working_state.odometry.pose().translation() += dx(kPositionError());
+  nominal_state_.odometry.pose().rotation() =
+      (nominal_state_.odometry.pose().rotation() *
+       AngleAxisToQuaternion(dx(kRotationError())))
+          .normalized();
 
-  Eigen::Vector3d dtheta = dx(kRotationError());
-  Eigen::Quaterniond dq(1, 0.5 * dtheta.x(), 0.5 * dtheta.y(),
-                        0.5 * dtheta.z());
-  working_state.odometry.pose().rotation() =
-      (working_state.odometry.pose().rotation() * dq).normalized();
-
-  working_state.odometry.twist().linear() += dx(kVelocityError());
+  nominal_state_.odometry.twist().linear() += dx(kVelocityError());
   accel_bias_ += dx(kAccelBiasError());
   gyro_bias_ += dx(kGyroBiasError());
-  updateCommittedState(working_state);
+  updateCommittedState(nominal_state_);
 }
 
 void ErrorStateKalmanFilter::resetError(const ErrorState& dx) {
