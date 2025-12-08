@@ -5,6 +5,7 @@
 #include "autopilot/definitions.hpp"
 #include "autopilot/module.hpp"
 #include "autopilot/quadrotor_model.hpp"
+#include "autopilot/sensor_data.hpp"
 #include "autopilot/sensors.hpp"
 
 namespace autopilot {
@@ -18,15 +19,8 @@ struct QuadrotorSimulatorConfig {
 };
 
 struct SensorData {
-  struct {
-    Eigen::Vector3d accel;  // m/s^2 (Body Frame)
-    Eigen::Vector3d gyro;   // rad/s (Body Frame)
-  } imu;
-
-  struct {
-    Eigen::Vector3d position;  // m (World Frame)
-    Eigen::Vector3d velocity;  // m/s (World Frame)
-  } gps;
+  std::shared_ptr<ImuData> imu;
+  std::shared_ptr<GpsData> gps;
 };
 
 class QuadrotorSimulator : public Module {
@@ -49,6 +43,10 @@ class QuadrotorSimulator : public Module {
 
   // New method to get noisy measurements
   SensorData getSensorMeasurements(double dt);
+
+  std::shared_ptr<ImuData> getImuMeasurement(double dt);
+
+  std::shared_ptr<GpsData> getGpsMeasurement();
 
  private:
   // Derivative function for RK4

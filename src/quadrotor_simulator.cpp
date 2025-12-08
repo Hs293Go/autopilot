@@ -144,8 +144,10 @@ void QuadrotorSimulator::step(const QuadrotorCommand& input_cmd, double dt) {
 }
 
 SensorData QuadrotorSimulator::getSensorMeasurements(double dt) {
-  SensorData data;
+  return {getImuMeasurement(dt), getGpsMeasurement()};
+}
 
+std::shared_ptr<ImuData> QuadrotorSimulator::getImuMeasurement(double dt) {
   // --- IMU ---
   // 1. Ideal Measurements
   // Specific Force: f_b = R.inv() * (a_world - g_world)
@@ -156,11 +158,15 @@ SensorData QuadrotorSimulator::getSensorMeasurements(double dt) {
   const Eigen::Vector3d& ideal_gyro = state_.odometry.twist().angular();
 
   // 2. Corrupt Measurements
-  data.imu.accel = ideal_accel;
-  std::ignore = accel_noise_.corrupt(data.imu.accel, dt);
-  data.imu.gyro = ideal_gyro;
-  std::ignore = gyro_noise_.corrupt(data.imu.gyro, dt);
+  Eigen::Vector3d noisy_accel = ideal_accel;
+  std::ignore = accel_noise_.corrupt(noisy_accel, dt);
+  Eigen::Vector3d noisy_gyro = ideal_gyro;
+  std::ignore = gyro_noise_.corrupt(noisy_gyro, dt);
+  return std::make_shared<ImuData>(state_.timestamp_secs, noisy_accel,
+                                   noisy_gyro);
+}
 
+std::shared_ptr<GpsData> QuadrotorSimulator::getGpsMeasurement() {
   // --- GPS ---
   // Simple white noise
   std::normal_distribution dist_xy(0.0, config_->gps.hor_pos_std_dev);
@@ -171,14 +177,24 @@ SensorData QuadrotorSimulator::getSensorMeasurements(double dt) {
   auto generate_position_noise = [&dist_xy, &dist_z, this](auto i) {
     return i < 2 ? dist_xy(gps_rng_) : dist_z(gps_rng_);
   };
-  data.gps.position = state_.odometry.pose().translation() +
-                      Eigen::Vector3d::NullaryExpr(generate_position_noise);
+  // TODO: New GpsData structure doesn't carry velocity info yet
+  //
+  // auto generate_velocity_noise = [&dist_vel_xy, &dist_vel_z, this](auto i) {
+  //   return i < 2 ? dist_vel_xy(gps_rng_) : dist_vel_z(gps_rng_);
+  // };
 
-  auto generate_velocity_noise = [&dist_vel_xy, &dist_vel_z, this](auto i) {
-    return i < 2 ? dist_vel_xy(gps_rng_) : dist_vel_z(gps_rng_);
-  };
-  data.gps.velocity = state_.odometry.twist().linear() +
-                      Eigen::Vector3d::NullaryExpr(generate_velocity_noise);
-  return data;
+  Eigen::Vector3d pos_noise =
+      Eigen::Vector3d::NullaryExpr(generate_position_noise) / 10000;
+  pos_noise.setZero();
+
+  return std::make_shared<GpsData>(
+      state_.timestamp_secs, state_.odometry.pose().translation() + pos_noise,
+      Eigen::Vector3d(config_->gps.hor_pos_std_dev,
+                      config_->gps.hor_pos_std_dev,
+                      config_->gps.ver_pos_std_dev)
+          .cwiseAbs2()
+          .asDiagonal()
+
+  );
 }
 }  // namespace autopilot
