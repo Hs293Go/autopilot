@@ -282,9 +282,12 @@ std::error_code ErrorStateKalmanFilter::predictKinematics(
   // Assumption: model()->grav_vector() is [0, 0, -9.81]
   const Eigen::Vector3d acc_world = q * acc_unbiased + model()->grav_vector();
 
-  cand.pose().translation() = p + v * dt + 0.5 * acc_world * dt * dt;
-  cand.pose().rotation() = q * AngleAxisToQuaternion(gyr_unbiased * dt);
-  cand.twist().linear() = v + acc_world * dt;
+  const Eigen::Vector3d delta_velocity = acc_world * dt;
+  const Eigen::Vector3d delta_angle = gyr_unbiased * dt;
+
+  cand.pose().translation() = p + v * dt + 0.5 * delta_velocity * dt;
+  cand.pose().rotation() = q * AngleAxisToQuaternion(delta_angle);
+  cand.twist().linear() = v + delta_velocity;
   cand.twist().angular() = gyr_unbiased;
 
   if (!p.allFinite() || !q.coeffs().allFinite() || !v.allFinite()) {
@@ -317,6 +320,7 @@ std::error_code ErrorStateKalmanFilter::predictCovariance(
 
   SystemJacobian fjac = SystemJacobian::Zero();
   const Eigen::Matrix3d dt_eye = Eigen::Matrix3d::Identity() * dt;
+  const Eigen::Matrix3d dt_rotmat = rotmat * dt;
 
   // Position
   fjac(kPositionError(), kPositionError()).setIdentity();
@@ -329,8 +333,8 @@ std::error_code ErrorStateKalmanFilter::predictCovariance(
 
   // Velocity
   fjac(kVelocityError(), kVelocityError()).setIdentity();
-  fjac(kVelocityError(), kRotationError()) = -rotmat * hat(acc_unbiased) * dt;
-  fjac(kVelocityError(), kAccelBiasError()) = -rotmat * dt;
+  fjac(kVelocityError(), kRotationError()) = -dt_rotmat * hat(acc_unbiased);
+  fjac(kVelocityError(), kAccelBiasError()) = -dt_rotmat;
 
   // Accel bias
   fjac(kAccelBiasError(), kAccelBiasError()).setIdentity();
