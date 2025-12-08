@@ -123,11 +123,14 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
   void injectError(const ErrorState& dx);
   void resetError(const ErrorState& dx);
 
+  std::error_code setError(AutopilotErrc ec);
+
   // Configuration & State
   std::shared_ptr<Config> config_;
   QuadrotorState nominal_state_;
   ErrorCov P_ = ErrorCov::Identity();
   std::atomic_bool initialized_ = false;
+  std::atomic_bool has_previous_error_ = false;
 
   mutable std::mutex extrapolation_mutex_;
   // Internal Biases (Not in QuadrotorState)

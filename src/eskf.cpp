@@ -56,7 +56,7 @@ std::error_code ErrorStateKalmanFilter::reset(
   nominal_state_ = initial_state;
   if (initial_cov.rows() != kNumErrorStates ||
       initial_cov.cols() != kNumErrorStates) {
-    return make_error_code(AutopilotErrc::kInvalidDimension);
+    return setError(AutopilotErrc::kInvalidDimension);
   }
 
   {
@@ -70,12 +70,17 @@ std::error_code ErrorStateKalmanFilter::reset(
   }
   updateCommittedState(initial_state);
   initialized_ = true;
+  has_previous_error_ = false;
   return {};
 }
 
 bool ErrorStateKalmanFilter::isHealthy() const {
   // 2. Check Initialization (Frankenstate Guard)
   if (!initialized_) {
+    return false;
+  }
+
+  if (has_previous_error_) {
     return false;
   }
 
@@ -86,6 +91,7 @@ bool ErrorStateKalmanFilter::isHealthy() const {
   // Assuming P_ is effectively atomic or we accept a tearing read for a
   // health check:
 
+  std::scoped_lock lock(extrapolation_mutex_);
   if (!P_.allFinite()) {
     return false;
   }
@@ -140,7 +146,7 @@ std::error_code ErrorStateKalmanFilter::processInput(
     const std::shared_ptr<const InputBase>& u) {
   if (!initialized_) {
     logger()->warn("ESKF: Ignoring input before initialization");
-    return make_error_code(AutopilotErrc::kEstimatorUninitialized);
+    return setError(AutopilotErrc::kEstimatorUninitialized);
   }
 
   // Dispatch
@@ -150,7 +156,7 @@ std::error_code ErrorStateKalmanFilter::processInput(
     // If this is the first packet, we can't integrate.
     double dt = imu->timestamp - nominal_state_.timestamp_secs;
     if (dt <= 0) {
-      return make_error_code(AutopilotErrc::kTimestampOutOfOrder);
+      return setError(AutopilotErrc::kTimestampOutOfOrder);
     }  // Out of order or duplicate
 
     {
@@ -177,7 +183,7 @@ std::error_code ErrorStateKalmanFilter::processInput(
   }
 
   logger()->warn("ESKF: Unknown input type");
-  return make_error_code(AutopilotErrc::kUnknownSensorType);
+  return setError(AutopilotErrc::kUnknownSensorType);
 }
 
 // -----------------------------------------------------------------------------
@@ -193,7 +199,7 @@ std::error_code ErrorStateKalmanFilter::processMeasurement(
     ec = correctMag(mag);
   } else {
     logger()->warn("ESKF: Unknown measurement type");
-    return make_error_code(AutopilotErrc::kUnknownSensorType);
+    return setError(AutopilotErrc::kUnknownSensorType);
   }
 
   if (ec) {
@@ -285,6 +291,8 @@ std::error_code ErrorStateKalmanFilter::predictKinematics(
     logger()->warn("ESKF: Non-finite state in kinematics prediction");
     logger()->trace("Position: {}, Orientation: {}, Velocity: {}", p,
                     q.coeffs(), v);
+    // This is a const member function (functionally pure), which doesn't leave
+    // the estimator in a bad state. No need to set has_previous_error_.
     return make_error_code(AutopilotErrc::kNumericallyNonFinite);
   }
   state.odometry = cand;
@@ -332,7 +340,7 @@ std::error_code ErrorStateKalmanFilter::predictCovariance(
 
   if (!fjac.allFinite()) {
     logger()->warn("ESKF: Non-finite system jacobian in covariance prediction");
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return setError(AutopilotErrc::kNumericallyNonFinite);
   }
 
   // Process Noise Q (Discrete approx)
@@ -351,7 +359,7 @@ std::error_code ErrorStateKalmanFilter::predictCovariance(
 
   if (!P_.allFinite()) {
     logger()->warn("ESKF: Non-finite error covariance after prediction step");
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return setError(AutopilotErrc::kNumericallyNonFinite);
   }
   return {};
 }
@@ -395,13 +403,13 @@ std::error_code ErrorStateKalmanFilter::correctGps(
           "ESKF GPS Measurement Rejected:"
           "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
           m2_dist, gps_outlier_classifier_.error_threshold());
-      return make_error_code(AutopilotErrc::kNumericalOutlier);
+      return setError(AutopilotErrc::kNumericalOutlier);
   }
 
   if (llt_fac.info() != Eigen::Success) {
     logger()->warn(
         "ESKF: Numerical instability in GPS correction (innov_cov inversion)");
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return setError(AutopilotErrc::kNumericallyNonFinite);
   }
 
   // K = PH' S^-1 is equivalent to K.' = S^-1 HP'
@@ -415,13 +423,13 @@ std::error_code ErrorStateKalmanFilter::correctGps(
       kalman_gain * z->covariance() * kalman_gain.transpose();
   if (!cand_posterior.allFinite()) {
     reportPosteriorStats(logger(), cand_posterior);
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return setError(AutopilotErrc::kNumericallyNonFinite);
   }
 
   if (cand_posterior.diagonal().minCoeff() <= 0) {
     logger()->warn(
         "ESKF: Non-positive definite posterior covariance in GPS correction");
-    return make_error_code(AutopilotErrc::kLinalgError);
+    return setError(AutopilotErrc::kLinalgError);
   }
 
   P_ = cand_posterior;
@@ -469,12 +477,12 @@ std::error_code ErrorStateKalmanFilter::correctMag(
           "ESKF Mag Measurement Rejected:"
           "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
           mahalanobis_distance, mag_outlier_classifier_.error_threshold());
-      return make_error_code(AutopilotErrc::kNumericalOutlier);
+      return setError(AutopilotErrc::kNumericalOutlier);
   }
   if (llt_fac.info() != Eigen::Success) {
     logger()->warn(
         "ESKF: Numerical instability in Mag correction (innov_cov inversion)");
-    return make_error_code(AutopilotErrc::kNumericalInstability);
+    return setError(AutopilotErrc::kNumericalInstability);
   }
 
   const MagKalmanGain kalman_gain = llt_fac.solve(hjac * P_).transpose();
@@ -485,13 +493,13 @@ std::error_code ErrorStateKalmanFilter::correctMag(
       kalman_gain * z->covariance() * kalman_gain.transpose();
   if (!cand_posterior.allFinite()) {
     reportPosteriorStats(logger(), cand_posterior);
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return setError(AutopilotErrc::kNumericallyNonFinite);
   }
 
   if (cand_posterior.diagonal().minCoeff() <= 0) {
     logger()->warn(
         "ESKF: Non-positive definite posterior covariance in Mag correction");
-    return make_error_code(AutopilotErrc::kLinalgError);
+    return setError(AutopilotErrc::kLinalgError);
   }
   P_ = cand_posterior;
 
@@ -530,4 +538,8 @@ void ErrorStateKalmanFilter::resetError(const ErrorState& dx) {
   P_ = rot_reset * P_ * rot_reset.transpose();
 }
 
+std::error_code ErrorStateKalmanFilter::setError(AutopilotErrc ec) {
+  has_previous_error_ = true;
+  return make_error_code(ec);
+}
 }  // namespace autopilot
