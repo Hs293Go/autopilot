@@ -185,6 +185,10 @@ class QuadrotorModel {
     return cfg_->max_collective_thrust();
   }
 
+  [[nodiscard]] const Eigen::Vector3d& max_body_rate() const {
+    return cfg_->max_body_rate();
+  }
+
   [[nodiscard]] const Eigen::Vector3d& grav_vector() const {
     return cfg_->grav_vector();
   }

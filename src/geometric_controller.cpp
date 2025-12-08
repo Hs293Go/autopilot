@@ -83,7 +83,9 @@ std::error_code GeometricAttitudeController::compute(
 
   // May be used as a computed 'body_rate_setpoint', e.g., in
   // mavros_controllers. In this case the body_rate field in ref is ignored
-  const Eigen::Vector3d rate_ref_comp = config_->kR.cwiseProduct(angle_error);
+  const Eigen::Vector3d rate_ref_comp = config_->kR.cwiseProduct(angle_error)
+                                            .cwiseMax(-model()->max_body_rate())
+                                            .cwiseMin(model()->max_body_rate());
   out.body_rate = -rate_ref_comp;
 
   // Precompute the transformation from desired body frame to current body frame
