@@ -82,6 +82,28 @@ bool MissionRunner::isMissionComplete(const QuadrotorState& state,
   return false;
 }
 
+bool MissionRunner::detectGeofenceViolation(const QuadrotorState& state) const {
+  if ((state.odometry.pose().translation().array() < cfg_.geofence_min.array())
+          .any()) {
+    logger_->error(
+        "Geofence violation at t={:.2f}s: position {} below "
+        "min {}",
+        state.timestamp_secs, state.odometry.pose().translation().transpose(),
+        cfg_.geofence_min.transpose());
+    return true;
+  }
+  if ((state.odometry.pose().translation().array() > cfg_.geofence_max.array())
+          .any()) {
+    logger_->error(
+        "Geofence violation at t={:.2f}s: position {} exceeds "
+        "max {}",
+        state.timestamp_secs, state.odometry.pose().translation().transpose(),
+        cfg_.geofence_max.transpose());
+    return true;
+  }
+  return false;
+}
+
 SimulationResult MissionRunner::run() {
   SimulationResult res;
   size_t wp_idx = 0;
@@ -125,6 +147,10 @@ SimulationResult MissionRunner::run() {
       if (est_) {
         pushEstimatorData(last_gps_time, curr_time);
       }
+    }
+
+    if (detectGeofenceViolation(state)) {
+      break;
     }
 
     // 4. Record

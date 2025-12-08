@@ -27,6 +27,8 @@ struct MissionRunnerConfig {
   double dt_gps = 0.10;
   double acceptance_radius = 0.1;
   int max_steps = 5000;
+  Eigen::Vector3d geofence_min = Eigen::Vector3d(-10.0, -10.0, -1.0);
+  Eigen::Vector3d geofence_max = Eigen::Vector3d(10.0, 10.0, 20.0);
 };
 
 class MissionRunner {
@@ -55,6 +57,8 @@ class MissionRunner {
                                        size_t& wp_idx) const;
 
   void pushEstimatorData(double& last_gps_time, double curr_time);
+
+  bool detectGeofenceViolation(const QuadrotorState& state) const;
 
   std::shared_ptr<QuadrotorSimulator> sim_;
   std::shared_ptr<ControllerBase> ctrl_;
