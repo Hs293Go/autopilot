@@ -14,11 +14,16 @@ struct MissionWaypoint {
   double yaw;
 };
 
+struct History {
+  QuadrotorState real_state;
+  QuadrotorState estimated_state;
+  QuadrotorCommand command;
+};
+
 struct SimulationResult {
   bool completed;
-  std::vector<double> time_history;
-  std::vector<QuadrotorState> state_history;
-  std::vector<QuadrotorCommand> command_history;
+  std::vector<double> time;
+  std::vector<History> hist;
 };
 
 struct MissionRunnerConfig {
@@ -51,7 +56,7 @@ class MissionRunner {
   SimulationResult run();
 
  private:
-  [[nodiscard]] QuadrotorState getCurrentState(int step) const;
+  [[nodiscard]] QuadrotorState getStateEstimate(int step) const;
 
   [[nodiscard]] bool isMissionComplete(const QuadrotorState& state,
                                        size_t& wp_idx) const;

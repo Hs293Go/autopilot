@@ -3,6 +3,7 @@
 #include <rerun.hpp>
 
 #include "autopilot/cascade_controller.hpp"
+#include "autopilot/eskf.hpp"
 #include "autopilot/geometric_controller.hpp"
 #include "autopilot/quadrotor_model.hpp"
 #include "validation/mission_runner.hpp"
@@ -58,6 +59,8 @@ int main() {
   // ===============
   auto model = std::make_shared<ap::QuadrotorModel>(model_cfg);
   auto cfg = std::make_shared<ap::QuadrotorSimulator::Config>();
+  cfg->gps.hor_pos_std_dev = std::sqrt(0.1);
+  cfg->gps.ver_pos_std_dev = std::sqrt(0.1);
 
   auto sim = std::make_shared<ap::QuadrotorSimulator>(model, cfg);
 
@@ -74,11 +77,22 @@ int main() {
     return -1;
   }
 
-  pos_ctrl->config()->kp = Eigen::Vector3d(1.0, 1.0, 3.0) / 2.0;
-  pos_ctrl->config()->kv = Eigen::Vector3d(1.8, 1.8, 6.0);
+  pos_ctrl->config()->kp = Eigen::Vector3d(1.0, 1.0, 10.0);
+  pos_ctrl->config()->kv = Eigen::Vector3d(2.5, 2.5, 6.0);
 
   att_ctrl->config()->kR = {3.0, 3.0, 0.1};
   att_ctrl->config()->kOmega = {1.0, 1.0, 0.01};  // D-term equivalent
+  // Setup Estimator
+  auto est_cfg = std::make_shared<ap::ErrorStateKalmanFilter::Config>();
+  est_cfg->gps_confidence_level_error = 0.9;
+  est_cfg->accel_noise_density = pow(0.00637, 2) / 0.01;
+  est_cfg->gyro_noise_density = pow(0.0008726646, 2) / 0.01;
+  auto est = std::make_shared<ap::ErrorStateKalmanFilter>(model, est_cfg);
+
+  if (auto ec = est->reset(sim->state(), Eigen::MatrixXd::Identity(15, 15))) {
+    spdlog::error("Estimator reset failed: {}", ec.message());
+    return -1;
+  }
 
   // 3. Define Mission
   std::vector<ap::MissionWaypoint> mission = {
@@ -90,27 +104,46 @@ int main() {
 
   ap::MissionRunner::Config mission_cfg;
   mission_cfg.max_steps = 8000;
-  ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
+  mission_cfg.dt_control = 0.005;
+  // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
+  ap::MissionRunner runner(sim, ctrl, est, mission, mission_cfg);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");
   auto result = runner.run();
-  spdlog::info("Simulation Complete. Steps: {}", result.time_history.size());
+  spdlog::info("Simulation Complete. Steps: {}", result.time.size());
 
-  struct RerunPose {
-    rrc::Vector3D position;
-    rr::Quaternion orientation;
+  struct RerunHistory {
+    rrc::Translation3D real_position;
+    rr::Quaternion real_orientation;
+    rrc::Translation3D est_position;
+    rr::Quaternion est_orientation;
+    float motor_thrusts[4];
   };
 
-  std::vector<std::tuple<rrc::Translation3D, rr::Quaternion>> traj;
+  std::vector<RerunHistory> hist;
   std::ranges::transform(
-      result.state_history, std::back_inserter(traj),
-      [](const ap::QuadrotorState& s) {
-        const Eigen::Vector3f p = s.odometry.pose().translation().cast<float>();
-        const Eigen::Quaternionf q = s.odometry.pose().rotation().cast<float>();
-        return std::tuple(
-            rrc::Translation3D(p.x(), p.y(), p.z()),
-            rr::Quaternion::from_xyzw(q.x(), q.y(), q.z(), q.w()));
+      result.hist, std::back_inserter(hist), [](const autopilot::History& it) {
+        const auto& [real_state, est_state, cmd] = it;
+        const Eigen::Vector3f p =
+            real_state.odometry.pose().translation().cast<float>();
+        const Eigen::Quaternionf q =
+            real_state.odometry.pose().rotation().cast<float>();
+        const Eigen::Vector3f p_est =
+            est_state.odometry.pose().translation().cast<float>();
+        const Eigen::Quaternionf q_est =
+            est_state.odometry.pose().rotation().cast<float>();
+        return RerunHistory{
+            .real_position = rrc::Translation3D(p.x(), p.y(), p.z()),
+            .real_orientation =
+                rr::Quaternion::from_xyzw(q.x(), q.y(), q.z(), q.w()),
+            .est_position = rrc::Translation3D(p_est.x(), p_est.y(), p_est.z()),
+            .est_orientation = rr::Quaternion::from_xyzw(q_est.x(), q_est.y(),
+                                                         q_est.z(), q_est.w()),
+            .motor_thrusts = {static_cast<float>(real_state.motor_thrusts[0]),
+                              static_cast<float>(real_state.motor_thrusts[1]),
+                              static_cast<float>(real_state.motor_thrusts[2]),
+                              static_cast<float>(real_state.motor_thrusts[3])}};
       });
 
   const auto frame =
@@ -122,32 +155,43 @@ int main() {
   rec.log("world/drone", frame);
   // 5. LOG (Post-Process)
   // We explicitly associate simulation time with the data here.
-  for (size_t i = 0; i < result.time_history.size(); ++i) {
-    double t = result.time_history[i];
-    const auto& state = result.state_history[i];
-    const auto& cmd = result.command_history[i];
+  for (size_t i = 0; i < result.time.size(); ++i) {
+    double t = result.time[i];
 
     rec.set_time_duration_secs("sim_time", t);
 
     // -- Log Ground Truth --
 
-    std::vector<rrc::Vector3D> positions(i + 1);
-    std::ranges::copy(traj | std::views::take(i + 1) | std::views::elements<0>,
-                      positions.begin());
-    rec.log("world/trajectory", rr::LineStrips3D()
-                                    .with_colors({0xFFFFFFFF})
-                                    .with_radii({0.02f})
-                                    .with_strips(rrc::LineStrip3D(positions)));
+    std::vector<rrc::Vector3D> real_positions(i + 1);
+    auto get_position = [](const RerunHistory& h) { return h.real_position; };
+    std::ranges::copy(
+        hist | std::views::take(i + 1) | std::views::transform(get_position),
+        real_positions.begin());
+    rec.log("world/trajectory",
+            rr::LineStrips3D()
+                .with_colors({0xFFFFFFFF})
+                .with_radii({0.02f})
+                .with_strips(rrc::LineStrip3D(real_positions)));
+    std::vector<rrc::Vector3D> est_positions(i + 1);
+    std::ranges::copy(
+        hist | std::views::take(i + 1) | std::views::transform(get_position),
+        est_positions.begin());
+    rec.log("world/est_trajectory",
+            rr::LineStrips3D()
+                .with_colors({0xFFFF00FF})
+                .with_radii({0.04f})
+                .with_strips(rrc::LineStrip3D(est_positions)));
 
     // Rerun expects Quaternion as (x, y, z, w) or (w, x, y, z) depending on
     // constructor. Rerun C++ Quaternion::from_xyzw(x, y, z, w) matches Eigen's
     // internal storage order usually, but check Eigen::Quaternion coeffs()
     // order (x, y, z, w).
     auto tform = rr::Transform3D()
-                     .with_translation(std::get<0>(traj[i]))
-                     .with_quaternion(std::get<1>(traj[i]));
+                     .with_translation(hist[i].real_position)
+                     .with_quaternion(hist[i].real_orientation);
     rec.log("world/drone", tform);
 
+    auto cmd = result.hist[i].command;
     // -- Log Setpoint (Ghost Drone / Marker) --
     if (cmd.hasComponent(ap::QuadrotorStateComponent::kPosition)) {
       const Eigen::Vector3f setpoint = cmd.position().cast<float>();
@@ -161,10 +205,27 @@ int main() {
 
     // -- Log Motor Thrusts (as a bar chart or scalar series) --
     // We can log these as scalars to visualize saturation
-    rec.log("sensors/motors/1", rr::Scalars(state.motor_thrusts[0]));
-    rec.log("sensors/motors/2", rr::Scalars(state.motor_thrusts[1]));
-    rec.log("sensors/motors/3", rr::Scalars(state.motor_thrusts[2]));
-    rec.log("sensors/motors/4", rr::Scalars(state.motor_thrusts[3]));
+    rec.log("actuators/motors/1", rr::Scalars(hist[i].motor_thrusts[0]));
+    rec.log("actuators/motors/2", rr::Scalars(hist[i].motor_thrusts[1]));
+    rec.log("actuators/motors/3", rr::Scalars(hist[i].motor_thrusts[2]));
+    rec.log("actuators/motors/4", rr::Scalars(hist[i].motor_thrusts[3]));
+
+    rec.log("commands/force/x",
+            rr::Scalars(result.hist[i].real_state.wrench.force().x()));
+    rec.log("commands/force/y",
+            rr::Scalars(result.hist[i].real_state.wrench.force().y()));
+    rec.log("commands/force/z",
+            rr::Scalars(result.hist[i].real_state.wrench.force().z()));
+
+    rec.log("sensors/body_rate/x",
+            rr::Scalars(
+                result.hist[i].estimated_state.odometry.twist().angular().x()));
+    rec.log("sensors/body_rate/y",
+            rr::Scalars(
+                result.hist[i].estimated_state.odometry.twist().angular().y()));
+    rec.log("sensors/body_rate/z",
+            rr::Scalars(
+                result.hist[i].estimated_state.odometry.twist().angular().z()));
   }
 
   spdlog::info("Done.");

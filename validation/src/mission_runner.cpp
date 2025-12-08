@@ -1,5 +1,7 @@
 #include "validation/mission_runner.hpp"
 
+#include <thread>
+
 #include "fmt/ranges.h"
 
 namespace autopilot {
@@ -51,7 +53,7 @@ void MissionRunner::pushEstimatorData(double& last_gps_time, double curr_time) {
   }
 }
 
-QuadrotorState MissionRunner::getCurrentState(int step) const {
+QuadrotorState MissionRunner::getStateEstimate(int step) const {
   if (est_) {
     auto x_res = est_->getStateAt(sim_->state().timestamp_secs);
     if (!x_res.has_value()) {
@@ -114,9 +116,21 @@ SimulationResult MissionRunner::run() {
   std::vector<QuadrotorCommand> out_buf(1);
 
   double last_gps_time = -cfg_.dt_gps;
-  QuadrotorState state = sim_->state();
+  const int sim_substeps =
+      static_cast<int>(std::ceil(cfg_.dt_control / cfg_.dt_sim));
+  spdlog::info(
+      "Starting Mission Runner for up to {} steps, with {} simulation substeps",
+      cfg_.max_steps, sim_substeps);
+
   for (int step = 0; step < cfg_.max_steps; ++step) {
-    state = getCurrentState(step);
+    if (est_) {
+      if (!est_->isHealthy()) {
+        spdlog::error("Estimator became unhealthy at step {}", step);
+        break;
+      }
+    }
+    auto state_est = getStateEstimate(step);
+    auto state = sim_->state();
 
     // 1. Check Waypoint
     if (isMissionComplete(state, wp_idx)) {
@@ -130,15 +144,13 @@ SimulationResult MissionRunner::run() {
     std::ignore = cmd.setYaw(mission_[wp_idx].yaw);
 
     sp_buf[0] = cmd;
-    if (auto result = ctrl_->compute(state, sp_buf, out_buf); !result) {
+    if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {
       logger_->error("Controller failed at t={:.2f}s, because: {}",
                      state.timestamp_secs, result.error().message());
       break;
     }
 
     // 3. Sim
-    const int sim_substeps =
-        static_cast<int>(std::ceil(cfg_.dt_control / cfg_.dt_sim));
     for (int i = 0; i < sim_substeps; ++i) {
       sim_->step(out_buf[0], cfg_.dt_sim);
 
@@ -154,9 +166,10 @@ SimulationResult MissionRunner::run() {
     }
 
     // 4. Record
-    res.time_history.push_back(state.timestamp_secs);
-    res.state_history.push_back(state);
-    res.command_history.push_back(sp_buf[0]);
+    res.time.push_back(state.timestamp_secs);
+    res.hist.push_back(History{.real_state = state,
+                               .estimated_state = state_est,
+                               .command = sp_buf[0]});
   }
   return res;
 }
