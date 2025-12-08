@@ -4,18 +4,27 @@
 
 namespace autopilot {
 
+template <typename T, int N>
+struct StateAndDerivative {
+  Eigen::Vector<T, N> state;
+  Eigen::Vector<T, N> derivative;
+};
+
 template <typename Fcn, typename Derived>
   requires(std::invocable<Fcn, const Eigen::MatrixBase<Derived>&> &&
            bool(Eigen::MatrixBase<Derived>::IsVectorAtCompileTime))
-Eigen::Vector<typename Derived::Scalar, Derived::SizeAtCompileTime> RK4Step(
-    Fcn f, const Eigen::MatrixBase<Derived>& x, typename Derived::Scalar dt) {
+StateAndDerivative<typename Derived::Scalar, Derived::SizeAtCompileTime>
+RK4Step(Fcn f, const Eigen::MatrixBase<Derived>& x,
+        typename Derived::Scalar dt) {
   using Scalar = typename Derived::Scalar;
   using VectorType = Eigen::Vector<Scalar, Derived::SizeAtCompileTime>;
   const VectorType k1 = f(x);
   const VectorType k2 = f(x + k1 * (dt / Scalar(2)));
   const VectorType k3 = f(x + k2 * (dt / Scalar(2)));
   const VectorType k4 = f(x + k3 * dt);
-  return x + (dt / Scalar(6)) * (k1 + Scalar(2) * k2 + Scalar(2) * k3 + k4);
+  const VectorType avg_derivative =
+      (k1 + Scalar(2) * k2 + Scalar(2) * k3 + k4) / Scalar(6);
+  return {.state = x + avg_derivative * dt, .derivative = avg_derivative};
 }
 
 QuadrotorSimulator::SimStateVector QuadrotorSimulator::computeSystemDerivative(
@@ -102,7 +111,7 @@ void QuadrotorSimulator::step(const QuadrotorCommand& input_cmd, double dt) {
   SimStateVector x;
   x << state_.odometry.params(), motor_speeds_;
   // Apply updates
-  const SimStateVector x_new = RK4Step(
+  const auto& [x_new, dx] = RK4Step(
       [this, &target_motor_speeds](auto&& state_vec) {
         return computeSystemDerivative(
             std::forward<decltype(state_vec)>(state_vec), target_motor_speeds);
@@ -124,6 +133,9 @@ void QuadrotorSimulator::step(const QuadrotorCommand& input_cmd, double dt) {
       model()->motorThrustsToThrustTorque(state_.motor_thrusts);
   state_.collective_thrust = collective_thrust;
 
+  state_.accel.linear() = OdometryViewF64(dx.data()).twist().linear();
+  state_.accel.angular() = OdometryViewF64(dx.data()).twist().angular();
+
   // Wrench output for logging: Force in World Frame, Torque in Body Frame
   const Eigen::Vector3d f_body_thrust =
       Eigen::Vector3d::UnitZ() * collective_thrust;
@@ -139,7 +151,7 @@ SensorData QuadrotorSimulator::getSensorMeasurements(double dt) {
   // Specific Force: f_b = R.inv() * (a_world - g_world)
   const Eigen::Vector3d ideal_accel =
       state_.odometry.pose().rotation().inverse() *
-      (true_linear_accel_world_ - model()->grav_vector());
+      (state_.accel.linear() - model()->grav_vector());
 
   const Eigen::Vector3d& ideal_gyro = state_.odometry.twist().angular();
 

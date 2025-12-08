@@ -64,9 +64,6 @@ class QuadrotorSimulator : public Module {
   Eigen::Vector4d motor_speeds_ =
       Eigen::Vector4d::Zero();  // Internal state: rad/s
 
-  // True acceleration (calculated during step) used for IMU generation
-  Eigen::Vector3d true_linear_accel_world_ = Eigen::Vector3d::Zero();
-
   // Noise Processes
   MultivariableNoiseProcess accel_noise_{
       MultivariableNoiseProcess::Dimension<3>()};
