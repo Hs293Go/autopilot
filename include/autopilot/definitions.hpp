@@ -4,6 +4,14 @@
 #include <cstdint>
 
 #include "autopilot/geometry.hpp"
+#if __has_include(<spdlog/fmt/ranges.h>)
+#include "spdlog/fmt/ranges.h"
+#else
+#if !SPDLOG_FMT_EXTERNAL
+#error Including fmt/ranges.h directly is supported only on Ubuntu 22.04, whose spdlog from libspdlog-dev package uses external fmt library.
+#endif
+#include "fmt/ranges.h"  // IWYU pragma: keep
+#endif
 
 namespace autopilot {
 
@@ -123,4 +131,84 @@ class QuadrotorCommand {
 };
 
 }  // namespace autopilot
+
+// Formatters for QuadrotorState and QuadrotorCommand.
+// These are defined in terms of formatters for geometry types, defined here to
+// keep the geometry.hpp clean.
+namespace fmt {
+
+struct NoSpecifierFormatter {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+};
+
+template <std::floating_point T>
+struct formatter<autopilot::Transform<T>> : NoSpecifierFormatter {
+  template <typename FormatContext>
+  auto format(const autopilot::Transform<T>& tf, FormatContext& ctx) {
+    return format_to(ctx.out(), "Transform(Translation: {}, Rotation: {})",
+                     tf.translation(), tf.rotation().coeffs());
+  }
+};
+
+template <std::floating_point T>
+struct formatter<autopilot::Twist<T>> : NoSpecifierFormatter {
+  template <typename FormatContext>
+  auto format(const autopilot::Twist<T>& twist, FormatContext& ctx) {
+    return format_to(ctx.out(), "Twist(Linear: {}, Angular: {})",
+                     twist.linear(), twist.angular());
+  }
+};
+
+template <std::floating_point T>
+struct formatter<autopilot::Odometry<T>> : NoSpecifierFormatter {
+  template <typename FormatContext>
+  auto format(const autopilot::Odometry<T>& odom, FormatContext& ctx) {
+    return format_to(ctx.out(), "Odometry(Transform: {}, Twist: {})",
+                     odom.pose(), odom.twist());
+  }
+};
+
+template <std::floating_point T>
+struct formatter<autopilot::Accel<T>> : NoSpecifierFormatter {
+  template <typename FormatContext>
+  auto format(const autopilot::Accel<T>& accel, FormatContext& ctx) {
+    return format_to(ctx.out(), "Accel(Linear: {}, Angular: {})",
+                     accel.linear(), accel.angular());
+  }
+};
+
+template <std::floating_point T>
+struct formatter<autopilot::Wrench<T>> : NoSpecifierFormatter {
+  template <typename FormatContext>
+  auto format(const autopilot::Wrench<T>& wrench, FormatContext& ctx) {
+    return format_to(ctx.out(), "Wrench(Force: {}, Torque: {})", wrench.force(),
+                     wrench.torque());
+  }
+};
+
+template <>
+struct formatter<autopilot::QuadrotorState> : NoSpecifierFormatter {
+  template <typename FormatContext>
+  auto format(const autopilot::QuadrotorState& comp, FormatContext& ctx) {
+    return format_to(ctx.out(),
+                     "QuadrotorState(Timestamp: {}, Odometry: {}, "
+                     "Accelerations: {}, Wrench: {}, "
+                     "Collective Thrust: {}, Motor Thrusts: {})",
+                     comp.timestamp_secs, comp.odometry, comp.accel,
+                     comp.wrench, comp.collective_thrust, comp.motor_thrusts);
+  }
+};
+
+template <>
+struct formatter<autopilot::QuadrotorCommand> : NoSpecifierFormatter {
+  template <typename FormatContext>
+  auto format(const autopilot::QuadrotorCommand& cmd, FormatContext& ctx) {
+    return format_to(ctx.out(), "QuadrotorCommand(Setpoint: {})",
+                     cmd.setpoint());
+  }
+};
+}  // namespace fmt
+
+static_assert(fmt::is_formattable<autopilot::QuadrotorState>::value);
+static_assert(fmt::is_formattable<autopilot::QuadrotorCommand>::value);
 #endif  // AUTOPILOT_DEFINITION_HPP_
