@@ -78,6 +78,15 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
       const Eigen::Vector<double, N>& innovation,
       const Eigen::Matrix<double, N, N>& innov_cov);
 
+  void reportObservationStats(
+      const Eigen::Ref<const Eigen::MatrixXd>& innov_cov,
+      const Eigen::Ref<const Eigen::VectorXd>& expected,
+      const Eigen::Ref<const Eigen::VectorXd>& observation);
+
+  template <typename Fn>
+  bool checkOutlier(double m2_dist, const OutlierClassifier& classifier,
+                    Fn reporter);
+
   // Internal Prediction Implementations
   // Returns true if state was updated, false if skipped (e.g. dt=0)
   std::error_code predictKinematics(QuadrotorState& state,

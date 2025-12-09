@@ -109,19 +109,6 @@ bool ErrorStateKalmanFilter::isHealthy() const {
   return true;
 }
 
-void reportObservationStats(
-    const std::shared_ptr<spdlog::logger>& logger,
-    const Eigen::Ref<const Eigen::MatrixXd>& innov_cov,
-    const Eigen::Ref<const Eigen::VectorXd>& expected,
-    const Eigen::Ref<const Eigen::VectorXd>& observation) {
-  const auto max_val = innov_cov.diagonal().maxCoeff();
-  const auto min_val = innov_cov.diagonal().minCoeff();
-  logger->debug("Innov diag: min={:.3f}, max={:.3f}", min_val, max_val);
-
-  logger->trace("Predicted observation: {}", expected);
-  logger->trace("Actual observation: {}", observation);
-}
-
 void reportPosteriorStats(const std::shared_ptr<spdlog::logger>& logger,
                           const Eigen::Ref<const Eigen::MatrixXd>& posterior) {
   logger->error("Posterior covariance is not finite");
@@ -262,6 +249,42 @@ ErrorStateKalmanFilter::computeMahalanobisDistance(
   return {innovation.dot(svdfac.solve(innovation)), llt_fac};
 }
 
+template <typename Fn>
+bool ErrorStateKalmanFilter::checkOutlier(double m2_dist,
+                                          const OutlierClassifier& classifier,
+                                          Fn reporter) {
+  switch (classifier.classify(m2_dist)) {
+    case OutlierClassification::kNormal:
+      break;
+    case OutlierClassification::kWarning:
+      reporter();
+      logger()->warn(
+          "ESKF GPS Measurement Warning:"
+          "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
+          m2_dist, classifier.warning_threshold());
+      break;
+    case OutlierClassification::kError:
+      reporter();
+      logger()->error(
+          "ESKF GPS Measurement Rejected:"
+          "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
+          m2_dist, classifier.error_threshold());
+      return false;
+  }
+  return true;
+}
+
+void ErrorStateKalmanFilter::reportObservationStats(
+    const Eigen::Ref<const Eigen::MatrixXd>& innov_cov,
+    const Eigen::Ref<const Eigen::VectorXd>& expected,
+    const Eigen::Ref<const Eigen::VectorXd>& observation) {
+  const auto max_val = innov_cov.diagonal().maxCoeff();
+  const auto min_val = innov_cov.diagonal().minCoeff();
+  logger()->debug("Innov diag: min={:.3f}, max={:.3f}", min_val, max_val);
+  logger()->trace("Predicted observation: {}", expected);
+  logger()->trace("Actual observation: {}", observation);
+}
+
 // -----------------------------------------------------------------------------
 // Math: Kinematics (Shared by Predict and Extrapolate)
 // -----------------------------------------------------------------------------
@@ -388,26 +411,11 @@ std::error_code ErrorStateKalmanFilter::correctGps(
 
   // Invert S using LLT
   const auto [m2_dist, llt_fac] = computeMahalanobisDistance(y, innov_cov);
-  auto report_details = std::bind_front(
-      reportObservationStats, logger(), innov_cov,
+  auto reporter = std::bind_front(
+      &ErrorStateKalmanFilter::reportObservationStats, this, innov_cov,
       nominal_state_.odometry.pose().translation(), z->position_enu);
-  switch (gps_outlier_classifier_.classify(m2_dist)) {
-    case OutlierClassification::kNormal:
-      break;
-    case OutlierClassification::kWarning:
-      report_details();
-      logger()->warn(
-          "ESKF GPS Measurement Warning:"
-          "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
-          m2_dist, gps_outlier_classifier_.warning_threshold());
-      break;
-    case OutlierClassification::kError:
-      report_details();
-      logger()->error(
-          "ESKF GPS Measurement Rejected:"
-          "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
-          m2_dist, gps_outlier_classifier_.error_threshold());
-      return setError(AutopilotErrc::kNumericalOutlier);
+  if (!checkOutlier(m2_dist, gps_outlier_classifier_, std::move(reporter))) {
+    return setError(AutopilotErrc::kNumericalOutlier);
   }
 
   if (llt_fac.info() != Eigen::Success) {
@@ -463,26 +471,15 @@ std::error_code ErrorStateKalmanFilter::correctMag(
       hjac * P_ * hjac.transpose() + z->covariance();
   const auto [mahalanobis_distance, llt_fac] =
       computeMahalanobisDistance(y, innov_cov);
-  auto report_details = std::bind_front(reportObservationStats, logger(),
-                                        innov_cov, b_pred, z->field_body);
-  switch (mag_outlier_classifier_.classify(mahalanobis_distance)) {
-    case OutlierClassification::kNormal:
-      break;
-    case OutlierClassification::kWarning:
-      report_details();
-      logger()->warn(
-          "ESKF Mag Measurement Warning:"
-          "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
-          mahalanobis_distance, mag_outlier_classifier_.warning_threshold());
-      break;
-    case OutlierClassification::kError:
-      report_details();
-      logger()->error(
-          "ESKF Mag Measurement Rejected:"
-          "Mahalanobis distance = {:.3f} vs Chi-squared distance = {:.3f}",
-          mahalanobis_distance, mag_outlier_classifier_.error_threshold());
-      return setError(AutopilotErrc::kNumericalOutlier);
+
+  auto reporter =
+      std::bind_front(&ErrorStateKalmanFilter::reportObservationStats, this,
+                      innov_cov, b_pred, z->field_body);
+  if (!checkOutlier(mahalanobis_distance, mag_outlier_classifier_,
+                    std::move(reporter))) {
+    return setError(AutopilotErrc::kNumericalOutlier);
   }
+
   if (llt_fac.info() != Eigen::Success) {
     logger()->warn(
         "ESKF: Numerical instability in Mag correction (innov_cov inversion)");
@@ -543,4 +540,5 @@ std::error_code ErrorStateKalmanFilter::setError(AutopilotErrc ec) {
   has_previous_error_ = true;
   return make_error_code(ec);
 }
+
 }  // namespace autopilot
