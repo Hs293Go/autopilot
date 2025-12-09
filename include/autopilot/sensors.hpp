@@ -2,12 +2,38 @@
 #define AUTOPILOT_SENSORS_HPP_
 
 #include <random>
-#include <span>
 
 #include "Eigen/Dense"
 #include "autopilot/common.hpp"
 
 namespace autopilot {
+
+enum class OutlierClassification { kNormal, kWarning, kError };
+
+class OutlierClassifier {
+ public:
+  OutlierClassifier(double warning_threshold, double error_threshold)
+      : warning_threshold_(warning_threshold),
+        error_threshold_(error_threshold) {}
+
+  OutlierClassification classify(double mahalanobis_distance) const {
+    if (mahalanobis_distance > error_threshold_) {
+      return OutlierClassification::kError;
+    }
+    if (mahalanobis_distance > warning_threshold_) {
+      return OutlierClassification::kWarning;
+    }
+    return OutlierClassification::kNormal;
+  }
+
+  double warning_threshold() const { return warning_threshold_; }
+
+  double error_threshold() const { return error_threshold_; }
+
+ private:
+  double warning_threshold_ = 0.0;
+  double error_threshold_ = 0.0;
+};
 
 struct ImuNoiseConfig {
   // Default values from ADIS16448 (nano_rotor defaults)
