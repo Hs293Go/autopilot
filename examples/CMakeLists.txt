@@ -11,3 +11,6 @@ add_executable(cascade_controller_sim src/cascade_controller_sim.cpp)
 target_link_libraries(
   cascade_controller_sim PRIVATE autopilot::autopilot autopilot::validation
                                  rerun_sdk)
+
+add_executable(format_types src/format_types.cpp)
+target_link_libraries(format_types PRIVATE autopilot::autopilot)
