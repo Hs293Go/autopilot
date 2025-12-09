@@ -29,6 +29,9 @@ class AsyncEstimator : public EstimatorBase {
 
   void start() override;
 
+  // Blocks until the queue is empty AND the worker is idle
+  void wait() override;
+
   ~AsyncEstimator() override;
 
   // ---------------------------------------------------------------------------
@@ -71,6 +74,9 @@ class AsyncEstimator : public EstimatorBase {
   std::condition_variable cv_;
   std::priority_queue<QueuedPacket, std::vector<QueuedPacket>, std::greater<>>
       queue_;
+
+  std::condition_variable drain_cv_;
+  bool busy_ = false;
 
   mutable std::shared_mutex state_mutex_;  // Allows multiple readers
                                            // (controllers), one writer (worker)

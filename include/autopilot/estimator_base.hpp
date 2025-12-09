@@ -125,6 +125,8 @@ class EstimatorBase : public Module {
 
   // Check if the filter has converged enough to fly
   [[nodiscard]] virtual bool isHealthy() const = 0;
+
+  virtual void wait() {}
 };
 
 using EstimatorFactory = GenericFactory<EstimatorBase>;

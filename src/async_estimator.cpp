@@ -21,6 +21,12 @@ void AsyncEstimator::start() {
   worker_ = std::jthread(&AsyncEstimator::workerLoop, this);
 }
 
+void AsyncEstimator::wait() {
+  std::unique_lock lock(queue_mutex_);
+  // Wait until the queue is empty AND the worker has finished the last job
+  drain_cv_.wait(lock, [this] { return queue_.empty() && !busy_; });
+}
+
 void AsyncEstimator::push(const std::shared_ptr<const EstimatorData>& data) {
   {
     std::lock_guard<std::mutex> lock(queue_mutex_);
@@ -58,6 +64,7 @@ void AsyncEstimator::workerLoop() {
     }
 
     // Extract the oldest packet
+    busy_ = true;
     const auto packet = queue_.top();
     queue_.pop();
     lock.unlock();  // Release lock while processing math
@@ -82,6 +89,12 @@ void AsyncEstimator::workerLoop() {
       default:
         logger()->error("AsyncEstimator received unknown data type");
         break;
+    }
+
+    lock.lock();
+    busy_ = false;
+    if (queue_.empty()) {
+      drain_cv_.notify_all();
     }
   }
 }

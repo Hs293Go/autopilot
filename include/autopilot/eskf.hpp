@@ -57,7 +57,6 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
 
  protected:
   // Core Async Logic (Worker Thread)
-  std::error_code extracted();
   std::error_code processInput(
       const std::shared_ptr<const InputBase>& u) override;
   std::error_code processMeasurement(

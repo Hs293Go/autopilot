@@ -170,6 +170,9 @@ SimulationResult MissionRunner::run() {
     res.hist.push_back(History{.real_state = state,
                                .estimated_state = state_est,
                                .command = sp_buf[0]});
+    if (est_) {
+      est_->wait();
+    }
   }
   return res;
 }
