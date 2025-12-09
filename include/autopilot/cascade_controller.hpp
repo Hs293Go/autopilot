@@ -60,9 +60,42 @@ class AttitudeControllerBase : public Module {
   virtual void reset() {}
 };
 
+class CascadeControllerConfig {
+ public:
+  double posctl_dt() const { return posctl_dt_; }
+
+  double attctl_dt() const { return attctl_dt_; }
+
+  std::error_code setPosctlDt(double dt) {
+    if (dt <= 0.0) {
+      return make_error_code(AutopilotErrc::kOutOfBounds);
+    }
+    posctl_dt_ = dt;
+    return {};
+  }
+
+  std::error_code setAttctlDt(double dt) {
+    if (dt <= 0.0) {
+      return make_error_code(AutopilotErrc::kOutOfBounds);
+    }
+    if (dt > posctl_dt_) {
+      return make_error_code(AutopilotErrc::kOutOfBounds);
+    }
+    attctl_dt_ = dt;
+    return {};
+  }
+
+ private:
+  double posctl_dt_ = 0.02;
+  double attctl_dt_ = 0.001;
+};
+
 class CascadeController : public ControllerBase {
  public:
+  using Config = CascadeControllerConfig;
+
   CascadeController(const std::shared_ptr<QuadrotorModel>& model,
+                    std::shared_ptr<CascadeControllerConfig> config,
                     const std::shared_ptr<spdlog::logger>& logger = nullptr);
 
   // The "Fast Loop" Entry Point (e.g. 500Hz)
@@ -86,12 +119,15 @@ class CascadeController : public ControllerBase {
   int pos_divider_ = 10;  // 500Hz / 10 = 50Hz
   double dt_ = 0.002;     // 500Hz
 
+  std::shared_ptr<Config> config_;
   // Composition
   std::shared_ptr<PositionControllerBase> position_controller_;
   std::shared_ptr<AttitudeControllerBase> attitude_controller_;
 
   // State for Multi-Rate Divider
-  uint64_t ticks_ = 0;
+  double last_posctl_time_ = -1.0;
+  double last_attctl_time_ = -1.0;
+  QuadrotorCommand out_cmd_;
   double collective_thrust_;
   AttitudeReference last_att_ref_;
 };

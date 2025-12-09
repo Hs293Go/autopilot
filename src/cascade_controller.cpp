@@ -47,8 +47,10 @@ Eigen::Quaterniond forceToAttitude(const Eigen::Vector3d& force, double yaw) {
 
 CascadeController::CascadeController(
     const std::shared_ptr<QuadrotorModel>& model,
+    std::shared_ptr<Config> config,
     const std::shared_ptr<spdlog::logger>& logger)
-    : ControllerBase("CascadedController", model, logger) {
+    : ControllerBase("CascadedController", model, logger),
+      config_(std::move(config)) {
   // Initialize sub-controllers (could be injected via ctor in future)
   // For now, we assume standard PID implementations
   position_controller_ =
@@ -67,10 +69,11 @@ expected<std::size_t, std::error_code> CascadeController::compute(
   }
 
   const auto& setpoint_cmd = setpoints[0];
-  QuadrotorCommand& out_cmd = outputs[0];
   // 1. Divider Logic (Run Position Controller at e.g. 50Hz)
   // --------------------------------------------------------
-  const bool run_pos_loop = (static_cast<int>(ticks_) % pos_divider_ == 0);
+  const bool run_pos_loop =
+      last_posctl_time_ < 0.0 ||
+      (state.timestamp_secs - last_posctl_time_) >= config_->posctl_dt();
 
   if (run_pos_loop) {
     // A. Extract "Horizon 0" Setpoint
@@ -91,7 +94,7 @@ expected<std::size_t, std::error_code> CascadeController::compute(
       return unexpected(err);
     }
 
-    if (auto ec = out_cmd.setForce(pos_out.target_force);
+    if (auto ec = out_cmd_.setForce(pos_out.target_force);
         ec != std::error_code()) {
       logger()->error("Failed to set force: {}, reason: {}",
                       pos_out.target_force, ec.message());
@@ -101,7 +104,7 @@ expected<std::size_t, std::error_code> CascadeController::compute(
     // Project desired force into body Z axis; NOT simply norm of desired force
     collective_thrust_ =
         (state.odometry.pose().rotation().inverse() * pos_out.target_force).z();
-    if (auto ec = out_cmd.setCollectiveThrust(collective_thrust_);
+    if (auto ec = out_cmd_.setCollectiveThrust(collective_thrust_);
         ec != std::error_code()) {
       logger()->error("Failed to set collective thrust: {:.4f}, reason: {}",
                       collective_thrust_, ec.message());
@@ -112,60 +115,66 @@ expected<std::size_t, std::error_code> CascadeController::compute(
     // This updates the "held" reference for the fast loop
     last_att_ref_.orientation =
         forceToAttitude(pos_out.target_force, setpoint_cmd.yaw());
+    last_posctl_time_ = state.timestamp_secs;
   }
 
   // Pass through feedthrough independent of position loop
   last_att_ref_.body_rate = setpoint_cmd.bodyRate();
   last_att_ref_.angular_accel = setpoint_cmd.angularAcceleration();
 
-  // 2. Run Attitude Controller (Every Tick, e.g. 500Hz)
-  // ---------------------------------------------------
-  AttitudeOutput att_out;
-  // Always use FRESH state, but potentially STALE (held) reference
-  if (auto ec = attitude_controller_->compute(state, last_att_ref_, att_out)) {
-    logger()->error("Attitude controller failed, reason: {}", ec.message());
-    return unexpected(ec);
+  const bool run_att_loop =
+      last_attctl_time_ < 0.0 ||
+      (state.timestamp_secs - last_attctl_time_) >= config_->attctl_dt();
+
+  if (run_att_loop) {
+    // 2. Run Attitude Controller (Every Tick, e.g. 500Hz)
+    // ---------------------------------------------------
+    AttitudeOutput att_out;
+    // Always use FRESH state, but potentially STALE (held) reference
+    if (auto ec =
+            attitude_controller_->compute(state, last_att_ref_, att_out)) {
+      logger()->error("Attitude controller failed, reason: {}", ec.message());
+      return unexpected(ec);
+    }
+
+    // 3. Output Generation (The Mixer)
+    // ---------------------------------------------------
+    // In a real system, Mixer might be its own module.
+    // Here we do a simple allocation or pass torque/thrust if the drone handles
+    // mixing.
+
+    out_cmd_.setTimestamp(state.timestamp_secs + dt_);  // dt of the fast loop
+
+    // If we have a mixer:
+    Eigen::Vector4d thrust_moments;
+    thrust_moments << collective_thrust_, att_out.torque;
+    const Eigen::Vector4d motor_thrusts =
+        model()->thrustTorqueToMotorThrusts(thrust_moments).cwiseMax(0.0);
+    if (auto ec = out_cmd_.setMotorThrusts(motor_thrusts);
+        ec != std::error_code()) {
+      logger()->error("Failed to set motor thrusts: {}, reason: {}",
+                      motor_thrusts, ec.message());
+      return unexpected(ec);
+    }
+
+    if (auto ec = out_cmd_.setBodyRate(att_out.body_rate);
+        ec != std::error_code()) {
+      logger()->error("Failed to set body rate: {}, reason: {}",
+                      att_out.body_rate, ec.message());
+      return unexpected(ec);
+    }
+
+    // If we output wrench (for simulator):
+    if (auto ec = out_cmd_.setTorque(att_out.torque); ec != std::error_code()) {
+      return unexpected(ec);
+    }
+    last_attctl_time_ = state.timestamp_secs;
   }
-
-  // 3. Output Generation (The Mixer)
-  // ---------------------------------------------------
-  // In a real system, Mixer might be its own module.
-  // Here we do a simple allocation or pass torque/thrust if the drone handles
-  // mixing.
-
-  out_cmd.setTimestamp(state.timestamp_secs + dt_);  // dt of the fast loop
-
-  // If we have a mixer:
-  Eigen::Vector4d thrust_moments;
-  thrust_moments << collective_thrust_, att_out.torque;
-  const Eigen::Vector4d motor_thrusts =
-      model()->thrustTorqueToMotorThrusts(thrust_moments).cwiseMax(0.0);
-  if (auto ec = out_cmd.setMotorThrusts(motor_thrusts);
-      ec != std::error_code()) {
-    logger()->error("Failed to set motor thrusts: {}, reason: {}",
-                    motor_thrusts, ec.message());
-    return unexpected(ec);
-  }
-
-  if (auto ec = out_cmd.setBodyRate(att_out.body_rate);
-      ec != std::error_code()) {
-    logger()->error("Failed to set body rate: {}, reason: {}",
-                    att_out.body_rate, ec.message());
-    return unexpected(ec);
-  }
-
-  // If we output wrench (for simulator):
-  if (auto ec = out_cmd.setTorque(att_out.torque); ec != std::error_code()) {
-    return unexpected(ec);
-  }
-  // Note: You might want a dedicated field for Torque in QuadrotorState
-
-  ticks_++;
+  outputs[0] = out_cmd_;
   return 1U;  // We produced 1 valid step
 }
 
 void CascadeController::reset() {
-  ticks_ = 0;
   // Reset the inner controllers (assuming they expose reset)
   position_controller_->reset();
   attitude_controller_->reset();

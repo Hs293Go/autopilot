@@ -59,7 +59,9 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
 
     // Setup Controller
     // ================
-    auto controller = std::make_shared<ap::CascadeController>(model);
+    auto controller_cfg = std::make_shared<ap::CascadeController::Config>();
+    auto controller =
+        std::make_shared<ap::CascadeController>(model, controller_cfg);
 
     // TUNING: We must apply the Rust gains to the C++ controllers.
     // NOTE: This assumes you added accessors like `positionController()`

@@ -66,7 +66,10 @@ int main() {
 
   // Setup Controller
   // ================
-  auto ctrl = std::make_shared<ap::CascadeController>(model);
+  auto cascade_cfg = std::make_shared<ap::CascadeController::Config>();
+  std::ignore = cascade_cfg->setPosctlDt(0.005);
+  std::ignore = cascade_cfg->setAttctlDt(0.001);
+  auto ctrl = std::make_shared<ap::CascadeController>(model, cascade_cfg);
   auto pos_ctrl = std::dynamic_pointer_cast<ap::GeometricPositionController>(
       ctrl->positionController());
   auto att_ctrl = std::dynamic_pointer_cast<ap::GeometricAttitudeController>(
@@ -77,11 +80,11 @@ int main() {
     return -1;
   }
 
-  pos_ctrl->config()->kp = Eigen::Vector3d(1.0, 1.0, 10.0);
+  pos_ctrl->config()->kp = Eigen::Vector3d(1.0, 1.0, 5.0);
   pos_ctrl->config()->kv = Eigen::Vector3d(2.5, 2.5, 6.0);
 
   att_ctrl->config()->kR = {3.0, 3.0, 0.1};
-  att_ctrl->config()->kOmega = {1.0, 1.0, 0.01};  // D-term equivalent
+  att_ctrl->config()->kOmega = {1.0, 1.0, 0.05};  // D-term equivalent
   // Setup Estimator
   auto est_cfg = std::make_shared<ap::ErrorStateKalmanFilter::Config>();
   est_cfg->gps_confidence_level_error = 0.9;
@@ -103,8 +106,8 @@ int main() {
       {{0.0, 0.0, 1.0}, 3.0 * std::numbers::pi / 2}};
 
   ap::MissionRunner::Config mission_cfg;
-  mission_cfg.max_steps = 8000;
-  mission_cfg.dt_control = 0.005;
+  mission_cfg.dt_control = cascade_cfg->posctl_dt();
+  mission_cfg.max_steps = 12000;
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
   ap::MissionRunner runner(sim, ctrl, est, mission, mission_cfg);
 
