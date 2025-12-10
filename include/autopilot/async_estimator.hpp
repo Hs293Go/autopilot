@@ -7,7 +7,7 @@
 #include <shared_mutex>
 #include <thread>
 
-#include "autopilot/base.hpp"
+#include "autopilot/estimator_base.hpp"
 
 namespace autopilot {
 // A type-erased container for the priority queue

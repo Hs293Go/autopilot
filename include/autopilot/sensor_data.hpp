@@ -2,7 +2,7 @@
 #define AUTOPILOT_SENSOR_DATA_HPP_
 
 #include "Eigen/Dense"
-#include "autopilot/base.hpp"
+#include "autopilot/estimator_base.hpp"
 
 namespace autopilot {
 

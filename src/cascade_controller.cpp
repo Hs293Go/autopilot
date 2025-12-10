@@ -185,4 +185,6 @@ void CascadeController::reset() {
                         .body_rate = Eigen::Vector3d::Zero(),
                         .angular_accel = Eigen::Vector3d::Zero()};
 }
+
+REGISTER_CONTROLLER(CascadeController, "CascadeController");
 }  // namespace autopilot

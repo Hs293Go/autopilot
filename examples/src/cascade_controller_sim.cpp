@@ -1,4 +1,3 @@
-#include <iostream>
 #include <ranges>
 #include <rerun.hpp>
 
@@ -66,10 +65,14 @@ int main() {
 
   // Setup Controller
   // ================
-  auto cascade_cfg = std::make_shared<ap::CascadeController::Config>();
+  auto cascade_cfg =
+      ap::ControllerFactory::CreateConfig<ap::CascadeControllerConfig>(
+          "CascadeController");
   std::ignore = cascade_cfg->setPosctlDt(0.005);
   std::ignore = cascade_cfg->setAttctlDt(0.001);
-  auto ctrl = std::make_shared<ap::CascadeController>(model, cascade_cfg);
+  auto ctrl =
+      ap::ControllerFactory::Create<ap::CascadeController>(cascade_cfg, model);
+
   auto pos_ctrl = std::dynamic_pointer_cast<ap::GeometricPositionController>(
       ctrl->positionController());
   auto att_ctrl = std::dynamic_pointer_cast<ap::GeometricAttitudeController>(

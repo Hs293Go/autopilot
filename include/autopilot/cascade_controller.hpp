@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "autopilot/base.hpp"
+#include "autopilot/controller_base.hpp"
 
 namespace autopilot {
 
@@ -60,8 +60,12 @@ class AttitudeControllerBase : public Module {
   virtual void reset() {}
 };
 
-class CascadeControllerConfig {
+static constexpr char const* kCascadeControllerKey = "CascadeController";
+
+class CascadeControllerConfig : public ConfigBase {
  public:
+  std::string name() const override { return kCascadeControllerKey; }
+
   double posctl_dt() const { return posctl_dt_; }
 
   double attctl_dt() const { return attctl_dt_; }
@@ -93,6 +97,8 @@ class CascadeControllerConfig {
 class CascadeController : public ControllerBase {
  public:
   using Config = CascadeControllerConfig;
+
+  std::string name() const override { return kCascadeControllerKey; }
 
   CascadeController(const std::shared_ptr<QuadrotorModel>& model,
                     std::shared_ptr<CascadeControllerConfig> config,
@@ -131,7 +137,6 @@ class CascadeController : public ControllerBase {
   double collective_thrust_;
   AttitudeReference last_att_ref_;
 };
-;
 
 }  // namespace autopilot
 
