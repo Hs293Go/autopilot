@@ -1,6 +1,8 @@
 #ifndef AUTOPILOT_CONTROLLER_BASE_HPP_
 #define AUTOPILOT_CONTROLLER_BASE_HPP_
 
+#include <span>
+
 #include "autopilot/definitions.hpp"
 #include "autopilot/expected.hpp"
 #include "autopilot/factory.hpp"
@@ -30,6 +32,6 @@ using ControllerFactory = GenericFactory<ControllerBase>;
 #define REGISTER_CONTROLLER(ConcreteType, KeyName)                \
   static const autopilot::Registrar<ConcreteType,                 \
                                     autopilot::ControllerFactory> \
-  kRegistrarFor##ConcreteType(KeyName)
+      kRegistrarFor##ConcreteType(KeyName)
 
 #endif  // AUTOPILOT_CONTROLLER_BASE_HPP_

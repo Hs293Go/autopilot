@@ -135,6 +135,6 @@ using EstimatorFactory = GenericFactory<EstimatorBase>;
 
 #define REGISTER_ESTIMATOR(ConcreteType, KeyName)                              \
   static const autopilot::Registrar<ConcreteType, autopilot::EstimatorFactory> \
-  kRegistrarFor##ConcreteType(KeyName)
+      kRegistrarFor##ConcreteType(KeyName)
 
 #endif /* end of include guard: AUTOPILOT_ESTIMATOR_BASE_HPP_ */
