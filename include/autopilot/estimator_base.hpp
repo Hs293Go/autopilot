@@ -60,6 +60,8 @@ class MeasurementBase : public EstimatorData {
 
 class EstimatorBase : public Module {
  public:
+  static constexpr std::string_view kModuleRootType = "EstimatorData";
+
   EstimatorBase(const std::string& name, std::shared_ptr<QuadrotorModel> model,
                 std::shared_ptr<spdlog::logger> logger = nullptr)
       : Module(fmt::format("Estimator.{}", name), std::move(model),

@@ -13,6 +13,8 @@ namespace autopilot {
 
 class ControllerBase : public Module {
  public:
+  static constexpr std::string_view kModuleRootType = "Controller";
+
   ControllerBase(const std::string& name, std::shared_ptr<QuadrotorModel> model,
                  std::shared_ptr<spdlog::logger> logger = nullptr)
       : Module(fmt::format("Controller.{}", name), std::move(model),

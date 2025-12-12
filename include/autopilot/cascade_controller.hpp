@@ -32,6 +32,8 @@ struct AttitudeOutput {
 
 class PositionControllerBase : public Module {
  public:
+  static constexpr std::string_view kModuleRootType = "PositionController";
+
   PositionControllerBase(const std::string& name,
                          std::shared_ptr<QuadrotorModel> model,
                          std::shared_ptr<spdlog::logger> logger = nullptr)
@@ -47,6 +49,8 @@ class PositionControllerBase : public Module {
 
 class AttitudeControllerBase : public Module {
  public:
+  static constexpr std::string_view kModuleRootType = "AttitudeController";
+
   AttitudeControllerBase(const std::string& name,
                          std::shared_ptr<QuadrotorModel> model,
                          std::shared_ptr<spdlog::logger> logger = nullptr)

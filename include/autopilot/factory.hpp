@@ -8,7 +8,7 @@
 
 #include "autopilot/base.hpp"
 #include "autopilot/quadrotor_model.hpp"
-#include "spdlog/logger.h"
+#include "spdlog/spdlog.h"
 
 namespace autopilot {
 
@@ -17,6 +17,10 @@ concept Configurable = requires { typename T::Config; } &&
                        std::is_base_of_v<ConfigBase, typename T::Config>;
 
 template <typename ProductBase>
+  requires requires {
+    ProductBase::kModuleRootType;
+    { ProductBase::kModuleRootType } -> std::convertible_to<std::string_view>;
+  }
 class GenericFactory {
  public:
   using ModelPtr = std::shared_ptr<QuadrotorModel>;
@@ -24,9 +28,11 @@ class GenericFactory {
   using ConfigPtr = std::shared_ptr<ConfigBase>;
   using LoggerPtr = std::shared_ptr<spdlog::logger>;
 
+  static constexpr auto kProductType = ProductBase::kModuleRootType;
+
   // The internal signature for creating a product from a generic base config
   using ProductCreator =
-      std::function<ProductPtr(ModelPtr, ConfigPtr, LoggerPtr)>;
+      std::move_only_function<ProductPtr(ModelPtr, ConfigPtr, LoggerPtr)>;
 
   using ConfigCreator = std::function<ConfigPtr()>;
 
@@ -42,6 +48,8 @@ class GenericFactory {
   template <Configurable T>
   static bool Register(const std::string& key) {
     if (creators().find(key) != creators().end()) {
+      Logger()->warn(
+          "Factory registration for key '{}' failed: Key already exists.", key);
       return false;
     }
 
@@ -76,6 +84,7 @@ class GenericFactory {
   static ConfigPtr CreateConfig(const std::string& key) {
     auto it = config_creators().find(key);
     if (it == config_creators().end()) {
+      Logger()->error("No config creator registered for key '{}'", key);
       return nullptr;
     }
     return (it->second)();
@@ -102,9 +111,11 @@ class GenericFactory {
 
     auto it = creators().find(key);
     if (it == creators().end()) {
+      Logger()->error("No creator registered for key '{}'", key);
       return nullptr;
     }
 
+    Logger()->debug("Creating product of type '{}'", key);
     return (it->second)(std::move(model), std::move(config),
                         logger ? std::move(logger) : nullptr);
   }
@@ -142,6 +153,24 @@ class GenericFactory {
   static std::map<std::string, ConfigCreator>& config_creators() {
     static std::map<std::string, ConfigCreator> impl;
     return impl;
+  }
+
+  // This wrapper handles the static lifecycle safely
+  static std::shared_ptr<spdlog::logger> Logger() {
+    // Option A: Shared logger for all factories
+
+    const auto name = fmt::format("{}Factory", kProductType);
+    if (auto existing_logger = spdlog::get(name)) {
+      return existing_logger;
+    }
+
+    // Mirror the sinks of the default logger
+    const auto& sinks = spdlog::default_logger()->sinks();
+    auto new_logger =
+        std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
+    new_logger->set_level(spdlog::get_level());
+    spdlog::register_logger(new_logger);
+    return new_logger;
   }
 };
 
