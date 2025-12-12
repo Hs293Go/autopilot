@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include "autopilot/base.hpp"
+#include "autopilot/config_base.hpp"
 #include "autopilot/controller_base.hpp"
 #include "autopilot/estimator_base.hpp"
 #include "autopilot/quadrotor_simulator.hpp"

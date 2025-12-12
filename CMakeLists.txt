@@ -22,7 +22,7 @@ target_sources(
          include
          FILES
          include/autopilot/async_estimator.hpp
-         include/autopilot/base.hpp
+         include/autopilot/config_base.hpp
          include/autopilot/cascade_controller.hpp
          include/autopilot/common.hpp
          include/autopilot/definitions.hpp
