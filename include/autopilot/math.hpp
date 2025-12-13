@@ -6,6 +6,38 @@
 
 namespace autopilot {
 
+template <int N, typename T>
+  requires(std::is_arithmetic_v<T> && (N >= 0 || std::is_floating_point_v<T>))
+constexpr T pown(T base) {
+  if constexpr (N == 0) {
+    return static_cast<T>(1);
+  } else if constexpr (N < 0) {
+    return static_cast<T>(1) / pown<-N>(base);
+  } else if constexpr (N % 2 == 0) {  // even exponent
+    const T half = pown<N / 2>(base);
+    return half * half;
+  } else {  // odd exponent
+    return base * pown<N - 1>(base);
+  }
+}
+
+static_assert(pown<0>(2.0) == 1.0);
+static_assert(pown<0>(std::numeric_limits<double>::max()) == 1.0);
+static_assert((pown<3>(2.0) == 8.0));
+static_assert(pown<-2>(2.0) == 0.25);
+static_assert(pown<4>(3) == 81);
+static_assert(pown<1>(5) == 5);
+
+template <std::floating_point T>
+constexpr T deg2rad(T degrees) {
+  return degrees * (std::numbers::pi_v<T> / static_cast<T>(180));
+}
+
+template <std::floating_point T>
+constexpr T rad2deg(T radians) {
+  return radians * (static_cast<T>(180) / std::numbers::pi_v<T>);
+}
+
 template <std::floating_point T>
 struct Tolerances {
   static constexpr T kDefaultAbsTol = static_cast<T>(1e-5);
