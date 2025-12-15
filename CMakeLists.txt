@@ -4,6 +4,7 @@ project(autopilot)
 find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(Boost REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 add_library(autopilot_autopilot)
 target_sources(
@@ -44,6 +45,16 @@ target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog
 
 add_library(autopilot::autopilot ALIAS autopilot_autopilot)
 set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
+
+add_library(autopilot_extensions)
+target_sources(
+  autopilot_extensions
+  PRIVATE src/json_loader.cpp
+  PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
+         include/autopilot/extensions/json_loader.hpp)
+target_link_libraries(autopilot_extensions PUBLIC autopilot::autopilot
+                                                  nlohmann_json::nlohmann_json)
+add_library(autopilot::extensions ALIAS autopilot_extensions)
 
 option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests" ON)
 option(AUTOPILOT_BUILD_EXAMPLES "Build the autopilot examples" ON)

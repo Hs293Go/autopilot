@@ -47,6 +47,10 @@ class PositionControllerBase : public Module {
   virtual void reset() {}
 };
 
+struct PositionControllerConfig : ConfigBase {};
+
+using PositionControllerFactory = GenericFactory<PositionControllerBase>;
+
 class AttitudeControllerBase : public Module {
  public:
   static constexpr std::string_view kModuleRootType = "AttitudeController";
@@ -64,9 +68,14 @@ class AttitudeControllerBase : public Module {
   virtual void reset() {}
 };
 
+struct AttitudeControllerConfig : ConfigBase {};
+
+using AttitudeControllerFactory = GenericFactory<AttitudeControllerBase>;
+
 static constexpr char const* kCascadeControllerKey = "CascadeController";
 
-class CascadeControllerConfig : public ConfigBase {
+class CascadeControllerConfig
+    : public ReflectiveConfigBase<CascadeControllerConfig> {
  public:
   std::string name() const override { return kCascadeControllerKey; }
 
@@ -93,9 +102,48 @@ class CascadeControllerConfig : public ConfigBase {
     return {};
   }
 
+  const std::string& position_controller_type() const {
+    return position_controller_->type;
+  }
+
+  std::shared_ptr<ConfigBase> position_controller_cfg() const {
+    return position_controller_->config;
+  }
+
+  const std::string& attitude_controller_type() const {
+    return attitude_controller_->type;
+  }
+
+  std::shared_ptr<ConfigBase> attitude_controller_cfg() const {
+    return attitude_controller_->config;
+  }
+
  private:
+  friend ReflectiveConfigBase<CascadeControllerConfig>;
+
   double posctl_dt_ = 0.02;
   double attctl_dt_ = 0.001;
+
+  Polymorphic<PositionControllerFactory>::SharedPtr position_controller_ =
+      Polymorphic<PositionControllerFactory>::Make();
+  Polymorphic<AttitudeControllerFactory>::SharedPtr attitude_controller_ =
+      Polymorphic<AttitudeControllerFactory>::Make();
+
+  static constexpr auto kDescriptors = std::make_tuple(
+      Describe("position_controller_dt", &CascadeControllerConfig::posctl_dt_,
+               F64Properties{.desc = "Position controller time step (s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("attitude_controller_dt", &CascadeControllerConfig::attctl_dt_,
+               F64Properties{.desc = "Attitude controller time step (s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe(
+          "position_controller_cfg",
+          &CascadeControllerConfig::position_controller_,
+          Properties{.desc = "Position controller type and configuration"}),
+      Describe(
+          "attitude_controller_cfg",
+          &CascadeControllerConfig::attitude_controller_,
+          Properties{.desc = "Attitude controller type and configuration"}));
 };
 
 class CascadeController : public ControllerBase {
@@ -143,5 +191,15 @@ class CascadeController : public ControllerBase {
 };
 
 }  // namespace autopilot
+
+#define REGISTER_POSITION_CONTROLLER(ConcreteType)                        \
+  static const autopilot::Registrar<ConcreteType,                         \
+                                    autopilot::PositionControllerFactory> \
+      kRegistrarFor##ConcreteType(ConcreteType::kName)
+
+#define REGISTER_ATTITUDE_CONTROLLER(ConcreteType)                        \
+  static const autopilot::Registrar<ConcreteType,                         \
+                                    autopilot::AttitudeControllerFactory> \
+      kRegistrarFor##ConcreteType(ConcreteType::kName)
 
 #endif  // AUTOPILOT_CASCADE_CONTROLLER_HPP_

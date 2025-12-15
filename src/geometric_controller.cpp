@@ -121,4 +121,6 @@ std::error_code GeometricAttitudeController::compute(
   }
   return {};
 }
+REGISTER_POSITION_CONTROLLER(GeometricPositionController);
+REGISTER_ATTITUDE_CONTROLLER(GeometricAttitudeController);
 }  // namespace autopilot

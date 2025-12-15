@@ -53,10 +53,21 @@ CascadeController::CascadeController(
       config_(std::move(config)) {
   // Initialize sub-controllers (could be injected via ctor in future)
   // For now, we assume standard PID implementations
+  if (config_->position_controller_cfg() &&
+      config_->attitude_controller_cfg()) {
+    position_controller_ = PositionControllerFactory::Create(
+        config_->position_controller_cfg(), model, logger);
+    attitude_controller_ = AttitudeControllerFactory::Create(
+        config_->attitude_controller_cfg(), model, logger);
+    return;
+  }
   position_controller_ =
       std::make_shared<GeometricPositionController>(model, logger);
   attitude_controller_ =
       std::make_shared<GeometricAttitudeController>(model, logger);
+  this->logger()->warn(
+      "Failed to load sub-controller configs; Falling back to default "
+      "Geometric controllers.");
 }
 
 std::expected<std::size_t, std::error_code> CascadeController::compute(

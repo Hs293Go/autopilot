@@ -78,6 +78,12 @@ enum class AutopilotErrc {
   kNumericalOutlier,
   kLinalgError,
   kEstimatorUninitialized,
+  kConfigKeyMissing,
+  kConfigValueUninitialized,
+  kConfigTypeMismatch,
+  kConfigSizeMismatch,
+  kEmptyValueNotAllowed,
+  kCreationFailure,
 };
 
 namespace detail {
@@ -113,7 +119,18 @@ class AutopilotErrcCategory : public std::error_category {
         return "Linear algebra error";
       case AutopilotErrc::kEstimatorUninitialized:
         return "Estimator not initialized";
-
+      case AutopilotErrc::kConfigKeyMissing:
+        return "Configuration key missing";
+      case AutopilotErrc::kConfigValueUninitialized:
+        return "Configuration value uninitialized";
+      case AutopilotErrc::kConfigTypeMismatch:
+        return "Configuration type mismatch";
+      case AutopilotErrc::kConfigSizeMismatch:
+        return "Configuration size mismatch";
+      case AutopilotErrc::kEmptyValueNotAllowed:
+        return "Empty value not allowed";
+      case AutopilotErrc::kCreationFailure:
+        return "Object creation failure";
       default:
         return "Unknown error";
     }
