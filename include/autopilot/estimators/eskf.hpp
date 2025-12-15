@@ -80,7 +80,7 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
 
   void reportObservationStats(
       const Eigen::Ref<const Eigen::MatrixXd>& innov_cov,
-      const Eigen::Ref<const Eigen::VectorXd>& expected,
+      const Eigen::Ref<const Eigen::VectorXd>& expectation,
       const Eigen::Ref<const Eigen::VectorXd>& observation);
 
   template <typename Fn>

@@ -276,12 +276,12 @@ bool ErrorStateKalmanFilter::checkOutlier(double m2_dist,
 
 void ErrorStateKalmanFilter::reportObservationStats(
     const Eigen::Ref<const Eigen::MatrixXd>& innov_cov,
-    const Eigen::Ref<const Eigen::VectorXd>& expected,
+    const Eigen::Ref<const Eigen::VectorXd>& expectation,
     const Eigen::Ref<const Eigen::VectorXd>& observation) {
   const auto max_val = innov_cov.diagonal().maxCoeff();
   const auto min_val = innov_cov.diagonal().minCoeff();
   logger()->debug("Innov diag: min={:.3f}, max={:.3f}", min_val, max_val);
-  logger()->trace("Predicted observation: {}", expected);
+  logger()->trace("Predicted observation: {}", expectation);
   logger()->trace("Actual observation: {}", observation);
 }
 

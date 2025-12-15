@@ -46,23 +46,24 @@ static constexpr auto kNumTrials = 1000;
 using testing::DoubleNear;
 using testing::Pointwise;
 
-MATCHER_P(QuaternionIsClose, expected, ::testing::PrintToString(expected)) {
-  return ap::IsClose(arg.angularDistance(expected), 0.0);
+MATCHER_P(QuaternionIsClose, expectation,
+          ::testing::PrintToString(expectation)) {
+  return ap::IsClose(arg.angularDistance(expectation), 0.0);
 }
 
-MATCHER_P(AllClose, expected, "") {
+MATCHER_P(AllClose, expectation, "") {
   // reshaped() (ravel) arguments so that Eigen iterate through them
   // element-wise
-  return ExplainMatchResult(Pointwise(DoubleNear(1e-6), expected.reshaped()),
+  return ExplainMatchResult(Pointwise(DoubleNear(1e-6), expectation.reshaped()),
                             arg.reshaped(), result_listener);
 }
 
-MATCHER_P(AngleAxisIsClose, expected, "") {
+MATCHER_P(AngleAxisIsClose, expectation, "") {
   return ExplainMatchResult(
       testing::Conditional(
           ap::IsClose(arg.norm(), std::numbers::pi),
-          testing::AnyOf(AllClose(-expected), AllClose(expected)),
-          AllClose(expected)),
+          testing::AnyOf(AllClose(-expectation), AllClose(expectation)),
+          AllClose(expectation)),
       arg, result_listener);
 }
 
@@ -73,7 +74,7 @@ MATCHER(IsOrthogonal,
           (arg.transpose() * arg).isIdentity(1e-8));
 }
 
-MATCHER(IsNormalized, "Expected unit norm") {
+MATCHER(IsNormalized, "expectation unit norm") {
   return ap::IsClose(arg.norm(), 1.0);
 }
 
@@ -86,9 +87,9 @@ TEST_F(TestRotation, ZeroAngleAxisToQuaternion) {
   const Eigen::Vector3d axis_angle = Eigen::Vector3d::Zero();
 
   const Eigen::Quaterniond result = ap::AngleAxisToQuaternion(axis_angle);
-  const Eigen::Quaterniond expected = Eigen::Quaterniond::Identity();
+  const Eigen::Quaterniond expectation = Eigen::Quaterniond::Identity();
   ASSERT_THAT(result, IsNormalized());
-  ASSERT_THAT(result, QuaternionIsClose(expected));
+  ASSERT_THAT(result, QuaternionIsClose(expectation));
 }
 
 TEST_F(TestRotation, TinyAngleAxisToQuaternion) {
@@ -96,10 +97,10 @@ TEST_F(TestRotation, TinyAngleAxisToQuaternion) {
   const Eigen::Vector3d axis = randomUnitVector();
   const Eigen::Vector3d axis_angle = kTinyAngle * axis;
 
-  const Eigen::Quaterniond expected(Eigen::AngleAxisd(kTinyAngle, axis));
+  const Eigen::Quaterniond expectation(Eigen::AngleAxisd(kTinyAngle, axis));
   const Eigen::Quaterniond result = ap::AngleAxisToQuaternion(axis_angle);
   ASSERT_THAT(result, IsNormalized());
-  ASSERT_THAT(result, QuaternionIsClose(expected));
+  ASSERT_THAT(result, QuaternionIsClose(expectation));
 }
 
 TEST_F(TestRotation, SmallAngleAxisToQuaternion) {
@@ -107,10 +108,10 @@ TEST_F(TestRotation, SmallAngleAxisToQuaternion) {
   const Eigen::Vector3d axis = randomUnitVector();
   const Eigen::Vector3d axis_angle = kSmallAngle * axis;
 
-  const Eigen::Quaterniond expected(Eigen::AngleAxisd(kSmallAngle, axis));
+  const Eigen::Quaterniond expectation(Eigen::AngleAxisd(kSmallAngle, axis));
   const Eigen::Quaterniond result = ap::AngleAxisToQuaternion(axis_angle);
   ASSERT_THAT(result, IsNormalized());
-  ASSERT_THAT(result, QuaternionIsClose(expected));
+  ASSERT_THAT(result, QuaternionIsClose(expectation));
 }
 
 TEST_F(TestRotation, AngleAxisToQuaternion) {
@@ -118,12 +119,12 @@ TEST_F(TestRotation, AngleAxisToQuaternion) {
     auto axis = Eigen::Vector3d::Unit(i);
     auto axis_angle = std::numbers::pi * axis / 2.0;
 
-    Eigen::Quaterniond expected;
-    expected.w() = std::numbers::sqrt2 / 2.0;
-    expected.vec() = std::numbers::sqrt2 / 2.0 * axis;
+    Eigen::Quaterniond expectation;
+    expectation.w() = std::numbers::sqrt2 / 2.0;
+    expectation.vec() = std::numbers::sqrt2 / 2.0 * axis;
     const Eigen::Quaterniond result = ap::AngleAxisToQuaternion(axis_angle);
     ASSERT_THAT(result, IsNormalized());
-    ASSERT_THAT(result, QuaternionIsClose(expected));
+    ASSERT_THAT(result, QuaternionIsClose(expectation));
   }
 }
 
@@ -131,9 +132,9 @@ TEST_F(TestRotation, AngleAxisToQuaternion) {
 TEST_F(TestRotation, UnitQuaternionToAngleAxis) {
   const Eigen::Quaterniond quaternion = Eigen::Quaterniond::Identity();
 
-  const Eigen::Vector3d expected = Eigen::Vector3d::Zero();
+  const Eigen::Vector3d expectation = Eigen::Vector3d::Zero();
   const Eigen::Vector3d result = ap::QuaternionToAngleAxis(quaternion);
-  ASSERT_THAT(result, AllClose(expected));
+  ASSERT_THAT(result, AllClose(expectation));
 }
 
 TEST_F(TestRotation, TinyQuaternionToAngleAxis) {
@@ -141,9 +142,9 @@ TEST_F(TestRotation, TinyQuaternionToAngleAxis) {
   const Eigen::Vector3d axis = randomUnitVector();
   const Eigen::Quaterniond quaternion(Eigen::AngleAxisd(kTinyAngle, axis));
 
-  const Eigen::Vector3d expected = kTinyAngle * axis;
+  const Eigen::Vector3d expectation = kTinyAngle * axis;
   const Eigen::Vector3d result = ap::QuaternionToAngleAxis(quaternion);
-  ASSERT_THAT(result, AngleAxisIsClose(expected));
+  ASSERT_THAT(result, AngleAxisIsClose(expectation));
 }
 
 TEST_F(TestRotation, SmallQuaternionToAngleAxis) {
@@ -151,9 +152,9 @@ TEST_F(TestRotation, SmallQuaternionToAngleAxis) {
   const Eigen::Vector3d axis = randomUnitVector();
   const Eigen::Quaterniond quaternion(Eigen::AngleAxisd(kSmallAngle, axis));
 
-  const Eigen::Vector3d expected = kSmallAngle * axis;
+  const Eigen::Vector3d expectation = kSmallAngle * axis;
   const Eigen::Vector3d result = ap::QuaternionToAngleAxis(quaternion);
-  ASSERT_THAT(result, AngleAxisIsClose(expected));
+  ASSERT_THAT(result, AngleAxisIsClose(expectation));
 }
 
 TEST_F(TestRotation, QuaternionToAngleAxis) {
@@ -163,20 +164,20 @@ TEST_F(TestRotation, QuaternionToAngleAxis) {
     quaternion.w() = std::sqrt(3) / 2;
     quaternion.vec() = Eigen::Vector3d::Unit(i) * 0.5;
 
-    const Eigen::Vector3d expected =
+    const Eigen::Vector3d expectation =
         Eigen::Vector3d::Unit(i) * std::numbers::pi / 3;
     const Eigen::Vector3d result = ap::QuaternionToAngleAxis(quaternion);
-    ASSERT_THAT(result, AngleAxisIsClose(expected));
+    ASSERT_THAT(result, AngleAxisIsClose(expectation));
   }
 
   for (int i = 0; i < 3; ++i) {
     quaternion.w() = 0.0;
     quaternion.vec() = Eigen::Vector3d::Unit(i);
 
-    const Eigen::Vector3d expected =
+    const Eigen::Vector3d expectation =
         Eigen::Vector3d::Unit(i) * std::numbers::pi;
     const Eigen::Vector3d result = ap::QuaternionToAngleAxis(quaternion);
-    ASSERT_THAT(result, AngleAxisIsClose(expected));
+    ASSERT_THAT(result, AngleAxisIsClose(expectation));
   }
 }
 
@@ -184,18 +185,18 @@ TEST_F(TestRotation, ZeroAngleAxisToRotationMatrix) {
   const Eigen::Vector3d axis_angle = Eigen::Vector3d::Zero();
 
   const Eigen::Matrix3d result = ap::AngleAxisToRotationMatrix(axis_angle);
-  const Eigen::Matrix3d expected = Eigen::Matrix3d::Identity();
+  const Eigen::Matrix3d expectation = Eigen::Matrix3d::Identity();
   ASSERT_THAT(result, IsOrthogonal());
-  ASSERT_THAT(result, AllClose(expected));
+  ASSERT_THAT(result, AllClose(expectation));
 }
 
 TEST_F(TestRotation, TinyAngleAxisToRotationMatrix) {
   const Eigen::Vector3d axis_angle(1e-24, 2e-24, 3e-24);
 
   const Eigen::Matrix3d result = ap::AngleAxisToRotationMatrix(axis_angle);
-  const Eigen::Matrix3d expected = Eigen::Matrix3d::Identity();
+  const Eigen::Matrix3d expectation = Eigen::Matrix3d::Identity();
   ASSERT_THAT(result, IsOrthogonal());
-  ASSERT_THAT(result, AllClose(expected));
+  ASSERT_THAT(result, AllClose(expectation));
 }
 
 TEST_F(TestRotation, SmallAngleAxisToRotationMatrix) {
@@ -203,10 +204,10 @@ TEST_F(TestRotation, SmallAngleAxisToRotationMatrix) {
   const Eigen::Vector3d axis_angle = kTinyAngle * axis;
 
   const Eigen::Matrix3d result = ap::AngleAxisToRotationMatrix(axis_angle);
-  const Eigen::Matrix3d expected =
+  const Eigen::Matrix3d expectation =
       Eigen::AngleAxisd(kTinyAngle, axis).toRotationMatrix();
   ASSERT_THAT(result, IsOrthogonal());
-  ASSERT_THAT(result, AllClose(expected));
+  ASSERT_THAT(result, AllClose(expectation));
 }
 
 // Transforms a rotation by pi/2 around X to a rotation matrix and back.
@@ -216,15 +217,16 @@ TEST_F(TestRotation, AngleAxisToRotationMatrix) {
         std::numbers::pi / 2 * Eigen::Vector3d::Unit(i);
     const int j = (i + 1) % 3;
     const int k = (j + 1) % 3;
-    Eigen::Matrix3d expected;
-    expected(i, i) = 1.0;
-    expected(i, j) = expected(i, k) = expected(j, i) = expected(k, i) = 0.0;
-    expected(j, j) = expected(k, k) = 0.0;
-    expected(j, k) = -1.0;
-    expected(k, j) = 1.0;
+    Eigen::Matrix3d expectation;
+    expectation(i, i) = 1.0;
+    expectation(i, j) = expectation(i, k) = expectation(j, i) =
+        expectation(k, i) = 0.0;
+    expectation(j, j) = expectation(k, k) = 0.0;
+    expectation(j, k) = -1.0;
+    expectation(k, j) = 1.0;
     const Eigen::Matrix3d result = ap::AngleAxisToRotationMatrix(angle_axis);
     ASSERT_THAT(result, IsOrthogonal());
-    ASSERT_THAT(result, AllClose(expected));
+    ASSERT_THAT(result, AllClose(expectation));
   }
 
   for (int i = 0; i < 3; ++i) {
@@ -232,15 +234,16 @@ TEST_F(TestRotation, AngleAxisToRotationMatrix) {
         std::numbers::pi * Eigen::Vector3d::Unit(i);
     const int j = (i + 1) % 3;
     const int k = (j + 1) % 3;
-    Eigen::Matrix3d expected;
-    expected(i, i) = 1.0;
-    expected(i, j) = expected(i, k) = expected(j, i) = expected(k, i) = 0.0;
-    expected(j, k) = expected(k, j) = 0.0;
-    expected(j, j) = -1.0;
-    expected(k, k) = -1.0;
+    Eigen::Matrix3d expectation;
+    expectation(i, i) = 1.0;
+    expectation(i, j) = expectation(i, k) = expectation(j, i) =
+        expectation(k, i) = 0.0;
+    expectation(j, k) = expectation(k, j) = 0.0;
+    expectation(j, j) = -1.0;
+    expectation(k, k) = -1.0;
     const Eigen::Matrix3d result = ap::AngleAxisToRotationMatrix(angle_axis);
     ASSERT_THAT(result, IsOrthogonal());
-    ASSERT_THAT(result, AllClose(expected));
+    ASSERT_THAT(result, AllClose(expectation));
   }
 }
 
@@ -258,46 +261,48 @@ TEST_F(TestRotation, QuaternionToAngleAxisAngleIsLessThanPi) {
 
 TEST_F(TestRotation, AngleAxisToQuaternionAndBack) {
   for (int i = 0; i < kNumTrials; i++) {
-    const Eigen::Vector3d expected =
+    const Eigen::Vector3d expectation =
         std::numbers::pi * random() * randomUnitVector();
-    const Eigen::Quaterniond intermediate = ap::AngleAxisToQuaternion(expected);
+    const Eigen::Quaterniond intermediate =
+        ap::AngleAxisToQuaternion(expectation);
     ASSERT_THAT(intermediate, IsNormalized());
     const Eigen::Vector3d result = ap::QuaternionToAngleAxis(intermediate);
-    ASSERT_THAT(result, AngleAxisIsClose(expected));
+    ASSERT_THAT(result, AngleAxisIsClose(expectation));
   }
 }
 
 TEST_F(TestRotation, QuaternionToAngleAxisAndBack) {
   for (int i = 0; i < kNumTrials; i++) {
-    const Eigen::Quaterniond expected = Eigen::Quaterniond::UnitRandom();
-    const Eigen::Vector3d intermediate = ap::QuaternionToAngleAxis(expected);
+    const Eigen::Quaterniond expectation = Eigen::Quaterniond::UnitRandom();
+    const Eigen::Vector3d intermediate = ap::QuaternionToAngleAxis(expectation);
     const Eigen::Quaterniond result = ap::AngleAxisToQuaternion(intermediate);
     ASSERT_THAT(result, IsNormalized());
-    ASSERT_THAT(result, QuaternionIsClose(expected));
+    ASSERT_THAT(result, QuaternionIsClose(expectation));
   }
 }
 
 TEST_F(TestRotation, AngleAxisToRotationMatrixAndBack) {
   for (int i = 0; i < kNumTrials; i++) {
     auto angle = std::numbers::pi * random();
-    const Eigen::Vector3d expected = angle * randomUnitVector();
+    const Eigen::Vector3d expectation = angle * randomUnitVector();
     const Eigen::Matrix3d intermediate =
-        ap::AngleAxisToRotationMatrix(expected);
+        ap::AngleAxisToRotationMatrix(expectation);
     ASSERT_THAT(intermediate, IsOrthogonal());
     const Eigen::Vector3d result = ap::RotationMatrixToAngleAxis(intermediate);
-    ASSERT_THAT(result, AngleAxisIsClose(expected));
+    ASSERT_THAT(result, AngleAxisIsClose(expectation));
   }
 }
 
 TEST_F(TestRotation, RotationMatrixToAngleAxisAndBack) {
   for (int i = 0; i < kNumTrials; i++) {
-    const Eigen::Quaterniond expected_quaternion =
+    const Eigen::Quaterniond expectation_quaternion =
         Eigen::Quaterniond::UnitRandom();
-    const Eigen::Matrix3d expected = expected_quaternion.toRotationMatrix();
+    const Eigen::Matrix3d expectation =
+        expectation_quaternion.toRotationMatrix();
     const Eigen::Vector3d intermediate =
-        ap::RotationMatrixToAngleAxis(expected);
+        ap::RotationMatrixToAngleAxis(expectation);
     const Eigen::Matrix3d result = ap::AngleAxisToRotationMatrix(intermediate);
-    ASSERT_THAT(result, AllClose(expected));
+    ASSERT_THAT(result, AllClose(expectation));
   }
 }
 
@@ -308,11 +313,11 @@ TEST_F(TestRotation, NearPiAngleAxisToQuaternionAndBack) {
   constexpr double kMaxSmallAngle = 1e-8;
   for (int i = 0; i < kNumTrials; i++) {
     const double theta = std::numbers::pi - kMaxSmallAngle * random();
-    const Eigen::Vector3d expected = theta * randomUnitVector();
-    intermediate = ap::AngleAxisToQuaternion(expected);
+    const Eigen::Vector3d expectation = theta * randomUnitVector();
+    intermediate = ap::AngleAxisToQuaternion(expectation);
     ASSERT_THAT(intermediate, IsNormalized());
     const Eigen::Vector3d result = ap::QuaternionToAngleAxis(intermediate);
-    ASSERT_THAT(result, AngleAxisIsClose(expected));
+    ASSERT_THAT(result, AngleAxisIsClose(expectation));
   }
 }
 
@@ -320,12 +325,12 @@ TEST_F(TestRotation, NearPiAngleAxisToRotationMatrixAndBack) {
   constexpr double kMaxSmallAngle = 1e-8;
   for (int i = 0; i < kNumTrials; i++) {
     const double theta = std::numbers::pi - kMaxSmallAngle * random();
-    const Eigen::Vector3d expected = theta * randomUnitVector();
+    const Eigen::Vector3d expectation = theta * randomUnitVector();
 
     const Eigen::Matrix3d intermediate =
-        ap::AngleAxisToRotationMatrix(expected);
+        ap::AngleAxisToRotationMatrix(expectation);
     const Eigen::Vector3d result = ap::RotationMatrixToAngleAxis(intermediate);
-    ASSERT_THAT(result, AngleAxisIsClose(expected));
+    ASSERT_THAT(result, AngleAxisIsClose(expectation));
   }
 }
 
@@ -338,17 +343,18 @@ TEST_F(TestRotation, NearPiRotationMatrixToAngleAxisAndBack) {
       const double ct = cos(theta);
       const int j = (i + 1) % 3;
       const int k = (j + 1) % 3;
-      Eigen::Matrix3d expected;
-      expected(i, i) = 1.0;
-      expected(i, j) = expected(i, k) = expected(j, i) = expected(k, i) = 0.0;
-      expected(j, k) = st;
-      expected(k, j) = -st;
-      expected(j, j) = expected(k, k) = -ct;
+      Eigen::Matrix3d expectation;
+      expectation(i, i) = 1.0;
+      expectation(i, j) = expectation(i, k) = expectation(j, i) =
+          expectation(k, i) = 0.0;
+      expectation(j, k) = st;
+      expectation(k, j) = -st;
+      expectation(j, j) = expectation(k, k) = -ct;
       const Eigen::Vector3d intermediate =
-          ap::RotationMatrixToAngleAxis(expected);
+          ap::RotationMatrixToAngleAxis(expectation);
       const Eigen::Matrix3d result =
           ap::AngleAxisToRotationMatrix(intermediate);
-      ASSERT_THAT(result, AllClose(expected));
+      ASSERT_THAT(result, AllClose(expectation));
     }
   }
 }
