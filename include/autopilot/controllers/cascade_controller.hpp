@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "autopilot/controller_base.hpp"
+#include "autopilot/base/controller_base.hpp"
 
 namespace autopilot {
 

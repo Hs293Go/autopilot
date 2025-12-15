@@ -1,7 +1,7 @@
-#include "autopilot/quadrotor_model.hpp"
+#include "autopilot/core/quadrotor_model.hpp"
 
-#include "autopilot/common.hpp"
-#include "autopilot/geometry.hpp"
+#include "autopilot/core/common.hpp"
+#include "autopilot/core/geometry.hpp"
 
 namespace autopilot {
 

@@ -1,6 +1,6 @@
-#include "autopilot/definitions.hpp"
+#include "autopilot/core/definitions.hpp"
 
-#include "autopilot/math.hpp"
+#include "autopilot/core/math.hpp"
 
 namespace autopilot {
 

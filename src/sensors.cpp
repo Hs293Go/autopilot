@@ -1,6 +1,6 @@
-#include "autopilot/sensors.hpp"
+#include "autopilot/simulator/sensors.hpp"
 
-#include "autopilot/common.hpp"
+#include "autopilot/core/common.hpp"
 
 namespace autopilot {
 

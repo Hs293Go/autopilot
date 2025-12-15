@@ -9,32 +9,36 @@ add_library(autopilot_autopilot)
 target_sources(
   autopilot_autopilot
   PRIVATE src/async_estimator.cpp
-          src/geometric_controller.cpp
-          src/quadrotor_model.cpp
           src/cascade_controller.cpp
           src/definitions.cpp
+          src/eskf.cpp
+          src/geometric_controller.cpp
+          src/quadrotor_model.cpp
           src/quadrotor_simulator.cpp
           src/sensors.cpp
-          src/eskf.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
          include
          FILES
-         include/autopilot/async_estimator.hpp
-         include/autopilot/config_base.hpp
-         include/autopilot/cascade_controller.hpp
-         include/autopilot/common.hpp
-         include/autopilot/definitions.hpp
-         include/autopilot/eskf.hpp
+         include/autopilot/base/config_base.hpp
+         include/autopilot/base/controller_base.hpp
+         include/autopilot/base/estimator_base.hpp
+         include/autopilot/base/factory.hpp
+         include/autopilot/base/module.hpp
+         include/autopilot/controllers/cascade_controller.hpp
+         include/autopilot/controllers/geometric_controller.hpp
+         include/autopilot/core/common.hpp
+         include/autopilot/core/definitions.hpp
+         include/autopilot/core/geometry.hpp
+         include/autopilot/core/math.hpp
+         include/autopilot/core/quadrotor_model.hpp
+         include/autopilot/estimators/async_estimator.hpp
+         include/autopilot/estimators/eskf.hpp
+         include/autopilot/estimators/sensor_data.hpp
          include/autopilot/expected.hpp
-         include/autopilot/geometry.hpp
-         include/autopilot/math.hpp
-         include/autopilot/module.hpp
-         include/autopilot/geometric_controller.hpp
-         include/autopilot/quadrotor_simulator.hpp
-         include/autopilot/quadrotor_model.hpp
-         include/autopilot/sensors.hpp
+         include/autopilot/simulator/quadrotor_simulator.hpp
+         include/autopilot/simulator/sensors.hpp
          include/autopilot/third_party/tl/expected.hpp)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
 target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog

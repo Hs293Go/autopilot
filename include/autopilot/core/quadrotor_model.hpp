@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "Eigen/Dense"
-#include "autopilot/geometry.hpp"
+#include "autopilot/core/geometry.hpp"
 
 namespace autopilot {
 

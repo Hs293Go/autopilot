@@ -1,10 +1,10 @@
 #ifndef AUTOPILOT_ESTIMATOR_BASE_HPP_
 #define AUTOPILOT_ESTIMATOR_BASE_HPP_
 
-#include "autopilot/definitions.hpp"
+#include "autopilot/base/factory.hpp"
+#include "autopilot/base/module.hpp"
+#include "autopilot/core/definitions.hpp"
 #include "autopilot/expected.hpp"
-#include "autopilot/factory.hpp"
-#include "autopilot/module.hpp"
 
 namespace autopilot {
 

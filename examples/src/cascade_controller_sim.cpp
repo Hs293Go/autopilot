@@ -1,10 +1,10 @@
 #include <ranges>
 #include <rerun.hpp>
 
-#include "autopilot/cascade_controller.hpp"
-#include "autopilot/eskf.hpp"
-#include "autopilot/geometric_controller.hpp"
-#include "autopilot/quadrotor_model.hpp"
+#include "autopilot/controllers/cascade_controller.hpp"
+#include "autopilot/controllers/geometric_controller.hpp"
+#include "autopilot/core/quadrotor_model.hpp"
+#include "autopilot/estimators/eskf.hpp"
 #include "validation/mission_runner.hpp"
 
 // Use a distinct namespace or alias for clarity

@@ -1,7 +1,7 @@
 #ifndef AUTOPILOT_BASE_HPP_
 #define AUTOPILOT_BASE_HPP_
 
-#include "autopilot/definitions.hpp"
+#include "autopilot/core/definitions.hpp"
 namespace autopilot {
 
 struct ConfigBase {

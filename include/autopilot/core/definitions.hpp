@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <ranges>
 
-#include "autopilot/geometry.hpp"
+#include "autopilot/core/geometry.hpp"
 #if __has_include(<spdlog/fmt/ranges.h>)
 #include "spdlog/fmt/ranges.h"
 #else
@@ -141,7 +141,7 @@ class QuadrotorCommand {
 
 // Formatters for QuadrotorState and QuadrotorCommand.
 // These are defined in terms of formatters for geometry types, defined here to
-// keep the geometry.hpp clean.
+// keep the core/geometry.hpp clean.
 namespace fmt {
 
 struct NoSpecifierFormatter {

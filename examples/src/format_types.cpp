@@ -1,4 +1,4 @@
-#include "autopilot/definitions.hpp"
+#include "autopilot/core/definitions.hpp"
 #include "spdlog/spdlog.h"
 
 int main() {

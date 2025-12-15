@@ -2,7 +2,7 @@
 #define ROBOBUFFERS_GEOM_HPP_
 
 #include "Eigen/Dense"
-#include "autopilot/common.hpp"
+#include "autopilot/core/common.hpp"
 
 namespace autopilot {
 

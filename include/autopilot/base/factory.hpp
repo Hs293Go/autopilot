@@ -6,8 +6,8 @@
 #include <memory>
 #include <string>
 
-#include "autopilot/config_base.hpp"
-#include "autopilot/quadrotor_model.hpp"
+#include "autopilot/base/config_base.hpp"
+#include "autopilot/core/quadrotor_model.hpp"
 #include "spdlog/spdlog.h"
 
 namespace autopilot {

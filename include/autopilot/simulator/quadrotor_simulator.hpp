@@ -2,11 +2,11 @@
 #define AUTOPILOT_SIMULATOR_HPP_
 
 #include "Eigen/Dense"
-#include "autopilot/definitions.hpp"
-#include "autopilot/module.hpp"
-#include "autopilot/quadrotor_model.hpp"
-#include "autopilot/sensor_data.hpp"
-#include "autopilot/sensors.hpp"
+#include "autopilot/base/module.hpp"
+#include "autopilot/core/definitions.hpp"
+#include "autopilot/core/quadrotor_model.hpp"
+#include "autopilot/estimators/sensor_data.hpp"
+#include "autopilot/simulator/sensors.hpp"
 
 namespace autopilot {
 

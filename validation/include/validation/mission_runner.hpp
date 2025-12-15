@@ -4,10 +4,10 @@
 #include <utility>
 #include <vector>
 
-#include "autopilot/config_base.hpp"
-#include "autopilot/controller_base.hpp"
-#include "autopilot/estimator_base.hpp"
-#include "autopilot/quadrotor_simulator.hpp"
+#include "autopilot/base/config_base.hpp"
+#include "autopilot/base/controller_base.hpp"
+#include "autopilot/base/estimator_base.hpp"
+#include "autopilot/simulator/quadrotor_simulator.hpp"
 
 namespace autopilot {
 

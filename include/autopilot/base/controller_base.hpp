@@ -3,11 +3,11 @@
 
 #include <span>
 
-#include "autopilot/definitions.hpp"
+#include "autopilot/base/factory.hpp"
+#include "autopilot/base/module.hpp"
+#include "autopilot/core/definitions.hpp"
+#include "autopilot/core/quadrotor_model.hpp"
 #include "autopilot/expected.hpp"
-#include "autopilot/factory.hpp"
-#include "autopilot/module.hpp"
-#include "autopilot/quadrotor_model.hpp"
 
 namespace autopilot {
 

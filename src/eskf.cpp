@@ -1,12 +1,12 @@
 
-#include "autopilot/eskf.hpp"
+#include "autopilot/estimators/eskf.hpp"
 
 #include <utility>
 
-#include "autopilot/sensor_data.hpp"
+#include "autopilot/estimators/sensor_data.hpp"
 // Assuming math headers are merged as discussed
-#include "autopilot/geometry.hpp"
-#include "autopilot/math.hpp"
+#include "autopilot/core/geometry.hpp"
+#include "autopilot/core/math.hpp"
 #include "boost/math/distributions/chi_squared.hpp"
 #if __has_include(<spdlog/fmt/ranges.h>)
 #include "spdlog/fmt/ranges.h"

@@ -1,6 +1,6 @@
-#include "autopilot/geometric_controller.hpp"
+#include "autopilot/controllers/geometric_controller.hpp"
 
-#include "autopilot/math.hpp"
+#include "autopilot/core/math.hpp"
 
 namespace autopilot {
 GeometricPositionController::GeometricPositionController(

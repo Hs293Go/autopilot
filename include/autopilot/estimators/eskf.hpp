@@ -1,8 +1,8 @@
 #ifndef AUTOPILOT_ESKF_HPP_
 #define AUTOPILOT_ESKF_HPP_
 
-#include "autopilot/async_estimator.hpp"
-#include "autopilot/sensors.hpp"
+#include "autopilot/estimators/async_estimator.hpp"
+#include "autopilot/simulator/sensors.hpp"
 
 namespace autopilot {
 

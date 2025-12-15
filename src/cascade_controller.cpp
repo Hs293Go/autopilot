@@ -1,6 +1,6 @@
-#include "autopilot/cascade_controller.hpp"
+#include "autopilot/controllers/cascade_controller.hpp"
 
-#include "autopilot/geometric_controller.hpp"
+#include "autopilot/controllers/geometric_controller.hpp"
 
 #if __has_include(<spdlog/fmt/ranges.h>)
 #include "spdlog/fmt/ranges.h"

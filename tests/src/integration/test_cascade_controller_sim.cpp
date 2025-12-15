@@ -1,9 +1,9 @@
 #include <vector>
 
-#include "autopilot/cascade_controller.hpp"
-#include "autopilot/geometric_controller.hpp"
-#include "autopilot/quadrotor_model.hpp"
-#include "autopilot/quadrotor_simulator.hpp"
+#include "autopilot/controllers/cascade_controller.hpp"
+#include "autopilot/controllers/geometric_controller.hpp"
+#include "autopilot/core/quadrotor_model.hpp"
+#include "autopilot/simulator/quadrotor_simulator.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "validation/mission_runner.hpp"

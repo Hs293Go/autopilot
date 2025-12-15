@@ -3,7 +3,7 @@
 #include <random>
 
 #include "Eigen/Dense"
-#include "autopilot/math.hpp"
+#include "autopilot/core/math.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
