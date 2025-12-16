@@ -36,10 +36,8 @@ target_sources(
          include/autopilot/estimators/async_estimator.hpp
          include/autopilot/estimators/eskf.hpp
          include/autopilot/estimators/sensor_data.hpp
-         include/autopilot/expected.hpp
          include/autopilot/simulator/quadrotor_simulator.hpp
-         include/autopilot/simulator/sensors.hpp
-         include/autopilot/third_party/tl/expected.hpp)
+         include/autopilot/simulator/sensors.hpp)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
 target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog
                                                  Boost::boost)

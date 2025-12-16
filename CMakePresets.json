@@ -13,7 +13,7 @@
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release;Sanitize",
-        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD": "23",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON"
       }
     },

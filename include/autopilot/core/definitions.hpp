@@ -32,7 +32,9 @@ enum class QuadrotorStateComponent : std::uint32_t {
 };
 
 inline constexpr uint32_t kNumQuadrotorStateComponents =
-    std::countr_zero(to_underlying(QuadrotorStateComponent::kSentinel) - 1) + 1;
+    std::countr_zero(std::to_underlying(QuadrotorStateComponent::kSentinel) -
+                     1) +
+    1;
 
 struct QuadrotorState {
   double timestamp_secs = 0.0;
@@ -123,14 +125,14 @@ class QuadrotorCommand {
   void reset(double timestamp_secs = 0.0);
 
   bool hasComponent(QuadrotorStateComponent component) const {
-    return (set_components_ & to_underlying(component)) != 0;
+    return (set_components_ & std::to_underlying(component)) != 0;
   }
 
   uint32_t components() const { return set_components_; }
 
  private:
   void addComponent(QuadrotorStateComponent component) {
-    set_components_ |= to_underlying(component);
+    set_components_ |= std::to_underlying(component);
   }
 
   QuadrotorState setpoint_;
@@ -177,7 +179,7 @@ struct formatter<autopilot::QuadrotorStateComponent> : NoSpecifierFormatter {
       case autopilot::QuadrotorStateComponent::kMotorThrusts:
         return format_to(ctx.out(), "MotorThrusts");
       default:
-        autopilot::unreachable();
+        std::unreachable();
     }
   }
 };

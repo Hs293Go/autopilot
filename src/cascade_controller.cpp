@@ -59,13 +59,13 @@ CascadeController::CascadeController(
       std::make_shared<GeometricAttitudeController>(model, logger);
 }
 
-expected<std::size_t, std::error_code> CascadeController::compute(
+std::expected<std::size_t, std::error_code> CascadeController::compute(
     const QuadrotorState& state, std::span<const QuadrotorCommand> setpoints,
     std::span<QuadrotorCommand> outputs) {
   if (outputs.empty() || setpoints.empty()) {
     logger()->error(
         "Empty input or output buffers provided to CascadeController.");
-    return unexpected(make_error_code(AutopilotErrc::kInvalidBufferSize));
+    return std::unexpected(make_error_code(AutopilotErrc::kInvalidBufferSize));
   }
 
   const auto& setpoint_cmd = setpoints[0];
@@ -91,14 +91,14 @@ expected<std::size_t, std::error_code> CascadeController::compute(
     if (auto err = position_controller_->compute(state, pos_ref, pos_out);
         err != std::error_code()) {
       logger()->error("Position controller failed, reason: {}", err.message());
-      return unexpected(err);
+      return std::unexpected(err);
     }
 
     if (auto ec = out_cmd_.setForce(pos_out.target_force);
         ec != std::error_code()) {
       logger()->error("Failed to set force: {}, reason: {}",
                       pos_out.target_force, ec.message());
-      return unexpected(ec);
+      return std::unexpected(ec);
     }
 
     // Project desired force into body Z axis; NOT simply norm of desired force
@@ -108,7 +108,7 @@ expected<std::size_t, std::error_code> CascadeController::compute(
         ec != std::error_code()) {
       logger()->error("Failed to set collective thrust: {:.4f}, reason: {}",
                       collective_thrust_, ec.message());
-      return unexpected(ec);
+      return std::unexpected(ec);
     }
 
     // D. Geometric Conversion (Force Vector -> Attitude Quaternion)
@@ -134,7 +134,7 @@ expected<std::size_t, std::error_code> CascadeController::compute(
     if (auto ec =
             attitude_controller_->compute(state, last_att_ref_, att_out)) {
       logger()->error("Attitude controller failed, reason: {}", ec.message());
-      return unexpected(ec);
+      return std::unexpected(ec);
     }
 
     // 3. Output Generation (The Mixer)
@@ -154,19 +154,19 @@ expected<std::size_t, std::error_code> CascadeController::compute(
         ec != std::error_code()) {
       logger()->error("Failed to set motor thrusts: {}, reason: {}",
                       motor_thrusts, ec.message());
-      return unexpected(ec);
+      return std::unexpected(ec);
     }
 
     if (auto ec = out_cmd_.setBodyRate(att_out.body_rate);
         ec != std::error_code()) {
       logger()->error("Failed to set body rate: {}, reason: {}",
                       att_out.body_rate, ec.message());
-      return unexpected(ec);
+      return std::unexpected(ec);
     }
 
     // If we output wrench (for simulator):
     if (auto ec = out_cmd_.setTorque(att_out.torque); ec != std::error_code()) {
-      return unexpected(ec);
+      return std::unexpected(ec);
     }
     last_attctl_time_ = state.timestamp_secs;
   }

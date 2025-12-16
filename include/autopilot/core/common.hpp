@@ -7,28 +7,12 @@
 
 namespace autopilot {
 
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
-using std::unreachable;
-#else
-[[noreturn]] inline void unreachable() {
-#if defined(__GNUC__) || defined(__clang__)
-  __builtin_unreachable();
-#elif defined(_MSC_VER)
-  __assume(false);
-#else
-  throw std::logic_error("Reached unreachable code");
-#endif
-}
-#endif
-
-#if defined(__cpp_lib_to_underlying) && __cpp_lib_to_underlying >= 202102L
-using std::to_underlying;
-#else
-template <typename Enum>
-constexpr auto to_underlying(Enum e) noexcept {
-  return static_cast<std::underlying_type_t<Enum>>(e);
-}
-#endif
+template <typename... Ts>
+struct Overload : Ts... {
+  using Ts::operator()...;
+};
+template <typename... Ts>
+Overload(Ts...) -> Overload<Ts...>;
 
 template <typename Derived>
 concept Vector2Like = static_cast<bool>(Derived::IsVectorAtCompileTime) &&
@@ -133,7 +117,7 @@ class AutopilotErrcCategory : public std::error_category {
       default:
         return "Unknown error";
     }
-    unreachable();
+    std::unreachable();
   }
 
   [[nodiscard]] std::error_condition default_error_condition(
@@ -144,7 +128,7 @@ class AutopilotErrcCategory : public std::error_category {
       default:
         return std::error_condition(ev, *this);
     }
-    unreachable();
+    std::unreachable();
   }
 };
 }  // namespace detail

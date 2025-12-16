@@ -109,7 +109,7 @@ class CascadeController : public ControllerBase {
                     const std::shared_ptr<spdlog::logger>& logger = nullptr);
 
   // The "Fast Loop" Entry Point (e.g. 500Hz)
-  expected<std::size_t, std::error_code> compute(
+  std::expected<std::size_t, std::error_code> compute(
       const QuadrotorState& state, std::span<const QuadrotorCommand> setpoints,
       std::span<QuadrotorCommand> outputs) override;
 

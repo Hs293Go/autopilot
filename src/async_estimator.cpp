@@ -36,7 +36,7 @@ void AsyncEstimator::push(const std::shared_ptr<const EstimatorData>& data) {
   cv_.notify_one();  // Wake up the worker
 }
 
-expected<QuadrotorState, std::error_code> AsyncEstimator::getStateAt(
+std::expected<QuadrotorState, std::error_code> AsyncEstimator::getStateAt(
     double timestamp) const {
   // A. Read the latest committed belief state (Thread-Safe Copy)
   QuadrotorState belief_snapshot;

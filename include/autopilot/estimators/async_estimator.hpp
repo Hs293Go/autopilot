@@ -42,7 +42,7 @@ class AsyncEstimator : public EstimatorBase {
   // ---------------------------------------------------------------------------
   // 2. Query (Runs on Control Thread)
   // ---------------------------------------------------------------------------
-  expected<QuadrotorState, std::error_code> getStateAt(
+  std::expected<QuadrotorState, std::error_code> getStateAt(
       double timestamp) const override;
 
  protected:

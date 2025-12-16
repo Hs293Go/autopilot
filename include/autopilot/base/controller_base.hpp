@@ -1,13 +1,13 @@
 #ifndef AUTOPILOT_CONTROLLER_BASE_HPP_
 #define AUTOPILOT_CONTROLLER_BASE_HPP_
 
+#include <expected>
 #include <span>
 
 #include "autopilot/base/factory.hpp"
 #include "autopilot/base/module.hpp"
 #include "autopilot/core/definitions.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
-#include "autopilot/expected.hpp"
 
 namespace autopilot {
 
@@ -20,7 +20,7 @@ class ControllerBase : public Module {
       : Module(fmt::format("Controller.{}", name), std::move(model),
                std::move(logger)) {}
 
-  virtual expected<std::size_t, std::error_code> compute(
+  virtual std::expected<std::size_t, std::error_code> compute(
       const QuadrotorState& state, std::span<const QuadrotorCommand> setpoints,
       std::span<QuadrotorCommand> outputs) = 0;
 

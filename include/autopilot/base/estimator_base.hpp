@@ -1,10 +1,11 @@
 #ifndef AUTOPILOT_ESTIMATOR_BASE_HPP_
 #define AUTOPILOT_ESTIMATOR_BASE_HPP_
 
+#include <expected>
+
 #include "autopilot/base/factory.hpp"
 #include "autopilot/base/module.hpp"
 #include "autopilot/core/definitions.hpp"
-#include "autopilot/expected.hpp"
 
 namespace autopilot {
 
@@ -114,7 +115,7 @@ class EstimatorBase : public Module {
   // If t=0, return latest.
   // If t > latest, EXTRAPOLATE (Predict forward).
   // If t < latest, INTERPOLATE (delayed query).
-  virtual expected<QuadrotorState, std::error_code> getStateAt(
+  virtual std::expected<QuadrotorState, std::error_code> getStateAt(
       double timestamp_s = 0.0) const = 0;
 
   virtual Eigen::Ref<const Eigen::MatrixXd> getCovariance() const = 0;
