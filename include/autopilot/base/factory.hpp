@@ -90,15 +90,6 @@ class GenericFactory {
     return (it->second)();
   }
 
-  template <std::derived_from<ConfigBase> T>
-  static std::shared_ptr<T> CreateConfig(const char* key) {
-    if (auto res =
-            std::dynamic_pointer_cast<T>(CreateConfig(std::string(key)))) {
-      return res;
-    }
-    return nullptr;
-  }
-
   // 2. Create Product from existing Config (The "Smart" Create)
   static ProductPtr Create(ConfigPtr config, ModelPtr model,
                            LoggerPtr logger = nullptr) {
@@ -118,16 +109,6 @@ class GenericFactory {
     Logger()->debug("Creating product of type '{}'", key);
     return (it->second)(std::move(model), std::move(config),
                         logger ? std::move(logger) : nullptr);
-  }
-
-  template <std::derived_from<ProductBase> T>
-  static std::shared_ptr<T> Create(std::shared_ptr<typename T::Config> config,
-                                   ModelPtr model, LoggerPtr logger = nullptr) {
-    if (auto res = std::dynamic_pointer_cast<T>(
-            Create(std::move(config), std::move(model), std::move(logger)))) {
-      return res;
-    }
-    return nullptr;
   }
 
   // 3. Create Default Product (Helper: creates default config internally)
