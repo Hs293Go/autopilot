@@ -49,11 +49,12 @@ set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
 add_library(autopilot_extensions)
 target_sources(
   autopilot_extensions
-  PRIVATE src/json_loader.cpp
+  PRIVATE src/json_loader.cpp src/pretty_printer.cpp
   PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
          include/autopilot/extensions/json_loader.hpp)
-target_link_libraries(autopilot_extensions PUBLIC autopilot::autopilot
-                                                  nlohmann_json::nlohmann_json)
+target_link_libraries(
+  autopilot_extensions PUBLIC autopilot::autopilot nlohmann_json::nlohmann_json
+                              fmt::fmt)
 add_library(autopilot::extensions ALIAS autopilot_extensions)
 
 option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests" ON)

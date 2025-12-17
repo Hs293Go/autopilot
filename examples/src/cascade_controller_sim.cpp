@@ -1,3 +1,4 @@
+#include <iostream>
 #include <ranges>
 #include <rerun.hpp>
 
@@ -6,6 +7,7 @@
 #include "autopilot/core/quadrotor_model.hpp"
 #include "autopilot/estimators/eskf.hpp"
 #include "autopilot/extensions/json_loader.hpp"
+#include "autopilot/extensions/pretty_printer.hpp"
 #include "validation/mission_runner.hpp"
 
 // Use a distinct namespace or alias for clarity
@@ -79,6 +81,9 @@ int main() {
     return -1;
   }
   CHECK(cascade_cfg->accept(*loader).ec);
+
+  auto printer = autopilot::PrettyPrinter(std::cout, {.show_details = true});
+  std::ignore = cascade_cfg->accept(printer);
   auto ctrl = ap::ControllerFactory::Create(cascade_cfg, model);
 
   // Setup Estimator

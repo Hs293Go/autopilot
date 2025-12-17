@@ -12,8 +12,8 @@ using nlohmann::json;
 
 namespace {
 
-ConfigVisitor::VisitResult MaybePreferUserProvided(std::string_view key,
-                                                   bool prefer_user_provided) {
+VisitResult MaybePreferUserProvided(std::string_view key,
+                                    bool prefer_user_provided) {
   if (prefer_user_provided) {
     return {make_error_code(AutopilotErrc::kConfigKeyMissing), key};
   }
@@ -21,8 +21,7 @@ ConfigVisitor::VisitResult MaybePreferUserProvided(std::string_view key,
 }
 
 template <typename T>
-ConfigVisitor::VisitResult ProcessValue(std::string_view key, const json& node,
-                                        T& value) {
+VisitResult ProcessValue(std::string_view key, const json& node, T& value) {
   if (const auto* cand = node.get_ptr<const T*>()) {
     value = *cand;
     return {};
@@ -31,8 +30,8 @@ ConfigVisitor::VisitResult ProcessValue(std::string_view key, const json& node,
   return {make_error_code(AutopilotErrc::kConfigTypeMismatch), key};
 }
 
-ConfigVisitor::VisitResult ValidateArray(std::string_view key, const json& arr,
-                                         std::size_t expected_size) {
+VisitResult ValidateArray(std::string_view key, const json& arr,
+                          std::size_t expected_size) {
   if (!arr.is_array()) {
     return {make_error_code(AutopilotErrc::kConfigTypeMismatch), key};
   }
@@ -50,9 +49,8 @@ JsonLoader::JsonLoader(std::shared_ptr<nlohmann::json> content)
   node_stack_.push(root_.get());
 }
 
-ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
-                                                 double& value,
-                                                 const F64Properties& props) {
+VisitResult JsonLoader::safeVisit(std::string_view key, double& value,
+                                  const F64Properties& props) {
   const auto* node = node_stack_.top();
   if (!node->contains(key)) {
     return MaybePreferUserProvided(key, props.prefer_user_provided);
@@ -61,9 +59,8 @@ ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
   return ProcessValue(key, node->at(std::string(key)), value);
 }
 
-ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
-                                                 std::int64_t& value,
-                                                 const I64Properties& props) {
+VisitResult JsonLoader::safeVisit(std::string_view key, std::int64_t& value,
+                                  const I64Properties& props) {
   const auto* node = node_stack_.top();
   if (!node->contains(key)) {
     return MaybePreferUserProvided(key, props.prefer_user_provided);
@@ -72,9 +69,8 @@ ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
   return ProcessValue(key, node->at(std::string(key)), value);
 }
 
-ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
-                                                 bool& value,
-                                                 const Properties& props) {
+VisitResult JsonLoader::safeVisit(std::string_view key, bool& value,
+                                  const Properties& props) {
   const auto* node = node_stack_.top();
   if (!node->contains(key)) {
     return MaybePreferUserProvided(key, props.prefer_user_provided);
@@ -82,9 +78,8 @@ ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
   return ProcessValue(key, node->at(std::string(key)), value);
 }
 
-ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
-                                                 std::string& value,
-                                                 const StrProperties& props) {
+VisitResult JsonLoader::safeVisit(std::string_view key, std::string& value,
+                                  const StrProperties& props) {
   const auto* node = node_stack_.top();
   if (!node->contains(key)) {
     return MaybePreferUserProvided(key, props.prefer_user_provided);
@@ -92,9 +87,8 @@ ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
   return ProcessValue(key, node->at(std::string(key)), value);
 }
 
-ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
-                                                 std::span<double> value,
-                                                 const F64Properties& props) {
+VisitResult JsonLoader::safeVisit(std::string_view key, std::span<double> value,
+                                  const F64Properties& props) {
   const auto* node = node_stack_.top();
   if (!node->contains(key)) {
     return MaybePreferUserProvided(key, props.prefer_user_provided);
@@ -113,9 +107,9 @@ ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
   return {};
 }
 
-ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
-                                                 std::span<std::int64_t> value,
-                                                 const I64Properties& props) {
+VisitResult JsonLoader::safeVisit(std::string_view key,
+                                  std::span<std::int64_t> value,
+                                  const I64Properties& props) {
   const auto* node = node_stack_.top();
   if (!node->contains(key)) {
     return MaybePreferUserProvided(key, props.prefer_user_provided);
@@ -133,9 +127,9 @@ ConfigVisitor::VisitResult JsonLoader::safeVisit(std::string_view key,
   return {};
 }
 
-ConfigVisitor::VisitResult JsonLoader::safeVisit(
-    std::string_view key, std::shared_ptr<ConfigBase> config,
-    const Properties& props) {
+VisitResult JsonLoader::safeVisit(std::string_view key,
+                                  std::shared_ptr<ConfigBase> config,
+                                  const Properties& props) {
   auto* node = node_stack_.top();
   if (!node->contains(key)) {
     return MaybePreferUserProvided(key, props.prefer_user_provided);

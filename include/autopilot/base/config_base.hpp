@@ -90,15 +90,18 @@ struct StrProperties {
 using F64Properties = NumericProperties<double>;
 using I64Properties = NumericProperties<std::int64_t>;
 
+struct VisitResult {
+  std::error_code ec;
+  std::string_view key;
+  std::string_view message = "none";
+};
 /// Visitor Pattern for Configurations
 struct ConfigVisitor {
-  struct VisitResult {
-    std::error_code ec;
-    std::string_view key;
-    std::string_view message = "none";
-  };
-
   virtual ~ConfigVisitor() = default;
+
+  virtual void start() {}
+
+  virtual void finished() {}
 
   /// Visit a double value
   virtual VisitResult visit(std::string_view key, double& value,
@@ -134,6 +137,44 @@ struct ConfigVisitor {
       std::string_view key,
       std::shared_ptr<struct ConfigBase> /*config NOLINT(performance-*)*/,
       const Properties& /*props*/) {
+    return {.ec = make_error_code(std::errc::not_supported), .key = key};
+  }
+};
+struct ConstConfigVisitor {
+  virtual ~ConstConfigVisitor() = default;
+
+  virtual void start() {}
+
+  virtual void finished() {}
+
+  virtual VisitResult visit(std::string_view key, double value,
+                            const F64Properties& props) = 0;
+
+  virtual VisitResult visit(std::string_view key, std::int64_t value,
+                            const I64Properties& props) = 0;
+
+  virtual VisitResult visit(std::string_view key, bool value,
+                            const Properties& props) = 0;
+
+  virtual VisitResult visit(std::string_view key, const std::string& value,
+                            const StrProperties& props) = 0;
+
+  virtual VisitResult visit(std::string_view key,
+                            std::span<const double> /*value*/,
+                            const F64Properties& /*props*/) {
+    return {.ec = make_error_code(std::errc::not_supported), .key = key};
+  }
+
+  virtual VisitResult visit(std::string_view key,
+                            std::span<const std::int64_t> /*value*/,
+                            const I64Properties& /*props*/) {
+    return {.ec = make_error_code(std::errc::not_supported), .key = key};
+  }
+
+  // Supports nullable dynamic configs (e.g. inside Polymorphic)
+  virtual VisitResult visit(std::string_view key,
+                            const std::shared_ptr<const ConfigBase>& /*config*/,
+                            const Properties& /*props*/) {
     return {.ec = make_error_code(std::errc::not_supported), .key = key};
   }
 };
@@ -270,8 +311,10 @@ struct ConfigBase {
   // config
   [[nodiscard]] virtual std::string name() const = 0;
 
-  [[nodiscard]] virtual ConfigVisitor::VisitResult accept(
-      ConfigVisitor& visitor) = 0;
+  virtual VisitResult accept(ConfigVisitor& visitor) = 0;
+
+  [[nodiscard]] virtual VisitResult accept(
+      ConstConfigVisitor& visitor) const = 0;
 };
 
 template <typename Class, typename T, typename Props>
@@ -289,8 +332,9 @@ constexpr auto Describe(std::string_view name, T Class::* member, Props props) {
 
 template <typename Derived>
 struct ReflectiveConfigBase : ConfigBase {
-  ConfigVisitor::VisitResult accept(ConfigVisitor& visitor) override {
-    ConfigVisitor::VisitResult res;
+  VisitResult accept(ConfigVisitor& visitor) override {
+    visitor.start();
+    VisitResult res;
     std::apply(
         [this, &visitor, &res](const auto&... it) {
           ((res = res.ec ? res
@@ -300,6 +344,23 @@ struct ReflectiveConfigBase : ConfigBase {
            ...);
         },
         Derived::kDescriptors);
+    visitor.finished();
+    return res;
+  }
+
+  VisitResult accept(ConstConfigVisitor& visitor) const override {
+    VisitResult res;
+    visitor.start();
+    std::apply(
+        [this, &visitor, &res](const auto&... it) {
+          ((res = res.ec ? res
+                         : visitor.visit(it.name,
+                                         adaptSpan(derived().*(it.member)),
+                                         it.props)),
+           ...);
+        },
+        Derived::kDescriptors);
+    visitor.finished();
     return res;
   }
 
@@ -307,11 +368,12 @@ struct ReflectiveConfigBase : ConfigBase {
   friend Derived;
 
   template <typename T>
-  static constexpr decltype(auto) adaptSpan(T& mem) {
-    if constexpr (std::derived_from<T, Eigen::MatrixBase<T>>) {
+  static constexpr decltype(auto) adaptSpan(T&& mem) {
+    using Plain = std::remove_cvref_t<T>;
+    if constexpr (std::derived_from<Plain, Eigen::MatrixBase<Plain>>) {
       static_assert(
-          T::IsVectorAtCompileTime && T::InnerStrideAtCompileTime == 1,
-          "Only contiguous Eigen types are supported");
+          Plain::IsVectorAtCompileTime && Plain::InnerStrideAtCompileTime == 1,
+          "Only contiguous Eigen vectors can be treated as a span");
       return std::span(mem.data(), static_cast<std::size_t>(mem.size()));
     } else {
       return mem;
@@ -341,7 +403,7 @@ struct Polymorphic final : ConfigBase {
   std::string type;
   std::shared_ptr<ConfigBase> config;
 
-  ConfigVisitor::VisitResult accept(ConfigVisitor& visitor) override {
+  VisitResult accept(ConfigVisitor& visitor) override {
     auto res = visitor.visit(
         "type", type, {.desc = "Polymorphic Object Type", .non_empty = true});
     if (res.ec) {
@@ -356,6 +418,20 @@ struct Polymorphic final : ConfigBase {
     }
 
     return visitor.visit("config", config,
+                         {.desc = "Polymorphic Object Config"});
+  }
+
+  VisitResult accept(ConstConfigVisitor& visitor) const override {
+    // 1. Visit the type string
+    auto res = visitor.visit("type", type, {.desc = "Polymorphic Object Type"});
+    if (res.ec) {
+      return res;
+    }
+
+    // We pass the shared_ptr directly so the visitor can decide how to handle
+    // nulls (e.g. PrettyPrinter prints "null", Saver skips it)
+    return visitor.visit("config",
+                         std::const_pointer_cast<const ConfigBase>(config),
                          {.desc = "Polymorphic Object Config"});
   }
 };
