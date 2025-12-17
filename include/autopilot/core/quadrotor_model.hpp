@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "Eigen/Dense"
+#include "autopilot/base/config_base.hpp"
 #include "autopilot/core/geometry.hpp"
 
 namespace autopilot {
@@ -16,13 +17,40 @@ static constexpr double kFullRotation = 2.0 * std::numbers::pi;
 static constexpr double kDefaultRollPitchInertia = 0.005;
 static constexpr double kDefaultYawInertia = 0.009;
 
-struct InertiaElements {
+struct InertiaElements final : ReflectiveConfigBase<InertiaElements> {
+  std::string name() const override { return "InertiaConfig"; }
+
+  InertiaElements() = default;
+
+  InertiaElements(double ixx_, double iyy_, double izz_, double ixy_,
+                  double ixz_, double iyz_)
+      : ixx(ixx_), iyy(iyy_), izz(izz_), ixy(ixy_), ixz(ixz_), iyz(iyz_) {}
+
   double ixx = kDefaultRollPitchInertia;
   double iyy = kDefaultRollPitchInertia;
   double izz = kDefaultYawInertia;
   double ixy = 0.0;
   double ixz = 0.0;
   double iyz = 0.0;
+
+  static constexpr auto kDescriptors = std::make_tuple(
+      Describe("ixx", &InertiaElements::ixx,
+               F64Properties{.desc = "Inertia tensor element Ixx",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("iyy", &InertiaElements::iyy,
+               F64Properties{.desc = "Inertia tensor element Iyy",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("izz", &InertiaElements::izz,
+               F64Properties{.desc = "Inertia tensor element Izz",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("ixy", &InertiaElements::ixy,
+               F64Properties{
+                   .desc = "Inertia tensor element Ixy",
+               }),
+      Describe("ixz", &InertiaElements::ixz,
+               F64Properties{.desc = "Inertia tensor element Ixz"}),
+      Describe("iyz", &InertiaElements::iyz,
+               F64Properties{.desc = "Inertia tensor element Iyz"}));
 };
 
 enum class MotorLayout {
@@ -30,9 +58,9 @@ enum class MotorLayout {
   kPx4,
 };
 
-class QuadrotorModelCfg {
+class QuadrotorModelCfg final : public ReflectiveConfigBase<QuadrotorModelCfg> {
  public:
-  QuadrotorModelCfg() = default;
+  std::string name() const override { return "QuadrotorModelCfg"; }
 
   [[nodiscard]] double mass() const { return mass_; }
 
@@ -121,9 +149,10 @@ class QuadrotorModelCfg {
   }
 
  private:
+  friend ReflectiveConfigBase<QuadrotorModelCfg>;
   // Physical parameters
   double mass_ = 1.0;  // in kilograms
-  InertiaElements inertia_elems_ = {0.005, 0.005, 0.009, 0.0, 0.0, 0.0};
+  InertiaElements inertia_elems_;
 
   // Mixer parameters
   MotorLayout motor_layout_ = MotorLayout::kBetaflight;
@@ -144,6 +173,47 @@ class QuadrotorModelCfg {
                                     kFullRotation};
 
   Eigen::Vector3d grav_vector_ = -Eigen::Vector3d::UnitZ() * 9.81;
+
+  static constexpr auto kDescriptors = std::make_tuple(
+      Describe("mass", &QuadrotorModelCfg::mass_,
+               F64Properties{.desc = "Mass of the quadrotor (kg)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("inertia_elements", &QuadrotorModelCfg::inertia_elems_,
+               Properties{.desc = "Inertia tensor elements"}),
+      // Describe("motor_layout", &QuadrotorModelCfg::motor_layout_,
+      //          Properties{.desc = "Motor layout configuration"}),
+      Describe("front_motor_position",
+               &QuadrotorModelCfg::front_motor_position_,
+               F64Properties{.desc = "Front motor position (m)"}),
+      Describe("back_motor_position", &QuadrotorModelCfg::back_motor_position_,
+               F64Properties{.desc = "Back motor position (m)"}),
+      Describe("torque_constant", &QuadrotorModelCfg::torque_constant_,
+               F64Properties{.desc = "Motor torque constant (Nm/N)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("motor_time_constant_up",
+               &QuadrotorModelCfg::motor_time_constant_up_,
+               F64Properties{.desc = "Motor time constant (up) (s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("motor_time_constant_down",
+               &QuadrotorModelCfg::motor_time_constant_down_,
+               F64Properties{.desc = "Motor time constant (down) (s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("thrust_curve_coeff", &QuadrotorModelCfg::thrust_curve_coeff_,
+               F64Properties{.desc = "Thrust curve coefficient (N/(rad/s)^2)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("min_collective_thrust",
+               &QuadrotorModelCfg::min_collective_thrust_,
+               F64Properties{.desc = "Minimum collective thrust (N)",
+                             .bounds = Bounds<double>::AtLeast(0.0)}),
+      Describe("max_collective_thrust",
+               &QuadrotorModelCfg::max_collective_thrust_,
+               F64Properties{.desc = "Maximum collective thrust (N)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("max_body_rate", &QuadrotorModelCfg::max_body_rate_,
+               F64Properties{.desc = "Maximum body rates (rad/s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("grav_vector", &QuadrotorModelCfg::grav_vector_,
+               F64Properties{.desc = "Gravity vector (m/s^2)"}));
 };
 
 struct ThrustTorque {

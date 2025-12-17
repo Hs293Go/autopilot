@@ -42,6 +42,12 @@ struct Bounds {
                upper);
   }
 
+  template <std::ranges::input_range R>
+  bool checkRange(R&& range) const {
+    return std::ranges::all_of(std::forward<R>(range),
+                               std::bind_front(&Bounds<T>::check, this));
+  }
+
   static constexpr Bounds GreaterThan(T val) {
     return {.lower = Exclusive(val)};
   }
@@ -55,6 +61,14 @@ struct Bounds {
   static constexpr Bounds Positive() { return GreaterThan(0); }
 
   static constexpr Bounds NonNegative() { return AtLeast(0); }
+
+  static constexpr Bounds OpenInterval(T lower, T upper) {
+    return {.lower = Exclusive(lower), .upper = Exclusive(upper)};
+  }
+
+  static constexpr Bounds ClosedInterval(T lower, T upper) {
+    return {.lower = Inclusive(lower), .upper = Inclusive(upper)};
+  }
 };
 
 struct Properties {
@@ -74,7 +88,7 @@ struct NumericProperties {
   bool prefer_user_provided = false;
 
   /// Valid range for the parameter
-  Bounds<T> bounds;
+  Bounds<T> bounds = {};
 };
 
 struct StrProperties {
@@ -89,6 +103,8 @@ struct StrProperties {
 
 using F64Properties = NumericProperties<double>;
 using I64Properties = NumericProperties<std::int64_t>;
+
+struct ConfigBase;
 
 struct VisitResult {
   std::error_code ec;
@@ -132,10 +148,16 @@ struct ConfigVisitor {
     return {.ec = make_error_code(std::errc::not_supported), .key = key};
   }
 
+  virtual VisitResult visit(std::string_view key,
+                            ConfigBase& /*config*/,  // NOLINT
+                            const Properties& /*props*/) {
+    return {.ec = make_error_code(std::errc::not_supported), .key = key};
+  }
+
   /// Visit a nested configuration
   virtual VisitResult visit(
       std::string_view key,
-      std::shared_ptr<struct ConfigBase> /*config NOLINT(performance-*)*/,
+      std::shared_ptr<ConfigBase> /*config NOLINT(performance-*)*/,
       const Properties& /*props*/) {
     return {.ec = make_error_code(std::errc::not_supported), .key = key};
   }
@@ -168,6 +190,10 @@ struct ConstConfigVisitor {
   virtual VisitResult visit(std::string_view key,
                             std::span<const std::int64_t> /*value*/,
                             const I64Properties& /*props*/) {
+    return {.ec = make_error_code(std::errc::not_supported), .key = key};
+  }
+  virtual VisitResult visit(std::string_view key, const ConfigBase& /*config*/,
+                            const Properties& /*props*/) {
     return {.ec = make_error_code(std::errc::not_supported), .key = key};
   }
 
@@ -215,28 +241,32 @@ struct LoaderVisitor : ConfigVisitor {
   /// Visit a contiguous range of doubles, validating bounds for each element
   VisitResult visit(std::string_view key, std::span<double> value,
                     const F64Properties& props) final {
-    std::vector<double> cand(value.size());
-    auto result = safeVisit(key, cand, props);
-    if (!std::ranges::all_of(
-            cand, std::bind_front(&Bounds<double>::check, props.bounds))) {
+    std::vector cand(value.begin(), value.end());
+    const auto result = safeVisit(key, cand, props);
+    if (!props.bounds.checkRange(cand)) {
       return {make_error_code(AutopilotErrc::kOutOfBounds), key,
               "One or more values out of bounds"};
     }
-    std::copy(cand.begin(), cand.end(), value.begin());
+    std::ranges::copy(cand, value.begin());
     return result;
   }
 
   VisitResult visit(std::string_view key, std::span<std::int64_t> value,
                     const I64Properties& props) final {
-    std::vector<std::int64_t> cand(value.size());
-    auto result = safeVisit(key, cand, props);
-    if (!std::ranges::all_of(cand, std::bind_front(&Bounds<std::int64_t>::check,
-                                                   props.bounds))) {
+    std::vector cand(value.begin(), value.end());
+    const auto result = safeVisit(key, cand, props);
+    if (!props.bounds.checkRange(cand)) {
       return {make_error_code(AutopilotErrc::kOutOfBounds), key,
               "One or more values out of bounds"};
     }
-    std::copy(cand.begin(), cand.end(), value.begin());
+    std::ranges::copy(cand, value.begin());
     return result;
+  }
+
+  VisitResult visit(std::string_view key,
+                    ConfigBase& config,  // NOLINT
+                    const Properties& props) final {
+    return safeVisit(key, config, props);
   }
 
   VisitResult visit(std::string_view key,
@@ -278,11 +308,16 @@ struct LoaderVisitor : ConfigVisitor {
                                 const I64Properties& /*props*/) {
     return {.ec = make_error_code(std::errc::not_supported), .key = key};
   }
+  virtual VisitResult safeVisit(std::string_view key,
+                                ConfigBase& /*config NOLINT(performance-*)*/,
+                                const Properties& /*props*/) {
+    return {.ec = make_error_code(std::errc::not_supported), .key = key};
+  }
 
   /// Visit a nested configuration
   virtual VisitResult safeVisit(
       std::string_view key,
-      std::shared_ptr<struct ConfigBase> /*config NOLINT(performance-*)*/,
+      std::shared_ptr<ConfigBase> /*config NOLINT(performance-*)*/,
       const Properties& /*props*/) {
     return {.ec = make_error_code(std::errc::not_supported), .key = key};
   }

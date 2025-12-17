@@ -1,18 +1,49 @@
 {
-  "position_controller_dt": 0.005,
-  "attitude_controller_dt": 0.001,
-  "position_controller_cfg": {
-    "type": "GeometricPosition",
+  "quadrotor_model": {
+    "mass": 1.0,
+    "inertia_elements": {
+      "ixx": 0.025,
+      "iyy": 0.025,
+      "izz": 0.043
+    },
+    "thrust_curve_coeff": 1.56262e-6,
+    "motor_time_constant_up": 0.033,
+    "motor_time_constant_down": 0.033,
+    "front_motor_position": [0.075, 0.1],
+    "back_motor_position": [0.075, 0.1],
+    "torque_constant": 0.01386,
+    "max_collective_thrust": 40.0
+  },
+  "controller": {
+    "type": "CascadeController",
     "config": {
-      "kp": [1.0, 1.0, 5.0],
-      "kv": [2.5, 2.5, 6.0]
+      "position_controller_dt": 0.005,
+      "attitude_controller_dt": 0.001,
+      "position_controller_cfg": {
+        "type": "GeometricPosition",
+        "config": {
+          "kp": [1.0, 1.0, 5.0],
+          "kv": [2.5, 2.5, 6.0]
+        }
+      },
+      "attitude_controller_cfg": {
+        "type": "GeometricAttitude",
+        "config": {
+          "kR": [3.0, 3.0, 0.1],
+          "kOmega": [1.0, 1.0, 0.05]
+        }
+      }
     }
   },
-  "attitude_controller_cfg": {
-    "type": "GeometricAttitude",
-    "config": {
-      "kR": [3.0, 3.0, 0.1],
-      "kOmega": [1.0, 1.0, 0.05]
+  "eskf": {
+    "gps_confidence_level_error": 0.9,
+    "accel_noise_density": 0.0040576899999999992,
+    "gyro_noise_density": 7.6154350409315987e-5
+  },
+  "simulator": {
+    "gps": {
+      "hor_pos_std_dev": 0.31622776601683794,
+      "ver_pos_std_dev": 0.31622776601683794
     }
   }
 }

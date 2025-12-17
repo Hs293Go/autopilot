@@ -10,14 +10,6 @@
 
 namespace autopilot {
 
-struct QuadrotorSimulatorConfig {
-  ImuNoiseConfig imu;
-  GpsNoiseConfig gps;
-  unsigned int random_seed = 0;
-  // Environment
-  Eigen::Vector3d gravity = Eigen::Vector3d::UnitZ() * 9.81;
-};
-
 struct SensorData {
   std::shared_ptr<ImuData> imu;
   std::shared_ptr<GpsData> gps;
@@ -25,7 +17,16 @@ struct SensorData {
 
 class QuadrotorSimulator : public Module {
  public:
-  using Config = QuadrotorSimulatorConfig;
+  struct Config final : public ReflectiveConfigBase<Config> {
+    std::string name() const override { return "QuadrotorSimulatorConfig"; }
+    ImuNoiseConfig imu;
+    GpsNoiseConfig gps;
+    static constexpr auto kDescriptors = std::make_tuple(
+        Describe("imu", &Config::imu,
+                 Properties{.desc = "IMU Noise Configuration"}),
+        Describe("gps", &Config::gps,
+                 Properties{.desc = "GPS Noise Configuration"}));
+  };
 
   QuadrotorSimulator(std::shared_ptr<QuadrotorModel> model,
                      std::shared_ptr<Config> config,

@@ -4,7 +4,9 @@
 #include <random>
 
 #include "Eigen/Dense"
+#include "autopilot/base/config_base.hpp"
 #include "autopilot/core/common.hpp"
+#include "autopilot/core/math.hpp"
 
 namespace autopilot {
 
@@ -35,24 +37,71 @@ class OutlierClassifier {
   double error_threshold_ = 0.0;
 };
 
-struct ImuNoiseConfig {
-  // Default values from ADIS16448 (nano_rotor defaults)
-  double gyro_noise_density = 2.0 * 35.0 / 3600.0 / 180.0 * M_PI;
-  double gyro_random_walk = 2.0 * 4.0 / 3600.0 / 180.0 * M_PI;
+struct ImuNoiseConfig final : public ReflectiveConfigBase<ImuNoiseConfig> {
+  std::string name() const override { return "ImuNoiseConfig"; }
+  double gyro_noise_density = deg2rad(2.0 * 35.0 / 3600.0);
+  double gyro_random_walk = deg2rad(2.0 * 4.0 / 3600.0);
   double gyro_bias_correlation_time = 1.0e+3;
-  double gyro_turn_on_bias_sigma = 0.5 / 180.0 * M_PI;
+  double gyro_turn_on_bias_sigma = deg2rad(0.5);
 
   double accel_noise_density = 2.0 * 2.0e-3;
   double accel_random_walk = 2.0 * 3.0e-3;
   double accel_bias_correlation_time = 300.0;
   double accel_turn_on_bias_sigma = 20.0e-3 * 9.81;
+
+  static constexpr auto kDescriptors = std::make_tuple(
+      Describe("gyro_noise_density", &ImuNoiseConfig::gyro_noise_density,
+               F64Properties{.desc = "Gyro Noise Density (rad/s/√Hz)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("gyro_random_walk", &ImuNoiseConfig::gyro_random_walk,
+               F64Properties{.desc = "Gyro Random Walk (rad/s²/√Hz)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("gyro_bias_correlation_time",
+               &ImuNoiseConfig::gyro_bias_correlation_time,
+               F64Properties{.desc = "Gyro Bias Correlation Time (seconds)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("gyro_turn_on_bias_sigma",
+               &ImuNoiseConfig::gyro_turn_on_bias_sigma,
+               F64Properties{.desc = "Gyro Turn-On Bias Sigma (radians)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("accel_noise_density", &ImuNoiseConfig::accel_noise_density,
+               F64Properties{.desc = "Accelerometer Noise Density (m/s²/√Hz)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("accel_random_walk", &ImuNoiseConfig::accel_random_walk,
+               F64Properties{.desc = "Accelerometer Random Walk (m/s³/√Hz)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe(
+          "accel_bias_correlation_time",
+          &ImuNoiseConfig::accel_bias_correlation_time,
+          F64Properties{.desc = "Accelerometer Bias Correlation Time (seconds)",
+                        .bounds = Bounds<double>::Positive()}),
+      Describe("accel_turn_on_bias_sigma",
+               &ImuNoiseConfig::accel_turn_on_bias_sigma,
+               F64Properties{.desc = "Accelerometer Turn-On Bias Sigma (m/s²)",
+                             .bounds = Bounds<double>::Positive()}));
 };
 
-struct GpsNoiseConfig {
+struct GpsNoiseConfig final : public ReflectiveConfigBase<GpsNoiseConfig> {
+  std::string name() const override { return "GpsNoiseConfig"; }
+
   double hor_pos_std_dev = 3.0;
   double ver_pos_std_dev = 6.0;
   double hor_vel_std_dev = 0.1;
   double ver_vel_std_dev = 0.1;
+
+  static constexpr auto kDescriptors = std::make_tuple(
+      Describe("hor_pos_std_dev", &GpsNoiseConfig::hor_pos_std_dev,
+               F64Properties{.desc = "Horizontal Position Std Dev (meters)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("ver_pos_std_dev", &GpsNoiseConfig::ver_pos_std_dev,
+               F64Properties{.desc = "Vertical Position Std Dev (meters)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("hor_vel_std_dev", &GpsNoiseConfig::hor_vel_std_dev,
+               F64Properties{.desc = "Horizontal Velocity Std Dev (m/s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("ver_vel_std_dev", &GpsNoiseConfig::ver_vel_std_dev,
+               F64Properties{.desc = "Vertical Velocity Std Dev (m/s)",
+                             .bounds = Bounds<double>::Positive()}));
 };
 
 // State holder for a single noise process (e.g., Gyro X axis)

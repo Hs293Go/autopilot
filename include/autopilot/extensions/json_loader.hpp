@@ -36,6 +36,9 @@ class JsonLoader final : public LoaderVisitor {
   VisitResult safeVisit(std::string_view key, std::span<std::int64_t> value,
                         const I64Properties& props) override;
 
+  VisitResult safeVisit(std::string_view key, ConfigBase& config,
+                        const Properties& props) override;
+
   VisitResult safeVisit(std::string_view key,
                         std::shared_ptr<ConfigBase> config,
                         const Properties& props) override;

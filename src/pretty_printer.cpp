@@ -13,15 +13,15 @@ struct fmt::formatter<autopilot::Bounds<T>> : NoSpecifierFormatter {
     auto out = ctx.out();
 
     // Outputs are quoted because parenthesized pairs are not valid YAML
-    std::visit(
-        autopilot::Overload{[&](auto) { out = fmt::format_to(out, "\"(-inf"); },
-                            [&](const autopilot::Inclusive<T>& inc) {
-                              out = fmt::format_to(out, "\"[{},", inc.value);
-                            },
-                            [&](const autopilot::Exclusive<T>& exc) {
-                              out = fmt::format_to(out, "\"({}, ", exc.value);
-                            }},
-        bounds.lower);
+    std::visit(autopilot::Overload{
+                   [&](auto) { out = fmt::format_to(out, "\"(-inf, "); },
+                   [&](const autopilot::Inclusive<T>& inc) {
+                     out = fmt::format_to(out, "\"[{}, ", inc.value);
+                   },
+                   [&](const autopilot::Exclusive<T>& exc) {
+                     out = fmt::format_to(out, "\"({}, ", exc.value);
+                   }},
+               bounds.lower);
 
     std::visit(
         autopilot::Overload{[&](auto) { out = fmt::format_to(out, "inf)\""); },
@@ -46,6 +46,7 @@ void PrettyPrinter::FormatKeyValue(std::ostream_iterator<char>& it,
   auto active_width = options_.indent_width * indent_level_;
   if (!options_.show_details) {
     it = fmt::format_to(it, "{: >{}}{}: {}\n", "", active_width, key, value);
+    return;
   }
   // 1. Print key
   it = fmt::format_to(it, "{: >{}}{}:\n", "", active_width, key);
@@ -119,11 +120,8 @@ VisitResult PrettyPrinter::visit(std::string_view key,
   return {};
 }
 
-VisitResult PrettyPrinter::visit(
-    std::string_view key, const std::shared_ptr<const ConfigBase>& config,
-    const Properties& props) {
-  // Use const_cast to modify indentation state while keeping the Visitor
-  // interface const
+VisitResult PrettyPrinter::visit(std::string_view key, const ConfigBase& config,
+                                 const Properties& /*props*/) {
   std::ostream_iterator<char> it(os_);
 
   // Nested objects don't print metadata on the opening brace line
@@ -131,11 +129,23 @@ VisitResult PrettyPrinter::visit(
                       options_.indent_width * indent_level_, key);
 
   indent_level_++;
-
-  std::ignore = config->accept(*this);
+  std::ignore = config.accept(*this);
   indent_level_--;
 
   // Add a newline after the closing brace of the object
+  return {};
+}
+
+VisitResult PrettyPrinter::visit(
+    std::string_view key, const std::shared_ptr<const ConfigBase>& config,
+    const Properties& /*props*/) {
+  if (config) {
+    return visit(key, *config, Properties{});
+  }
+
+  std::ostream_iterator<char> it(os_);
+  it = fmt::format_to(it, "{: >{}}{}: null", "",
+                      options_.indent_width * indent_level_, key);
   return {};
 }
 

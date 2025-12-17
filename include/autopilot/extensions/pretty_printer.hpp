@@ -28,13 +28,15 @@ class PrettyPrinter final : public ConstConfigVisitor {
   VisitResult visit(std::string_view key, std::span<const double> value,
                     const F64Properties& props) override;
 
-  VisitResult visit(std::string_view key,
-                    std::span<const std::int64_t> /*value*/,
+  VisitResult visit(std::string_view key, std::span<const std::int64_t> value,
                     const I64Properties& props) override;
+
+  VisitResult visit(std::string_view key, const ConfigBase& config,
+                    const Properties& props) override;
 
   // Supports nullable dynamic configs (e.g. inside Polymorphic)
   VisitResult visit(std::string_view key,
-                    const std::shared_ptr<const ConfigBase>& /*config*/,
+                    const std::shared_ptr<const ConfigBase>& config,
                     const Properties& props) override;
 
  private:

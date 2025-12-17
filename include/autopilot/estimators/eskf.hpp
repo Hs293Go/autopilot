@@ -23,22 +23,64 @@ constexpr int kNumErrorStates =
 using ErrorState = Eigen::Vector<double, kNumErrorStates>;
 using ErrorCov = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
 
-struct ErrorStateKalmanFilterConfig {
-  // Process Noise (Continuous Time)
-  double accel_noise_density = 0.1;
-  double gyro_noise_density = 0.1;
-  double accel_bias_random_walk = 0.01;
-  double gyro_bias_random_walk = 0.01;
-  double gps_confidence_level_warning = 0.97;
-  double gps_confidence_level_error = 0.95;  // 3-sigma
-  double mag_confidence_level_warning = 0.97;
-  double mag_confidence_level_error = 0.95;  // 3-sigma
-  double max_sum_error_variance = 1e6;
-};
-
 class ErrorStateKalmanFilter : public AsyncEstimator {
  public:
-  using Config = ErrorStateKalmanFilterConfig;
+  static constexpr char kName[] = "ErrorStateKalmanFilter";
+
+  struct Config final : ReflectiveConfigBase<Config> {
+    // Process Noise (Continuous Time)
+    double accel_noise_density = 0.1;
+    double gyro_noise_density = 0.1;
+    double accel_bias_random_walk = 0.01;
+    double gyro_bias_random_walk = 0.01;
+    double gps_confidence_level_warning = 0.97;
+    double gps_confidence_level_error = 0.95;  // 3-sigma
+    double mag_confidence_level_warning = 0.97;
+    double mag_confidence_level_error = 0.95;  // 3-sigma
+    double max_sum_error_variance = 1e6;
+
+    std::string name() const override { return "ErrorStateKalmanFilterConfig"; }
+
+    static constexpr auto kDescriptors = std::make_tuple(
+        Describe(
+            "accel_noise_density", &Config::accel_noise_density,
+            F64Properties{.desc = "Accelerometer noise density (m/s^2)/√Hz",
+                          .bounds = Bounds<double>::GreaterThan(0.0)}),
+        Describe("gyro_noise_density", &Config::gyro_noise_density,
+                 F64Properties{.desc = "Gyroscope noise density (rad/s)/√Hz",
+                               .bounds = Bounds<double>::GreaterThan(0.0)}),
+        Describe(
+            "accel_bias_random_walk", &Config::accel_bias_random_walk,
+            F64Properties{.desc = "Accelerometer bias random walk (m/s^2)/√Hz",
+                          .bounds = Bounds<double>::GreaterThan(0.0)}),
+        Describe("gyro_bias_random_walk", &Config::gyro_bias_random_walk,
+                 F64Properties{.desc = "Gyroscope bias random walk (rad/s)/√Hz",
+                               .bounds = Bounds<double>::GreaterThan(0.0)}),
+        Describe(
+            "gps_confidence_level_warning",
+            &Config::gps_confidence_level_warning,
+            F64Properties{.desc = "GPS confidence level for warning threshold",
+                          .bounds = Bounds<double>::ClosedInterval(0.5, 1.0)}),
+        Describe(
+            "gps_confidence_level_error", &Config::gps_confidence_level_error,
+            F64Properties{.desc = "GPS confidence level for error threshold",
+                          .bounds = Bounds<double>::ClosedInterval(0.5, 1.0)}),
+        Describe(
+            "mag_confidence_level_warning",
+            &Config::mag_confidence_level_warning,
+            F64Properties{
+                .desc = "Magnetometer confidence level for warning threshold",
+                .bounds = Bounds<double>::ClosedInterval(0.5, 1.0)}),
+        Describe(
+            "mag_confidence_level_error", &Config::mag_confidence_level_error,
+            F64Properties{
+                .desc = "Magnetometer confidence level for error threshold",
+                .bounds = Bounds<double>::ClosedInterval(0.5, 1.0)}),
+        Describe(
+            "max_sum_error_variance", &Config::max_sum_error_variance,
+            F64Properties{.desc = "Maximum allowable sum of error variances",
+                          .bounds = Bounds<double>::GreaterThan(0.0)}));
+  };
 
   ErrorStateKalmanFilter(std::shared_ptr<QuadrotorModel> model,
                          std::shared_ptr<Config> config,

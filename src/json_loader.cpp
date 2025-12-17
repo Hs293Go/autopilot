@@ -127,6 +127,29 @@ VisitResult JsonLoader::safeVisit(std::string_view key,
   return {};
 }
 
+VisitResult JsonLoader::safeVisit(std::string_view key, ConfigBase& config,
+                                  const Properties& props) {
+  auto* node = node_stack_.top();
+  if (!node->contains(key)) {
+    return MaybePreferUserProvided(key, props.prefer_user_provided);
+  }
+
+  auto& child_node = node->at(std::string(key));
+  if (!child_node.is_object()) {
+    return {make_error_code(AutopilotErrc::kConfigTypeMismatch), key};
+  }
+
+  // PUSH: Enter the subsection
+  node_stack_.push(&child_node);
+
+  // RECURSE: The child config now safeVisits its fields against 'child_node'
+  VisitResult result;
+  result = config.accept(*this);
+  node_stack_.pop();
+
+  return result;
+}
+
 VisitResult JsonLoader::safeVisit(std::string_view key,
                                   std::shared_ptr<ConfigBase> config,
                                   const Properties& props) {
