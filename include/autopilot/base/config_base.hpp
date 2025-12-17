@@ -427,12 +427,6 @@ concept ConfigFactory = requires(const std::string& type) {
 template <typename Factory>
   requires ConfigFactory<Factory>
 struct Polymorphic final : ConfigBase {
-  // Polymorphic objects are likely held via shared pointers, so they can be
-  // directly visited by our visitor API
-  using SharedPtr = std::shared_ptr<Polymorphic<Factory>>;
-
-  /// Create a new Polymorphic Config instance
-  static SharedPtr Make() { return std::make_shared<Polymorphic<Factory>>(); }
   std::string name() const override { return "Polymorphic"; }
 
   std::string type;

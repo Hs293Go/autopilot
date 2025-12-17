@@ -103,19 +103,19 @@ class CascadeControllerConfig
   }
 
   const std::string& position_controller_type() const {
-    return position_controller_->type;
+    return position_controller_.type;
   }
 
   std::shared_ptr<ConfigBase> position_controller_cfg() const {
-    return position_controller_->config;
+    return position_controller_.config;
   }
 
   const std::string& attitude_controller_type() const {
-    return attitude_controller_->type;
+    return attitude_controller_.type;
   }
 
   std::shared_ptr<ConfigBase> attitude_controller_cfg() const {
-    return attitude_controller_->config;
+    return attitude_controller_.config;
   }
 
  private:
@@ -124,10 +124,8 @@ class CascadeControllerConfig
   double posctl_dt_ = 0.02;
   double attctl_dt_ = 0.001;
 
-  Polymorphic<PositionControllerFactory>::SharedPtr position_controller_ =
-      Polymorphic<PositionControllerFactory>::Make();
-  Polymorphic<AttitudeControllerFactory>::SharedPtr attitude_controller_ =
-      Polymorphic<AttitudeControllerFactory>::Make();
+  Polymorphic<PositionControllerFactory> position_controller_;
+  Polymorphic<AttitudeControllerFactory> attitude_controller_;
 
   static constexpr auto kDescriptors = std::make_tuple(
       Describe("position_controller_dt", &CascadeControllerConfig::posctl_dt_,

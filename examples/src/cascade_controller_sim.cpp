@@ -22,8 +22,7 @@ struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
   std::string name() const override { return "SimConfig"; }
   std::shared_ptr<ap::QuadrotorModelCfg> quadrotor_model =
       std::make_shared<ap::QuadrotorModelCfg>();
-  ap::Polymorphic<ap::ControllerFactory>::SharedPtr controller =
-      ap::Polymorphic<ap::ControllerFactory>::Make();
+  ap::Polymorphic<ap::ControllerFactory> controller;
 
   std::shared_ptr<ap::ErrorStateKalmanFilter::Config> eskf =
       std::make_shared<ap::ErrorStateKalmanFilter::Config>();
@@ -68,7 +67,7 @@ int main() {
 
   auto model = std::make_shared<ap::QuadrotorModel>(cfg.quadrotor_model);
 
-  auto ctrl = ap::ControllerFactory::Create(cfg.controller->config, model);
+  auto ctrl = ap::ControllerFactory::Create(cfg.controller.config, model);
 
   auto est = std::make_shared<ap::ErrorStateKalmanFilter>(model, cfg.eskf);
 
