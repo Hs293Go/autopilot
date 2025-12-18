@@ -38,7 +38,7 @@ class OutlierClassifier {
 };
 
 struct ImuNoiseConfig final : public ReflectiveConfigBase<ImuNoiseConfig> {
-  std::string name() const override { return "ImuNoiseConfig"; }
+  std::string_view name() const override { return "ImuNoiseConfig"; }
   double gyro_noise_density = deg2rad(2.0 * 35.0 / 3600.0);
   double gyro_random_walk = deg2rad(2.0 * 4.0 / 3600.0);
   double gyro_bias_correlation_time = 1.0e+3;
@@ -82,7 +82,7 @@ struct ImuNoiseConfig final : public ReflectiveConfigBase<ImuNoiseConfig> {
 };
 
 struct GpsNoiseConfig final : public ReflectiveConfigBase<GpsNoiseConfig> {
-  std::string name() const override { return "GpsNoiseConfig"; }
+  std::string_view name() const override { return "GpsNoiseConfig"; }
 
   double hor_pos_std_dev = 3.0;
   double ver_pos_std_dev = 6.0;

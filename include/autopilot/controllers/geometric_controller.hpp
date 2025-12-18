@@ -14,7 +14,7 @@ class GeometricPositionController : public PositionControllerBase {
 
   // 1. Matched Config Struct (Distinct)
   struct Config final : ReflectiveConfigBase<Config> {
-    std::string name() const override { return kName; }
+    std::string_view name() const override { return kName; }
 
     // Gains (PD style, as this acts on R^3 errors)
     Eigen::Vector3d kp = Eigen::Vector3d::Constant(1.0);
@@ -59,7 +59,7 @@ class GeometricAttitudeController : public AttitudeControllerBase {
   static constexpr char kName[] = "GeometricAttitude";
   // 1. Matched Config Struct (Distinct)
   struct Config final : ReflectiveConfigBase<Config> {
-    std::string name() const override { return kName; }
+    std::string_view name() const override { return kName; }
 
     // Gains (Geometric style, acting on SO(3) metric)
     Eigen::Vector3d kR = Eigen::Vector3d::Constant(1.0);

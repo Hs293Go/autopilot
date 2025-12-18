@@ -98,7 +98,7 @@ class GenericFactory {
     }
 
     // Use the config's self-reported name to find the right factory
-    std::string key = config->name();
+    std::string key(config->name());
 
     auto it = creators().find(key);
     if (it == creators().end()) {

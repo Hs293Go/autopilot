@@ -39,7 +39,7 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
     double mag_confidence_level_error = 0.95;  // 3-sigma
     double max_sum_error_variance = 1e6;
 
-    std::string name() const override { return "ErrorStateKalmanFilterConfig"; }
+    std::string_view name() const override { return "ErrorStateKalmanFilterConfig"; }
 
     static constexpr auto kDescriptors = std::make_tuple(
         Describe(

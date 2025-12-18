@@ -18,7 +18,7 @@ struct SensorData {
 class QuadrotorSimulator : public Module {
  public:
   struct Config final : public ReflectiveConfigBase<Config> {
-    std::string name() const override { return "QuadrotorSimulatorConfig"; }
+    std::string_view name() const override { return "QuadrotorSimulatorConfig"; }
     ImuNoiseConfig imu;
     GpsNoiseConfig gps;
     static constexpr auto kDescriptors = std::make_tuple(

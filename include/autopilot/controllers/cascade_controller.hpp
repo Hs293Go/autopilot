@@ -77,7 +77,7 @@ static constexpr char const* kCascadeControllerKey = "CascadeController";
 class CascadeControllerConfig
     : public ReflectiveConfigBase<CascadeControllerConfig> {
  public:
-  std::string name() const override { return kCascadeControllerKey; }
+  std::string_view name() const override { return kCascadeControllerKey; }
 
   double posctl_dt() const { return posctl_dt_; }
 
@@ -148,7 +148,7 @@ class CascadeController : public ControllerBase {
  public:
   using Config = CascadeControllerConfig;
 
-  std::string name() const override { return kCascadeControllerKey; }
+  std::string_view name() const override { return kCascadeControllerKey; }
 
   CascadeController(const std::shared_ptr<QuadrotorModel>& model,
                     std::shared_ptr<CascadeControllerConfig> config,

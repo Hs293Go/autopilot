@@ -18,7 +18,7 @@ static constexpr double kDefaultRollPitchInertia = 0.005;
 static constexpr double kDefaultYawInertia = 0.009;
 
 struct InertiaElements final : ReflectiveConfigBase<InertiaElements> {
-  std::string name() const override { return "InertiaConfig"; }
+  std::string_view name() const override { return "InertiaConfig"; }
 
   InertiaElements() = default;
 
@@ -60,7 +60,7 @@ enum class MotorLayout {
 
 class QuadrotorModelCfg final : public ReflectiveConfigBase<QuadrotorModelCfg> {
  public:
-  std::string name() const override { return "QuadrotorModelCfg"; }
+  std::string_view name() const override { return "QuadrotorModelCfg"; }
 
   [[nodiscard]] double mass() const { return mass_; }
 

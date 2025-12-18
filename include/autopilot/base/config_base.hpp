@@ -344,7 +344,7 @@ struct ConfigBase {
 
   // Returns the unique key (e.g., "GeometricPosition") associated with this
   // config
-  [[nodiscard]] virtual std::string name() const = 0;
+  [[nodiscard]] virtual std::string_view name() const = 0;
 
   virtual VisitResult accept(ConfigVisitor& visitor) = 0;
 
@@ -427,7 +427,7 @@ concept ConfigFactory = requires(const std::string& type) {
 template <typename Factory>
   requires ConfigFactory<Factory>
 struct Polymorphic final : ConfigBase {
-  std::string name() const override { return "Polymorphic"; }
+  std::string_view name() const override { return "Polymorphic"; }
 
   std::string type;
   std::shared_ptr<ConfigBase> config;

@@ -19,7 +19,7 @@ static const rrc::Color kGreen(0, 255, 0);
 static const rrc::Color kBlue(0, 0, 255);
 
 struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
-  std::string name() const override { return "SimConfig"; }
+  std::string_view name() const override { return "SimConfig"; }
   std::shared_ptr<ap::QuadrotorModelCfg> quadrotor_model =
       std::make_shared<ap::QuadrotorModelCfg>();
   ap::Polymorphic<ap::ControllerFactory> controller;
