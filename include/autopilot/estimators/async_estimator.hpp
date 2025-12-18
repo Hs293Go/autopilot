@@ -1,13 +1,15 @@
-#ifndef INCLUDE_AUTOPILOT_ASYNC_ESTIMATOR_BASE_HPP_
-#define INCLUDE_AUTOPILOT_ASYNC_ESTIMATOR_BASE_HPP_
+#ifndef AUTOPILOT_ESTIMATORS_ASYNC_ESTIMATOR_HPP_
+#define AUTOPILOT_ESTIMATORS_ASYNC_ESTIMATOR_HPP_
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <shared_mutex>
 #include <thread>
 
-#include "autopilot/base/estimator_base.hpp"
+#include "autopilot/estimators/estimator_driver_base.hpp"
 
 namespace autopilot {
 // A type-erased container for the priority queue
@@ -22,10 +24,9 @@ struct QueuedPacket {
   }
 };
 
-class AsyncEstimator : public EstimatorBase {
+class AsyncEstimator final : public EstimatorDriverBase {
  public:
-  AsyncEstimator(const std::string& name, std::shared_ptr<QuadrotorModel> model,
-                 std::shared_ptr<spdlog::logger> = nullptr);
+  AsyncEstimator(std::shared_ptr<EstimatorBase>&& estimator);
 
   void start() override;
 
@@ -39,35 +40,51 @@ class AsyncEstimator : public EstimatorBase {
   // ---------------------------------------------------------------------------
   void push(const std::shared_ptr<const EstimatorData>& data) override;
 
-  // ---------------------------------------------------------------------------
-  // 2. Query (Runs on Control Thread)
-  // ---------------------------------------------------------------------------
+  // 2. Processing (Worker Thread)
+  std::error_code processInput(
+      const std::shared_ptr<const InputBase>& input) override;
+
+  std::error_code processMeasurement(
+      const std::shared_ptr<const MeasurementBase>& meas) override;
+
+  // 3. Query (Control Thread)
   std::expected<QuadrotorState, std::error_code> getStateAt(
-      double timestamp) const override;
+      double timestamp_s = 0.0) const override;
 
- protected:
-  // Derived classes implement the specific math here
-  // virtual void processInput(const InputBase& u) = 0;
-  // virtual void processMeasurement(const MeasurementBase& z) = 0;
+  Eigen::Ref<const Eigen::MatrixXd> getCovariance() const override;
 
-  // Lightweight kinematic prediction for the query path
-  virtual QuadrotorState extrapolateState(const QuadrotorState& state,
-                                          double t) const = 0;
+  // 4. Lifecycle
+  std::error_code reset(
+      const QuadrotorState& initial_state,
+      const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) override;
 
-  // Direct access for derived classes to update the "Official" state
-  void updateCommittedState(const QuadrotorState& new_state) {
-    std::unique_lock lock(state_mutex_);  // Writer lock
-    committed_state_ = new_state;
-  }
+  [[nodiscard]] bool isHealthy() const override;
 
  private:
   // ---------------------------------------------------------------------------
   // 3. Maintenance (Runs on Worker Thread)
   // ---------------------------------------------------------------------------
   void workerLoop();
+  void updateCommittedState(const QuadrotorState& new_state);
+
+  // Helper for getStateAt
+  QuadrotorState extrapolateState(const QuadrotorState& state, double t) const;
+
+  // --- State Management ---
+  // The Driver OWNS the memory for the algorithm
+  std::shared_ptr<EstimatorContext> context_;
+  // Protects 'context_' from concurrent access (Worker Write vs Control Read)
+  mutable std::mutex context_mutex_;
+
+  // Worker-local state (no lock needed inside worker)
+  QuadrotorState nominal_state_;
+
+  // Committed state (Shared between Worker Write and Control Read)
+  mutable std::shared_mutex state_mutex_;
+  QuadrotorState committed_state_;
 
   // Threading Primitives
-  std::atomic<bool> running_;
+  std::atomic_bool running_ = false;
   std::jthread worker_;
 
   std::mutex queue_mutex_;
@@ -77,11 +94,7 @@ class AsyncEstimator : public EstimatorBase {
 
   std::condition_variable drain_cv_;
   bool busy_ = false;
-
-  mutable std::shared_mutex state_mutex_;  // Allows multiple readers
-                                           // (controllers), one writer (worker)
-  QuadrotorState committed_state_;
 };
 }  // namespace autopilot
 
-#endif  // INCLUDE_AUTOPILOT_ASYNC_ESTIMATOR_BASE_HPP_
+#endif  // AUTOPILOT_ESTIMATORS_ASYNC_ESTIMATOR_HPP_

@@ -1,6 +1,7 @@
 #ifndef AUTOPILOT_BASE_HPP_
 #define AUTOPILOT_BASE_HPP_
 
+#include <memory>
 #include <variant>
 
 #include "autopilot/core/definitions.hpp"

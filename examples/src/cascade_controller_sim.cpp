@@ -4,6 +4,7 @@
 
 #include "autopilot/controllers/cascade_controller.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
+#include "autopilot/estimators/async_estimator.hpp"
 #include "autopilot/estimators/eskf.hpp"
 #include "autopilot/extensions/json_loader.hpp"
 #include "autopilot/extensions/pretty_printer.hpp"
@@ -69,7 +70,8 @@ int main() {
 
   auto ctrl = ap::ControllerFactory::Create(cfg.controller.config, model);
 
-  auto est = std::make_shared<ap::ErrorStateKalmanFilter>(model, cfg.eskf);
+  auto est_alg = std::make_shared<ap::ErrorStateKalmanFilter>(model, cfg.eskf);
+  auto est = std::make_shared<ap::AsyncEstimator>(est_alg);
 
   auto sim = std::make_shared<ap::QuadrotorSimulator>(model, cfg.simulator);
 

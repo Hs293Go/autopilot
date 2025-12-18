@@ -77,6 +77,7 @@ enum class AutopilotErrc {
   kNumericalInstability,
   kNumericalOutlier,
   kLinalgError,
+  kEstimationContextMismatch,
   kEstimatorUninitialized,
   kConfigKeyMissing,
   kConfigValueUninitialized,

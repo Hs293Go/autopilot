@@ -1,6 +1,7 @@
 #include "validation/mission_runner.hpp"
 
 #include <thread>
+#include <utility>
 
 #include "fmt/ranges.h"
 
@@ -8,7 +9,7 @@ namespace autopilot {
 
 MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<ControllerBase> ctrl,
-                             std::shared_ptr<EstimatorBase> est,
+                             std::shared_ptr<EstimatorDriverBase> est,
                              std::span<const MissionWaypoint> mission,
                              Config config,
                              std::shared_ptr<spdlog::logger> logger)
@@ -16,7 +17,7 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
       ctrl_(std::move(ctrl)),
       est_(std::move(est)),
       mission_(mission.begin(), mission.end()),
-      cfg_(config),
+      cfg_(std::move(config)),
       logger_(logger ? std::move(logger) : spdlog::default_logger()) {
   if (est_) {
     logger_->info("Estimator attached: {}", est_->name());

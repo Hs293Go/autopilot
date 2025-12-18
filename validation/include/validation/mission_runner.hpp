@@ -6,7 +6,7 @@
 
 #include "autopilot/base/config_base.hpp"
 #include "autopilot/base/controller_base.hpp"
-#include "autopilot/base/estimator_base.hpp"
+#include "autopilot/estimators/estimator_driver_base.hpp"
 #include "autopilot/simulator/quadrotor_simulator.hpp"
 
 namespace autopilot {
@@ -50,7 +50,7 @@ class MissionRunner {
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                 std::shared_ptr<ControllerBase> ctrl,
-                std::shared_ptr<EstimatorBase> est,
+                std::shared_ptr<EstimatorDriverBase> est,
                 std::span<const MissionWaypoint> mission,
                 Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
@@ -70,7 +70,7 @@ class MissionRunner {
   std::shared_ptr<QuadrotorSimulator> sim_;
   std::shared_ptr<ControllerBase> ctrl_;
 
-  std::shared_ptr<EstimatorBase> est_ = nullptr;
+  std::shared_ptr<EstimatorDriverBase> est_ = nullptr;
   std::vector<MissionWaypoint> mission_;
   Config cfg_;
   std::shared_ptr<spdlog::logger> logger_;

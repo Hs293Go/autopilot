@@ -1,15 +1,14 @@
 #include "autopilot/estimators/async_estimator.hpp"
 
-#include <shared_mutex>
 #include <utility>
 
 namespace autopilot {
 
-AsyncEstimator::AsyncEstimator(const std::string& name,
-                               std::shared_ptr<QuadrotorModel> model,
-                               std::shared_ptr<spdlog::logger> logger)
-    : EstimatorBase(fmt::format("AsyncEstimator.{}", name), std::move(model),
-                    std::move(logger)) {}
+AsyncEstimator::AsyncEstimator(std::shared_ptr<EstimatorBase>&& estimator)
+    : EstimatorDriverBase(std::move(estimator)) {
+  // 1. Factory: Allocate the opaque memory context for the specific algorithm
+  context_ = estimator_->createContext();
+}
 
 AsyncEstimator::~AsyncEstimator() {
   running_ = false;
@@ -17,8 +16,10 @@ AsyncEstimator::~AsyncEstimator() {
 }
 
 void AsyncEstimator::start() {
-  running_ = true;
-  worker_ = std::jthread(&AsyncEstimator::workerLoop, this);
+  if (!running_) {
+    running_ = true;
+    worker_ = std::jthread(&AsyncEstimator::workerLoop, this);
+  }
 }
 
 void AsyncEstimator::wait() {
@@ -29,7 +30,7 @@ void AsyncEstimator::wait() {
 
 void AsyncEstimator::push(const std::shared_ptr<const EstimatorData>& data) {
   {
-    std::lock_guard<std::mutex> lock(queue_mutex_);
+    std::scoped_lock lock(queue_mutex_);
     // Wrap in packet for sorting
     queue_.emplace(data->timestamp_secs(), data);
   }
@@ -54,6 +55,39 @@ std::expected<QuadrotorState, std::error_code> AsyncEstimator::getStateAt(
   return belief_snapshot;
 }
 
+std::error_code AsyncEstimator::processInput(
+    const std::shared_ptr<const InputBase>& input) {
+  // Lock Context (Write Access)
+  std::scoped_lock lock(context_mutex_);
+
+  // Delegate Math to Core
+  // Note: nominal_state_ is updated IN PLACE by the core if successful?
+  // Your interface defined predict(state&, ...) -> error_code.
+  // This implies the Core modifies the state reference passed to it.
+
+  if (auto ec = estimator_->predict(nominal_state_, *context_, input)) {
+    return ec;
+  }
+
+  // Publish
+  updateCommittedState(nominal_state_);
+  return {};
+}
+
+std::error_code AsyncEstimator::processMeasurement(
+    const std::shared_ptr<const MeasurementBase>& meas) {
+  // Lock Context (Write Access)
+  std::lock_guard<std::mutex> lock(context_mutex_);
+
+  if (auto ec = estimator_->correct(nominal_state_, *context_, meas)) {
+    return ec;
+  }
+
+  // Publish
+  updateCommittedState(nominal_state_);
+  return {};
+}
+
 void AsyncEstimator::workerLoop() {
   while (running_) {
     std::unique_lock lock(queue_mutex_);
@@ -71,32 +105,68 @@ void AsyncEstimator::workerLoop() {
 
     // Dispatch based on type (Input vs Measurement)
     // We use dynamic_cast because we erased the type in the queue
+    std::error_code ec;
     switch (packet.data->type()) {
       case EstimatorData::Type::kInput:
-        if (auto ec = processInput(
-                std::static_pointer_cast<const InputBase>(packet.data))) {
-          logger()->error("AsyncEstimator processInput failed: {}",
-                          ec.message());
-        }
+        ec = processInput(
+            std::static_pointer_cast<const InputBase>(packet.data));
         break;
       case EstimatorData::Type::kMeasurement:
-        if (auto ec = processMeasurement(
-                std::static_pointer_cast<const MeasurementBase>(packet.data))) {
-          logger()->error("AsyncEstimator processMeasurement failed: {}",
-                          ec.message());
-        }
-        break;
-      default:
-        logger()->error("AsyncEstimator received unknown data type");
+        ec = processMeasurement(
+            std::static_pointer_cast<const MeasurementBase>(packet.data));
         break;
     }
 
+    if (ec) {
+      logger()->error("AsyncEstimator error: {}", ec.message());
+    }
+
+    // Cleanup
     lock.lock();
     busy_ = false;
     if (queue_.empty()) {
       drain_cv_.notify_all();
     }
   }
+}
+
+void AsyncEstimator::updateCommittedState(const QuadrotorState& new_state) {
+  std::unique_lock lock(state_mutex_);
+  committed_state_ = new_state;
+}
+
+QuadrotorState AsyncEstimator::extrapolateState(const QuadrotorState& state,
+                                                double t) const {
+  // Lock Context (Read Access to Biases/Cache inside context)
+  std::lock_guard<std::mutex> lock(context_mutex_);
+  return estimator_->extrapolate(state, *context_, t);
+}
+
+Eigen::Ref<const Eigen::MatrixXd> AsyncEstimator::getCovariance() const {
+  std::lock_guard<std::mutex> lock(context_mutex_);
+  return context_->covariance();
+}
+
+std::error_code AsyncEstimator::reset(
+    const QuadrotorState& initial_state,
+    const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) {
+  // Reset all states
+  {
+    std::unique_lock state_lock(state_mutex_);
+    committed_state_ = initial_state;
+  }
+
+  {
+    std::lock_guard<std::mutex> ctx_lock(context_mutex_);
+    nominal_state_ = initial_state;
+    // Core resets the context (P, biases, initialization flags)
+    return estimator_->reset(*context_, initial_state, initial_cov);
+  }
+}
+
+bool AsyncEstimator::isHealthy() const {
+  std::lock_guard<std::mutex> lock(context_mutex_);
+  return estimator_->isHealthy(*context_);
 }
 
 }  // namespace autopilot

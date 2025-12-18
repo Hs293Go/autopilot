@@ -1,10 +1,20 @@
 cmake_minimum_required(VERSION 3.31)
 project(autopilot)
 
-find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(Boost REQUIRED)
-find_package(nlohmann_json REQUIRED)
+include(FetchContent)
+
+FetchContent_Declare(
+  Eigen3
+  URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.bz2
+      SYSTEM FIND_PACKAGE_ARGS 3.4 CONFIG)
+
+FetchContent_Declare(
+  nlohmann_json
+  URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+      SYSTEM FIND_PACKAGE_ARGS 3.12 CONFIG)
+FetchContent_MakeAvailable(nlohmann_json Eigen3)
 
 add_library(autopilot_autopilot)
 target_sources(
@@ -52,9 +62,8 @@ target_sources(
   PRIVATE src/json_loader.cpp src/pretty_printer.cpp
   PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
          include/autopilot/extensions/json_loader.hpp)
-target_link_libraries(
-  autopilot_extensions PUBLIC autopilot::autopilot nlohmann_json::nlohmann_json
-                              fmt::fmt)
+target_link_libraries(autopilot_extensions PUBLIC autopilot::autopilot
+                                                  nlohmann_json::nlohmann_json)
 add_library(autopilot::extensions ALIAS autopilot_extensions)
 
 option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests" ON)

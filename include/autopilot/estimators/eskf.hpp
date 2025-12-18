@@ -1,7 +1,7 @@
 #ifndef AUTOPILOT_ESKF_HPP_
 #define AUTOPILOT_ESKF_HPP_
 
-#include "autopilot/estimators/async_estimator.hpp"
+#include "autopilot/base/estimator_base.hpp"
 #include "autopilot/simulator/sensors.hpp"
 
 namespace autopilot {
@@ -23,9 +23,27 @@ constexpr int kNumErrorStates =
 using ErrorState = Eigen::Vector<double, kNumErrorStates>;
 using ErrorCov = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
 
-class ErrorStateKalmanFilter : public AsyncEstimator {
+class ErrorStateKalmanFilter final : public EstimatorBase {
  public:
   static constexpr char kName[] = "ErrorStateKalmanFilter";
+
+  struct Context : EstimatorContext {
+    std::string_view coreName() const override { return kName; }
+
+    Eigen::Ref<const Eigen::MatrixXd> covariance() const override { return P; }
+
+    bool isInitialized() const override { return is_initialized; }
+
+    ErrorCov P = ErrorCov::Identity();
+    Eigen::Vector3d accel_bias = Eigen::Vector3d::Zero();
+    Eigen::Vector3d gyro_bias = Eigen::Vector3d::Zero();
+
+    // Cache for extrapolation
+    Eigen::Vector3d last_accel = Eigen::Vector3d::Zero();
+    Eigen::Vector3d last_gyro = Eigen::Vector3d::Zero();
+
+    bool is_initialized = false;
+  };
 
   struct Config final : ReflectiveConfigBase<Config> {
     // Process Noise (Continuous Time)
@@ -39,7 +57,9 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
     double mag_confidence_level_error = 0.95;  // 3-sigma
     double max_sum_error_variance = 1e6;
 
-    std::string_view name() const override { return "ErrorStateKalmanFilterConfig"; }
+    std::string_view name() const override {
+      return "ErrorStateKalmanFilterConfig";
+    }
 
     static constexpr auto kDescriptors = std::make_tuple(
         Describe(
@@ -86,27 +106,29 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
                          std::shared_ptr<Config> config,
                          std::shared_ptr<spdlog::logger> logger = nullptr);
 
+  std::string_view name() const override { return kName; }
+
+  std::unique_ptr<EstimatorContext> createContext() const override;
   // Lifecycle
   std::error_code reset(
-      const QuadrotorState& initial_state,
-      const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) override;
+      EstimatorContext& context, const QuadrotorState& initial_state,
+      const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const override;
 
-  bool isHealthy() const override;
+  bool isHealthy(const EstimatorContext& context) const override;
 
-  Eigen::Ref<const Eigen::MatrixXd> getCovariance() const override {
-    return P_;
-  }
-
- protected:
   // Core Async Logic (Worker Thread)
-  std::error_code processInput(
-      const std::shared_ptr<const InputBase>& u) override;
-  std::error_code processMeasurement(
-      const std::shared_ptr<const MeasurementBase>& z) override;
+  std::error_code predict(
+      QuadrotorState& state, EstimatorContext& context,
+      const std::shared_ptr<const InputBase>& u) const override;
+
+  std::error_code correct(
+      QuadrotorState& state, EstimatorContext& context,
+      const std::shared_ptr<const MeasurementBase>& z) const override;
 
   // Latency Compensation (Control Thread)
-  QuadrotorState extrapolateState(const QuadrotorState& state,
-                                  double t) const override;
+  QuadrotorState extrapolate(const QuadrotorState& state,
+                             const EstimatorContext& context,
+                             double t) const override;
 
  private:
   template <int N>
@@ -118,53 +140,51 @@ class ErrorStateKalmanFilter : public AsyncEstimator {
   template <int N>
   InnovStats<N> computeMahalanobisDistance(
       const Eigen::Vector<double, N>& innovation,
-      const Eigen::Matrix<double, N, N>& innov_cov);
+      const Eigen::Matrix<double, N, N>& innov_cov) const;
 
   void reportObservationStats(
       const Eigen::Ref<const Eigen::MatrixXd>& innov_cov,
       const Eigen::Ref<const Eigen::VectorXd>& expectation,
-      const Eigen::Ref<const Eigen::VectorXd>& observation);
+      const Eigen::Ref<const Eigen::VectorXd>& observation) const;
 
   template <typename Fn>
   bool checkOutlier(double m2_dist, const OutlierClassifier& classifier,
-                    Fn reporter);
+                    Fn reporter) const;
 
   // Internal Prediction Implementations
   // Returns true if state was updated, false if skipped (e.g. dt=0)
   std::error_code predictKinematics(QuadrotorState& state,
+                                    const Context& context,
                                     const Eigen::Vector3d& accel,
                                     const Eigen::Vector3d& gyro,
                                     double dt) const;
 
-  std::error_code predictCovariance(const Eigen::Vector3d& accel,
-                                    const Eigen::Vector3d& gyro, double dt);
+  std::error_code predictCovariance(const QuadrotorState& state,
+                                    Context& context,
+                                    const Eigen::Vector3d& accel,
+                                    const Eigen::Vector3d& gyro,
+                                    double dt) const;
 
   // Correction Implementations
   // Returns success/failure code
-  std::error_code correctGps(const std::shared_ptr<const class GpsData>& z);
-  std::error_code correctMag(const std::shared_ptr<const class MagData>& z);
+  std::error_code correctGps(
+      QuadrotorState& state, Context& context,
+      const std::shared_ptr<const class GpsData>& z) const;
+  std::error_code correctMag(
+      QuadrotorState& state, Context& context,
+      const std::shared_ptr<const class MagData>& z) const;
 
   // Helpers
-  void injectError(const ErrorState& dx);
-  void resetError(const ErrorState& dx);
+  void injectError(QuadrotorState& state, Context& context,
+                   const ErrorState& dx) const;
+  void resetCovariance(Context& context, const ErrorState& dx) const;
 
-  std::error_code setError(AutopilotErrc ec);
+  std::error_code setError(AutopilotErrc ec) const;
 
   // Configuration & State
   std::shared_ptr<Config> config_;
-  QuadrotorState nominal_state_;
-  ErrorCov P_ = ErrorCov::Identity();
-  std::atomic_bool initialized_ = false;
-  std::atomic_bool has_previous_error_ = false;
 
-  mutable std::mutex extrapolation_mutex_;
-  // Internal Biases (Not in QuadrotorState)
-  Eigen::Vector3d accel_bias_ = Eigen::Vector3d::Zero();
-  Eigen::Vector3d gyro_bias_ = Eigen::Vector3d::Zero();
-
-  // Cache for extrapolation
-  Eigen::Vector3d last_accel_ = Eigen::Vector3d::Zero();
-  Eigen::Vector3d last_gyro_ = Eigen::Vector3d::Zero();
+  mutable std::atomic_bool has_previous_error_ = false;
 
   OutlierClassifier gps_outlier_classifier_;
   OutlierClassifier mag_outlier_classifier_;
