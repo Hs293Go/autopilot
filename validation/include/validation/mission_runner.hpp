@@ -20,6 +20,7 @@ struct History {
   QuadrotorState real_state;
   QuadrotorState estimated_state;
   QuadrotorCommand command;
+  Eigen::VectorXd est_variance = Eigen::VectorXd::Zero(15);
 };
 
 struct SimulationResult {

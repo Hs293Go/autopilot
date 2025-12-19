@@ -113,7 +113,7 @@ int main() {
   std::vector<RerunHistory> hist;
   std::ranges::transform(
       result.hist, std::back_inserter(hist), [](const autopilot::History& it) {
-        const auto& [real_state, est_state, cmd] = it;
+        const auto& [real_state, est_state, cmd, _] = it;
         const Eigen::Vector3f p =
             real_state.odometry.pose().translation().cast<float>();
         const Eigen::Quaternionf q =
@@ -206,15 +206,22 @@ int main() {
     rec.log("commands/force/z",
             rr::Scalars(result.hist[i].real_state.wrench.force().z()));
 
-    rec.log("sensors/body_rate/x",
-            rr::Scalars(
-                result.hist[i].estimated_state.odometry.twist().angular().x()));
-    rec.log("sensors/body_rate/y",
-            rr::Scalars(
-                result.hist[i].estimated_state.odometry.twist().angular().y()));
-    rec.log("sensors/body_rate/z",
-            rr::Scalars(
-                result.hist[i].estimated_state.odometry.twist().angular().z()));
+    const Eigen::Vector3f position_est_error =
+        (result.hist[i].real_state.odometry.pose().translation() -
+         result.hist[i].estimated_state.odometry.pose().translation())
+            .cwiseAbs()
+            .cast<float>();
+    const Eigen::Vector3f position_est_3sigma =
+        3.0 * result.hist[i]
+                  .est_variance(Eigen::seqN(0, 3))
+                  .cwiseSqrt()
+                  .cast<float>();
+    rec.log("estimation/error/x", rr::Scalars(position_est_error.x()));
+    rec.log("estimation/error/y", rr::Scalars(position_est_error.y()));
+    rec.log("estimation/error/z", rr::Scalars(position_est_error.z()));
+    rec.log("estimation/variance/x", rr::Scalars(position_est_3sigma.x()));
+    rec.log("estimation/variance/y", rr::Scalars(position_est_3sigma.y()));
+    rec.log("estimation/variance/z", rr::Scalars(position_est_3sigma.z()));
   }
 
   spdlog::info("Done.");

@@ -30,8 +30,8 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::span<const MissionWaypoint> mission,
                              Config config,
                              std::shared_ptr<spdlog::logger> logger)
-    : MissionRunner(std::move(sim), std::move(ctrl), nullptr, mission, config,
-                    std::move(logger)) {}
+    : MissionRunner(std::move(sim), std::move(ctrl), nullptr, mission,
+                    std::move(config), std::move(logger)) {}
 
 void MissionRunner::pushEstimatorData(double& last_gps_time, double curr_time) {
   auto imu = sim_->getImuMeasurement(cfg_.dt_sim);
@@ -168,9 +168,18 @@ SimulationResult MissionRunner::run() {
 
     // 4. Record
     res.time.push_back(state.timestamp_secs);
-    res.hist.push_back(History{.real_state = state,
-                               .estimated_state = state_est,
-                               .command = sp_buf[0]});
+    if (est_) {
+      res.hist.push_back(History{
+          .real_state = state,
+          .estimated_state = state_est,
+          .command = sp_buf[0],
+          .est_variance = est_->getCovariance().diagonal(),
+      });
+    } else {
+      res.hist.push_back(History{.real_state = state,
+                                 .estimated_state = state_est,
+                                 .command = sp_buf[0]});
+    }
     if (est_) {
       est_->wait();
     }
