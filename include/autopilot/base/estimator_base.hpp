@@ -67,7 +67,7 @@ struct EstimatorContext {
 
   virtual bool isInitialized() const = 0;
 
-  virtual Eigen::Ref<const Eigen::MatrixXd> covariance() const = 0;
+  virtual Eigen::MatrixXd covariance() const = 0;
 };
 
 class EstimatorBase : public Module {

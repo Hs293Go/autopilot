@@ -27,7 +27,7 @@ class EskfEstimator final : public EstimatorBase {
   struct Context : EstimatorContext {
     std::string_view coreName() const override { return kName; }
 
-    Eigen::Ref<const Eigen::MatrixXd> covariance() const override { return P; }
+    Eigen::MatrixXd covariance() const override { return P; }
 
     bool isInitialized() const override { return is_initialized; }
 
