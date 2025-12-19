@@ -16,28 +16,25 @@
 
 namespace autopilot {
 
-using ErrorCovUpdate = ErrorCov;
-
 // F = df(x, u, w)/dx
-using SystemJacobian = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
-using ProcNoiseCov = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
+using SystemJacobian = Eigen::Matrix<double, EskfEstimator::kNumErrorStates,
+                                     EskfEstimator::kNumErrorStates>;
+using ProcNoiseCov = Eigen::Matrix<double, EskfEstimator::kNumErrorStates,
+                                   EskfEstimator::kNumErrorStates>;
 
-using EnuPositionJacobian = Eigen::Matrix<double, 3, kNumErrorStates>;
-using EnuPositionKalmanGain = Eigen::Matrix<double, kNumErrorStates, 3>;
+using EnuPositionJacobian =
+    Eigen::Matrix<double, 3, EskfEstimator::kNumErrorStates>;
+using EnuPositionKalmanGain =
+    Eigen::Matrix<double, EskfEstimator::kNumErrorStates, 3>;
 
-using MagJacobian = Eigen::Matrix<double, 3, kNumErrorStates>;
-using MagKalmanGain = Eigen::Matrix<double, kNumErrorStates, 3>;
-
-// Covariance of the attitude reset operation,
-// i.e. the G in P(4:7, 4:7) = G * P(4:7, 4:7) * G.'
-using RotationErrorResetCov =
-    Eigen::Matrix<double, kRotationError.size(), kRotationError.size()>;
+using MagJacobian = Eigen::Matrix<double, 3, EskfEstimator::kNumErrorStates>;
+using MagKalmanGain = Eigen::Matrix<double, EskfEstimator::kNumErrorStates, 3>;
 
 static const boost::math::chi_squared kDist(3);
 
-ErrorStateKalmanFilter::ErrorStateKalmanFilter(
-    std::shared_ptr<QuadrotorModel> model, std::shared_ptr<Config> config,
-    std::shared_ptr<spdlog::logger> logger)
+EskfEstimator::EskfEstimator(std::shared_ptr<QuadrotorModel> model,
+                             std::shared_ptr<Config> config,
+                             std::shared_ptr<spdlog::logger> logger)
     : EstimatorBase(kName, std::move(model), std::move(logger)),
       config_(std::move(config)),
       gps_outlier_classifier_(
@@ -48,12 +45,11 @@ ErrorStateKalmanFilter::ErrorStateKalmanFilter(
           boost::math::quantile(kDist, config_->mag_confidence_level_warning),
           boost::math::quantile(kDist, config_->mag_confidence_level_error)) {}
 
-std::unique_ptr<EstimatorContext> ErrorStateKalmanFilter::createContext()
-    const {
+std::unique_ptr<EstimatorContext> EskfEstimator::createContext() const {
   return std::make_unique<Context>();
 }
 
-std::error_code ErrorStateKalmanFilter::reset(
+std::error_code EskfEstimator::reset(
     EstimatorContext& context, const QuadrotorState& initial_state,
     const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const {
   auto& ctx = static_cast<Context&>(context);
@@ -76,7 +72,7 @@ std::error_code ErrorStateKalmanFilter::reset(
   return {};
 }
 
-bool ErrorStateKalmanFilter::isHealthy(const EstimatorContext& context) const {
+bool EskfEstimator::isHealthy(const EstimatorContext& context) const {
   const auto& ctx = static_cast<const Context&>(context);
   // 2. Check Initialization (Frankenstate Guard)
   if (!context.isInitialized()) {
@@ -131,7 +127,7 @@ void reportPosteriorStats(const std::shared_ptr<spdlog::logger>& logger,
 // -----------------------------------------------------------------------------
 // WORKER THREAD: Input Handling
 // -----------------------------------------------------------------------------
-std::error_code ErrorStateKalmanFilter::predict(
+std::error_code EskfEstimator::predict(
     QuadrotorState& state, EstimatorContext& context,
     const std::shared_ptr<const InputBase>& u) const {
   if (!context.isInitialized()) {
@@ -178,7 +174,7 @@ std::error_code ErrorStateKalmanFilter::predict(
 // -----------------------------------------------------------------------------
 // WORKER THREAD: Measurement Handling
 // -----------------------------------------------------------------------------
-std::error_code ErrorStateKalmanFilter::correct(
+std::error_code EskfEstimator::correct(
     QuadrotorState& state, EstimatorContext& context,
     const std::shared_ptr<const MeasurementBase>& z) const {
   std::error_code ec;
@@ -204,9 +200,9 @@ std::error_code ErrorStateKalmanFilter::correct(
 // -----------------------------------------------------------------------------
 // CONTROL THREAD: Extrapolation
 // -----------------------------------------------------------------------------
-QuadrotorState ErrorStateKalmanFilter::extrapolate(
-    const QuadrotorState& state, const EstimatorContext& context,
-    double t) const {
+QuadrotorState EskfEstimator::extrapolate(const QuadrotorState& state,
+                                          const EstimatorContext& context,
+                                          double t) const {
   const auto& ctx = static_cast<const Context&>(context);
   QuadrotorState pred_state = state;
   double dt = t - state.timestamp_secs;
@@ -225,8 +221,7 @@ QuadrotorState ErrorStateKalmanFilter::extrapolate(
 }
 
 template <int N>
-ErrorStateKalmanFilter::InnovStats<N>
-ErrorStateKalmanFilter::computeMahalanobisDistance(
+EskfEstimator::InnovStats<N> EskfEstimator::computeMahalanobisDistance(
     const Eigen::Vector<double, N>& innovation,
     const Eigen::Matrix<double, N, N>& innov_cov) const {
   auto llt_fac = innov_cov.llt();
@@ -257,9 +252,9 @@ ErrorStateKalmanFilter::computeMahalanobisDistance(
 }
 
 template <typename Fn>
-bool ErrorStateKalmanFilter::checkOutlier(double m2_dist,
-                                          const OutlierClassifier& classifier,
-                                          Fn reporter) const {
+bool EskfEstimator::checkOutlier(double m2_dist,
+                                 const OutlierClassifier& classifier,
+                                 Fn reporter) const {
   switch (classifier.classify(m2_dist)) {
     case OutlierClassification::kNormal:
       break;
@@ -281,7 +276,7 @@ bool ErrorStateKalmanFilter::checkOutlier(double m2_dist,
   return true;
 }
 
-void ErrorStateKalmanFilter::reportObservationStats(
+void EskfEstimator::reportObservationStats(
     const Eigen::Ref<const Eigen::MatrixXd>& innov_cov,
     const Eigen::Ref<const Eigen::VectorXd>& expectation,
     const Eigen::Ref<const Eigen::VectorXd>& observation) const {
@@ -295,9 +290,11 @@ void ErrorStateKalmanFilter::reportObservationStats(
 // -----------------------------------------------------------------------------
 // Math: Kinematics (Shared by Predict and Extrapolate)
 // -----------------------------------------------------------------------------
-std::error_code ErrorStateKalmanFilter::predictKinematics(
-    QuadrotorState& state, const Context& context, const Eigen::Vector3d& accel,
-    const Eigen::Vector3d& gyro, double dt) const {
+std::error_code EskfEstimator::predictKinematics(QuadrotorState& state,
+                                                 const Context& context,
+                                                 const Eigen::Vector3d& accel,
+                                                 const Eigen::Vector3d& gyro,
+                                                 double dt) const {
   // 1. Bias Correction
   Eigen::Vector3d acc_unbiased = accel - context.accel_bias;
   Eigen::Vector3d gyr_unbiased = gyro - context.gyro_bias;
@@ -336,9 +333,11 @@ std::error_code ErrorStateKalmanFilter::predictKinematics(
 // -----------------------------------------------------------------------------
 // Math: Covariance Prediction
 // -----------------------------------------------------------------------------
-std::error_code ErrorStateKalmanFilter::predictCovariance(
-    const QuadrotorState& state, Context& context, const Eigen::Vector3d& accel,
-    const Eigen::Vector3d& gyro, double dt) const {
+std::error_code EskfEstimator::predictCovariance(const QuadrotorState& state,
+                                                 Context& context,
+                                                 const Eigen::Vector3d& accel,
+                                                 const Eigen::Vector3d& gyro,
+                                                 double dt) const {
   // Jacobian F
 
   const auto& q = state.odometry.pose().rotation();
@@ -402,7 +401,7 @@ std::error_code ErrorStateKalmanFilter::predictCovariance(
 // -----------------------------------------------------------------------------
 // Math: Corrections
 // -----------------------------------------------------------------------------
-std::error_code ErrorStateKalmanFilter::correctGps(
+std::error_code EskfEstimator::correctGps(
     QuadrotorState& state, Context& context,
     const std::shared_ptr<const GpsData>& z) const {
   // 1. Residual
@@ -419,9 +418,9 @@ std::error_code ErrorStateKalmanFilter::correctGps(
 
   // Invert S using LLT
   const auto [m2_dist, llt_fac] = computeMahalanobisDistance(y, innov_cov);
-  auto reporter = std::bind_front(
-      &ErrorStateKalmanFilter::reportObservationStats, this, innov_cov,
-      state.odometry.pose().translation(), z->position_enu);
+  auto reporter =
+      std::bind_front(&EskfEstimator::reportObservationStats, this, innov_cov,
+                      state.odometry.pose().translation(), z->position_enu);
   if (!checkOutlier(m2_dist, gps_outlier_classifier_, std::move(reporter))) {
     return setError(AutopilotErrc::kNumericalOutlier);
   }
@@ -462,7 +461,7 @@ std::error_code ErrorStateKalmanFilter::correctGps(
   return {};
 }
 
-std::error_code ErrorStateKalmanFilter::correctMag(
+std::error_code EskfEstimator::correctMag(
     QuadrotorState& state, Context& context,
     const std::shared_ptr<const MagData>& z) const {
   // Predict: b_body = R^T * b_ref
@@ -481,9 +480,8 @@ std::error_code ErrorStateKalmanFilter::correctMag(
   const auto [mahalanobis_distance, llt_fac] =
       computeMahalanobisDistance(y, innov_cov);
 
-  auto reporter =
-      std::bind_front(&ErrorStateKalmanFilter::reportObservationStats, this,
-                      innov_cov, b_pred, z->field_body);
+  auto reporter = std::bind_front(&EskfEstimator::reportObservationStats, this,
+                                  innov_cov, b_pred, z->field_body);
   if (!checkOutlier(mahalanobis_distance, mag_outlier_classifier_,
                     std::move(reporter))) {
     return setError(AutopilotErrc::kNumericalOutlier);
@@ -523,9 +521,8 @@ std::error_code ErrorStateKalmanFilter::correctMag(
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
-void ErrorStateKalmanFilter::injectError(QuadrotorState& state,
-                                         Context& context,
-                                         const ErrorState& dx) const {
+void EskfEstimator::injectError(QuadrotorState& state, Context& context,
+                                const ErrorState& dx) const {
   state.odometry.pose().translation() += dx(kPositionError());
 
   state.odometry.pose().rotation() =
@@ -538,16 +535,16 @@ void ErrorStateKalmanFilter::injectError(QuadrotorState& state,
   context.gyro_bias += dx(kGyroBiasError());
 }
 
-void ErrorStateKalmanFilter::resetCovariance(Context& context,
-                                             const ErrorState& dx) const {
+void EskfEstimator::resetCovariance(Context& context,
+                                    const ErrorState& dx) const {
   // P = G P G' with G = I - 0.5[dtheta]x
-  ErrorCovUpdate rot_reset = ErrorCovUpdate::Identity();
+  ErrorCov rot_reset = ErrorCov::Identity();
   rot_reset(kRotationError(), kRotationError()) -=
       0.5 * hat(dx(kRotationError()));
   context.P = rot_reset * context.P * rot_reset.transpose();
 }
 
-std::error_code ErrorStateKalmanFilter::setError(AutopilotErrc ec) const {
+std::error_code EskfEstimator::setError(AutopilotErrc ec) const {
   has_previous_error_ = true;
   return make_error_code(ec);
 }

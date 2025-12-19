@@ -6,26 +6,23 @@
 
 namespace autopilot {
 
-// Key intrinsic dimensions related to state and data layouts
-constexpr auto kPositionError = BlockDef<0, 3>{};
-constexpr auto kRotationError = NextBlock<3>(kPositionError);
-constexpr auto kVelocityError = NextBlock<3>(kRotationError);
-constexpr auto kAccelBiasError = NextBlock<3>(kVelocityError);
-constexpr auto kGyroBiasError = NextBlock<3>(kAccelBiasError);
-
-constexpr auto kPoseError = BlockDef<0, 6>{};
-constexpr auto kTwistError = NextBlock<6>(kPoseError);
-
-constexpr int kNumErrorStates =
-    SumSizes(kPositionError, kRotationError, kVelocityError, kAccelBiasError,
-             kGyroBiasError);
-
-using ErrorState = Eigen::Vector<double, kNumErrorStates>;
-using ErrorCov = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
-
-class ErrorStateKalmanFilter final : public EstimatorBase {
+class EskfEstimator final : public EstimatorBase {
  public:
-  static constexpr char kName[] = "ErrorStateKalmanFilter";
+  static constexpr char kName[] = "EskfEstimator";
+
+  // Key intrinsic dimensions related to state and data layouts
+  static constexpr auto kPositionError = BlockDef<0, 3>{};
+  static constexpr auto kRotationError = NextBlock<3>(kPositionError);
+  static constexpr auto kVelocityError = NextBlock<3>(kRotationError);
+  static constexpr auto kAccelBiasError = NextBlock<3>(kVelocityError);
+  static constexpr auto kGyroBiasError = NextBlock<3>(kAccelBiasError);
+
+  static constexpr int kNumErrorStates =
+      SumSizes(kPositionError, kRotationError, kVelocityError, kAccelBiasError,
+               kGyroBiasError);
+
+  using ErrorState = Eigen::Vector<double, kNumErrorStates>;
+  using ErrorCov = Eigen::Matrix<double, kNumErrorStates, kNumErrorStates>;
 
   struct Context : EstimatorContext {
     std::string_view coreName() const override { return kName; }
@@ -102,9 +99,9 @@ class ErrorStateKalmanFilter final : public EstimatorBase {
                           .bounds = Bounds<double>::GreaterThan(0.0)}));
   };
 
-  ErrorStateKalmanFilter(std::shared_ptr<QuadrotorModel> model,
-                         std::shared_ptr<Config> config,
-                         std::shared_ptr<spdlog::logger> logger = nullptr);
+  EskfEstimator(std::shared_ptr<QuadrotorModel> model,
+                std::shared_ptr<Config> config,
+                std::shared_ptr<spdlog::logger> logger = nullptr);
 
   std::string_view name() const override { return kName; }
 
