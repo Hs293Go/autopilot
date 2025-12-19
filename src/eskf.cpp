@@ -3,6 +3,7 @@
 
 #include <utility>
 
+#include "autopilot/base/estimator_base.hpp"
 #include "autopilot/estimators/sensor_data.hpp"
 // Assuming math headers are merged as discussed
 #include "autopilot/core/geometry.hpp"
@@ -548,5 +549,7 @@ std::error_code EskfEstimator::setError(AutopilotErrc ec) const {
   has_previous_error_ = true;
   return make_error_code(ec);
 }
+
+REGISTER_ESTIMATOR(EskfEstimator);
 
 }  // namespace autopilot

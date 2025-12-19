@@ -4,7 +4,7 @@
 
 namespace autopilot {
 
-AsyncEstimator::AsyncEstimator(std::shared_ptr<EstimatorBase>&& estimator)
+AsyncEstimator::AsyncEstimator(std::shared_ptr<EstimatorBase> estimator)
     : EstimatorDriverBase(std::move(estimator)) {
   // 1. Factory: Allocate the opaque memory context for the specific algorithm
   context_ = estimator_->createContext();

@@ -35,10 +35,13 @@
       }
     }
   },
-  "eskf": {
-    "gps_confidence_level_error": 0.9,
-    "accel_noise_density": 0.0040576899999999992,
-    "gyro_noise_density": 7.6154350409315987e-5
+  "estimator": {
+    "type": "EskfEstimator",
+    "config": {
+      "gps_confidence_level_error": 0.9,
+      "accel_noise_density": 0.0040576899999999992,
+      "gyro_noise_density": 7.6154350409315987e-5
+    }
   },
   "simulator": {
     "gps": {

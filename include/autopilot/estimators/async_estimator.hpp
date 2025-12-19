@@ -26,7 +26,7 @@ struct QueuedPacket {
 
 class AsyncEstimator final : public EstimatorDriverBase {
  public:
-  AsyncEstimator(std::shared_ptr<EstimatorBase>&& estimator);
+  AsyncEstimator(std::shared_ptr<EstimatorBase> estimator);
 
   void start() override;
 

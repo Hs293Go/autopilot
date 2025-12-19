@@ -25,8 +25,7 @@ struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
       std::make_shared<ap::QuadrotorModelCfg>();
   ap::Polymorphic<ap::ControllerFactory> controller;
 
-  std::shared_ptr<ap::EskfEstimator::Config> eskf =
-      std::make_shared<ap::EskfEstimator::Config>();
+  ap::Polymorphic<ap::EstimatorFactory> estimator;
 
   std::shared_ptr<ap::QuadrotorSimulator::Config> simulator =
       std::make_shared<ap::QuadrotorSimulator::Config>();
@@ -38,8 +37,8 @@ struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
       Describe("controller", &MainConfig::controller,
                ap::Properties{.desc = "Controller Configuration",
                               .prefer_user_provided = true}),
-      Describe("eskf", &MainConfig::eskf,
-               ap::Properties{.desc = "Error State Kalman Filter Configuration",
+      Describe("estimator", &MainConfig::estimator,
+               ap::Properties{.desc = "Estimator Configuration",
                               .prefer_user_provided = true}),
       Describe("simulator", &MainConfig::simulator,
                ap::Properties{.desc = "Quadrotor Simulator Configuration"}));
@@ -70,7 +69,7 @@ int main() {
 
   auto ctrl = ap::ControllerFactory::Create(cfg.controller.config, model);
 
-  auto est_alg = std::make_shared<ap::EskfEstimator>(model, cfg.eskf);
+  auto est_alg = ap::EstimatorFactory::Create(cfg.estimator.config, model);
   auto est = std::make_shared<ap::AsyncEstimator>(est_alg);
 
   auto sim = std::make_shared<ap::QuadrotorSimulator>(model, cfg.simulator);
