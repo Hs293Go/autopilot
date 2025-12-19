@@ -22,6 +22,7 @@ target_sources(
   PRIVATE src/async_estimator.cpp
           src/cascade_controller.cpp
           src/definitions.cpp
+          src/ekf.cpp
           src/eskf.cpp
           src/geometric_controller.cpp
           src/quadrotor_model.cpp
@@ -45,6 +46,7 @@ target_sources(
          include/autopilot/core/math.hpp
          include/autopilot/core/quadrotor_model.hpp
          include/autopilot/estimators/async_estimator.hpp
+         include/autopilot/estimators/ekf.hpp
          include/autopilot/estimators/eskf.hpp
          include/autopilot/estimators/sensor_data.hpp
          include/autopilot/simulator/quadrotor_simulator.hpp
