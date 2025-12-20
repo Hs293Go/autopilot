@@ -149,7 +149,7 @@ std::error_code EkfEstimator::correct(
     QuadrotorState& state, EstimatorContext& context,
     const std::shared_ptr<const MeasurementBase>& z) const {
   auto& ctx = static_cast<Context&>(context);
-  const auto gps = std::dynamic_pointer_cast<const GpsData>(z);
+  const auto gps = std::dynamic_pointer_cast<const LocalPositionData>(z);
   if (!gps) {
     return {};  // This "dumb" version only handles position
   }

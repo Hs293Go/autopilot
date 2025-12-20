@@ -182,7 +182,7 @@ std::error_code EskfEstimator::correct(
 
   auto& ctx = static_cast<Context&>(context);
 
-  if (const auto gps = std::dynamic_pointer_cast<const GpsData>(z)) {
+  if (const auto gps = std::dynamic_pointer_cast<const LocalPositionData>(z)) {
     ec = correctGps(state, ctx, gps);
   } else if (const auto mag = std::dynamic_pointer_cast<const MagData>(z)) {
     ec = correctMag(state, ctx, mag);
@@ -404,7 +404,7 @@ std::error_code EskfEstimator::predictCovariance(const QuadrotorState& state,
 // -----------------------------------------------------------------------------
 std::error_code EskfEstimator::correctGps(
     QuadrotorState& state, Context& context,
-    const std::shared_ptr<const GpsData>& z) const {
+    const std::shared_ptr<const LocalPositionData>& z) const {
   // 1. Residual
   Eigen::Vector3d y = z->position_enu - state.odometry.pose().translation();
 

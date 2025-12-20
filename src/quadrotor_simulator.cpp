@@ -144,7 +144,7 @@ void QuadrotorSimulator::step(const QuadrotorCommand& input_cmd, double dt) {
 }
 
 SensorData QuadrotorSimulator::getSensorMeasurements(double dt) {
-  return {getImuMeasurement(dt), getGpsMeasurement()};
+  return {getImuMeasurement(dt), getLocalPositionMeasurement()};
 }
 
 std::shared_ptr<ImuData> QuadrotorSimulator::getImuMeasurement(double dt) {
@@ -166,33 +166,24 @@ std::shared_ptr<ImuData> QuadrotorSimulator::getImuMeasurement(double dt) {
                                    noisy_gyro);
 }
 
-std::shared_ptr<GpsData> QuadrotorSimulator::getGpsMeasurement() {
+std::shared_ptr<LocalPositionData>
+QuadrotorSimulator::getLocalPositionMeasurement() {
   // --- GPS ---
   // Simple white noise
-  std::normal_distribution dist_xy(0.0, config_->gps.hor_pos_std_dev);
-  std::normal_distribution dist_z(0.0, config_->gps.ver_pos_std_dev);
-  std::normal_distribution dist_vel_xy(0.0, config_->gps.hor_vel_std_dev);
-  std::normal_distribution dist_vel_z(0.0, config_->gps.ver_vel_std_dev);
+  std::normal_distribution dist_xy(0.0,
+                                   config_->local_position.hor_pos_std_dev);
+  std::normal_distribution dist_z(0.0, config_->local_position.ver_pos_std_dev);
 
   auto generate_position_noise = [&dist_xy, &dist_z, this](auto i) {
     return i < 2 ? dist_xy(gps_rng_) : dist_z(gps_rng_);
   };
-  // TODO: New GpsData structure doesn't carry velocity info yet
-  //
-  // auto generate_velocity_noise = [&dist_vel_xy, &dist_vel_z, this](auto i) {
-  //   return i < 2 ? dist_vel_xy(gps_rng_) : dist_vel_z(gps_rng_);
-  // };
 
   Eigen::Vector3d pos_noise =
       Eigen::Vector3d::NullaryExpr(generate_position_noise);
 
-  return std::make_shared<GpsData>(
+  return std::make_shared<LocalPositionData>(
       state_.timestamp_secs, state_.odometry.pose().translation() + pos_noise,
-      Eigen::Vector3d(config_->gps.hor_pos_std_dev,
-                      config_->gps.hor_pos_std_dev,
-                      config_->gps.ver_pos_std_dev)
-          .cwiseAbs2()
-          .asDiagonal()
+      config_->local_position.reported_pos_std_dev.cwiseAbs2().asDiagonal()
 
   );
 }

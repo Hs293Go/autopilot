@@ -12,20 +12,23 @@ namespace autopilot {
 
 struct SensorData {
   std::shared_ptr<ImuData> imu;
-  std::shared_ptr<GpsData> gps;
+  std::shared_ptr<LocalPositionData> gps;
 };
 
 class QuadrotorSimulator : public Module {
  public:
   struct Config final : public ReflectiveConfigBase<Config> {
-    std::string_view name() const override { return "QuadrotorSimulatorConfig"; }
+    std::string_view name() const override {
+      return "QuadrotorSimulatorConfig";
+    }
+
     ImuNoiseConfig imu;
-    GpsNoiseConfig gps;
+    LocalPositionNoiseConfig local_position;
     static constexpr auto kDescriptors = std::make_tuple(
         Describe("imu", &Config::imu,
                  Properties{.desc = "IMU Noise Configuration"}),
-        Describe("gps", &Config::gps,
-                 Properties{.desc = "GPS Noise Configuration"}));
+        Describe("local_position", &Config::local_position,
+                 Properties{.desc = "LocalPosition Noise Configuration"}));
   };
 
   QuadrotorSimulator(std::shared_ptr<QuadrotorModel> model,
@@ -47,7 +50,9 @@ class QuadrotorSimulator : public Module {
 
   std::shared_ptr<ImuData> getImuMeasurement(double dt);
 
-  std::shared_ptr<GpsData> getGpsMeasurement();
+  /// Get low-noise position measurement. This simulates a motion-capture-like
+  /// system rather than a GPS,
+  std::shared_ptr<LocalPositionData> getLocalPositionMeasurement();
 
  private:
   // Derivative function for RK4

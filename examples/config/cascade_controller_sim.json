@@ -44,9 +44,10 @@
     }
   },
   "simulator": {
-    "gps": {
-      "hor_pos_std_dev": 0.31622776601683794,
-      "ver_pos_std_dev": 0.31622776601683794
+    "local_position": {
+      "hor_pos_std_dev": 0.02,
+      "ver_pos_std_dev": 0.02,
+      "reported_pos_std_dev": [0.5, 0.5, 0.5]
     }
   },
   "mission": {

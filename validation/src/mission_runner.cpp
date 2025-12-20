@@ -44,8 +44,9 @@ void MissionRunner::pushEstimatorData(double& last_gps_time, double curr_time) {
   if (curr_time - last_gps_time >= cfg_.dt_gps) {
     // C. GPS Measurement (Slow: e.g. 10Hz)
     // Check if enough simulation time has passed for a GPS hit
-    auto gps_data = sim_->getGpsMeasurement();  // Generate from current_state
-    est_->push(gps_data);                       // Push Measurement (Correction)
+    auto gps_data =
+        sim_->getLocalPositionMeasurement();  // Generate from current_state
+    est_->push(gps_data);                     // Push Measurement (Correction)
 
     last_gps_time = curr_time;
 

@@ -81,27 +81,26 @@ struct ImuNoiseConfig final : public ReflectiveConfigBase<ImuNoiseConfig> {
                              .bounds = Bounds<double>::Positive()}));
 };
 
-struct GpsNoiseConfig final : public ReflectiveConfigBase<GpsNoiseConfig> {
-  std::string_view name() const override { return "GpsNoiseConfig"; }
+struct LocalPositionNoiseConfig final
+    : public ReflectiveConfigBase<LocalPositionNoiseConfig> {
+  std::string_view name() const override { return "LocalPositionNoiseConfig"; }
 
-  double hor_pos_std_dev = 3.0;
-  double ver_pos_std_dev = 6.0;
-  double hor_vel_std_dev = 0.1;
-  double ver_vel_std_dev = 0.1;
+  double hor_pos_std_dev = 0.02;
+  double ver_pos_std_dev = 0.02;
+
+  Eigen::Vector3d reported_pos_std_dev = {0.5, 0.5, 0.5};
 
   static constexpr auto kDescriptors = std::make_tuple(
-      Describe("hor_pos_std_dev", &GpsNoiseConfig::hor_pos_std_dev,
+      Describe("hor_pos_std_dev", &LocalPositionNoiseConfig::hor_pos_std_dev,
                F64Properties{.desc = "Horizontal Position Std Dev (meters)",
                              .bounds = Bounds<double>::Positive()}),
-      Describe("ver_pos_std_dev", &GpsNoiseConfig::ver_pos_std_dev,
+      Describe("ver_pos_std_dev", &LocalPositionNoiseConfig::ver_pos_std_dev,
                F64Properties{.desc = "Vertical Position Std Dev (meters)",
                              .bounds = Bounds<double>::Positive()}),
-      Describe("hor_vel_std_dev", &GpsNoiseConfig::hor_vel_std_dev,
-               F64Properties{.desc = "Horizontal Velocity Std Dev (m/s)",
-                             .bounds = Bounds<double>::Positive()}),
-      Describe("ver_vel_std_dev", &GpsNoiseConfig::ver_vel_std_dev,
-               F64Properties{.desc = "Vertical Velocity Std Dev (m/s)",
-                             .bounds = Bounds<double>::Positive()}));
+      Describe("reported_pos_std_dev",
+               &LocalPositionNoiseConfig::reported_pos_std_dev,
+               F64Properties{.desc = "Reported Position Std Dev (meters)",
+                             .bounds = Bounds<double>::NonNegative()}));
 };
 
 // State holder for a single noise process (e.g., Gyro X axis)

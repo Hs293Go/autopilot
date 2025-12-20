@@ -33,14 +33,14 @@ struct ImuData : public InputBase {
 // =============================================================================
 // Measurement: GPS Position
 // =============================================================================
-struct GpsData : public MeasurementBase {
+struct LocalPositionData : public MeasurementBase {
   Eigen::Vector3d position_enu;  // Local ENU frame (m)
   Eigen::Matrix3d cov_storage;   // Persistant storage for Ref return
   double timestamp;
   std::string source_id;
 
-  GpsData(double t, const Eigen::Vector3d& pos, const Eigen::Matrix3d& cov,
-          std::string id = "gps0")
+  LocalPositionData(double t, const Eigen::Vector3d& pos,
+                    const Eigen::Matrix3d& cov, std::string id = "gps0")
       : position_enu(pos),
         cov_storage(cov),
         timestamp(t),
@@ -53,7 +53,7 @@ struct GpsData : public MeasurementBase {
   std::size_t dim() const override { return 3; }
 
   std::unique_ptr<EstimatorData> clone() const override {
-    return std::make_unique<GpsData>(*this);
+    return std::make_unique<LocalPositionData>(*this);
   }
 
   // MeasurementBase Implementation
