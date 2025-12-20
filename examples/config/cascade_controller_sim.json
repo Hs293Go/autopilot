@@ -48,5 +48,11 @@
       "hor_pos_std_dev": 0.31622776601683794,
       "ver_pos_std_dev": 0.31622776601683794
     }
+  },
+  "mission": {
+    "dt_control": 0.005,
+    "dt_gps": 0.1,
+    "max_steps": 10000,
+    "acceptance_radius": 0.25
   }
 }

@@ -30,6 +30,8 @@ struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
   std::shared_ptr<ap::QuadrotorSimulator::Config> simulator =
       std::make_shared<ap::QuadrotorSimulator::Config>();
 
+  ap::MissionRunner::Config mission;
+
   static constexpr auto kDescriptors = std::make_tuple(
       Describe("quadrotor_model", &MainConfig::quadrotor_model,
                ap::Properties{.desc = "Quadrotor Model Configuration",
@@ -41,7 +43,9 @@ struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
                ap::Properties{.desc = "Estimator Configuration",
                               .prefer_user_provided = true}),
       Describe("simulator", &MainConfig::simulator,
-               ap::Properties{.desc = "Quadrotor Simulator Configuration"}));
+               ap::Properties{.desc = "Quadrotor Simulator Configuration"}),
+      Describe("mission", &MainConfig::mission,
+               ap::Properties{.desc = "Mission Runner Configuration"}));
 };
 
 int main() {
@@ -90,11 +94,8 @@ int main() {
       {{0.0, 5.0, 1.0}, std::numbers::pi},
       {{0.0, 0.0, 1.0}, 3.0 * std::numbers::pi / 2}};
 
-  ap::MissionRunner::Config mission_cfg;
-  mission_cfg.dt_control = 0.005;
-  mission_cfg.max_steps = 12000;
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
-  ap::MissionRunner runner(sim, ctrl, est, mission, mission_cfg);
+  ap::MissionRunner runner(sim, ctrl, est, mission, cfg.mission);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");

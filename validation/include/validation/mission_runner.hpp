@@ -29,14 +29,38 @@ struct SimulationResult {
   std::vector<History> hist;
 };
 
-struct MissionRunnerConfig {
+struct MissionRunnerConfig : ReflectiveConfigBase<MissionRunnerConfig> {
+  MissionRunnerConfig() = default;
+  std::string_view name() const override { return "MissionRunnerConfig"; }
   double dt_control = 0.01;
   double dt_sim = 0.001;
   double dt_gps = 0.10;
   double acceptance_radius = 0.1;
-  int max_steps = 5000;
+  std::int64_t max_steps = 5000;
   Eigen::Vector3d geofence_min = Eigen::Vector3d(-10.0, -10.0, -1.0);
   Eigen::Vector3d geofence_max = Eigen::Vector3d(10.0, 10.0, 20.0);
+
+  static constexpr auto kDescriptors = std::make_tuple(
+      Describe("dt_control", &MissionRunnerConfig::dt_control,
+               F64Properties{.desc = "Control timestep (s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("dt_sim", &MissionRunnerConfig::dt_sim,
+               F64Properties{.desc = "Simulation timestep (s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("dt_gps", &MissionRunnerConfig::dt_gps,
+               F64Properties{.desc = "GPS measurement interval (s)",
+                             .bounds = Bounds<double>::Positive()}),
+      Describe("acceptance_radius", &MissionRunnerConfig::acceptance_radius,
+               F64Properties{.desc = "Radius to accept waypoint (m)",
+                             .bounds = Bounds<double>::NonNegative()}),
+      Describe(
+          "max_steps", &MissionRunnerConfig::max_steps,
+          I64Properties{.desc = "Maximum number of control steps to simulate",
+                        .bounds = Bounds<std::int64_t>::AtLeast(1)}),
+      Describe("geofence_min", &MissionRunnerConfig::geofence_min,
+               F64Properties{.desc = "Minimum geofence boundary (m)"}),
+      Describe("geofence_max", &MissionRunnerConfig::geofence_max,
+               F64Properties{.desc = "Maximum geofence boundary (m)"}));
 };
 
 class MissionRunner {
