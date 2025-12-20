@@ -72,7 +72,7 @@ class EstimatorDriverBase {
   virtual std::expected<QuadrotorState, std::error_code> getStateAt(
       double timestamp_s = 0.0) const = 0;
 
-  virtual Eigen::Ref<const Eigen::MatrixXd> getCovariance() const = 0;
+  virtual Eigen::MatrixXd getCovariance() const = 0;
 
   // 3. Lifecycle
   // Reset filter to a known initial state (e.g., waiting on tarmac)
