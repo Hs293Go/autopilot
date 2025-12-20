@@ -184,8 +184,7 @@ std::shared_ptr<GpsData> QuadrotorSimulator::getGpsMeasurement() {
   // };
 
   Eigen::Vector3d pos_noise =
-      Eigen::Vector3d::NullaryExpr(generate_position_noise) / 10000;
-  pos_noise.setZero();
+      Eigen::Vector3d::NullaryExpr(generate_position_noise);
 
   return std::make_shared<GpsData>(
       state_.timestamp_secs, state_.odometry.pose().translation() + pos_noise,
