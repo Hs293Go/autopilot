@@ -22,15 +22,15 @@
       "position_controller_cfg": {
         "type": "GeometricPosition",
         "config": {
-          "kp": [1.0, 1.0, 5.0],
-          "kv": [2.5, 2.5, 6.0]
+          "kp": [0.8, 0.8, 2.0],
+          "kv": [1.5, 1.5, 3.0]
         }
       },
       "attitude_controller_cfg": {
         "type": "GeometricAttitude",
         "config": {
-          "kR": [3.0, 3.0, 0.1],
-          "kOmega": [1.0, 1.0, 0.05]
+          "kR": [1.0, 1.0, 0.1],
+          "kOmega": [0.6, 0.6, 0.05]
         }
       }
     }
