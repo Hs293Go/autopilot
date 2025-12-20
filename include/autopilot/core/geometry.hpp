@@ -6,13 +6,6 @@
 
 namespace autopilot {
 
-template <std::floating_point T>
-Eigen::Matrix3<T> hat(const Eigen::Vector3<T>& v) {
-  Eigen::Matrix3<T> m = Eigen::Matrix3<T>::Zero();
-  m << T(0), -v.z(), v.y(), v.z(), T(0), -v.x(), -v.y(), v.x(), T(0);
-  return m;
-}
-
 // Transform (translation and rotation)
 // ====================================
 
