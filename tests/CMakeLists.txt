@@ -13,7 +13,8 @@ target_link_libraries(
   test_integration PRIVATE autopilot::autopilot autopilot::validation
                            GTest::gtest GTest::gmock GTest::gtest_main)
 
-add_executable(test_unit src/unit/test_spatial_rotations.cpp)
+add_executable(test_unit src/unit/test_spatial_rotations.cpp
+                         src/unit/test_polynomial.cpp)
 target_link_libraries(test_unit PRIVATE autopilot::autopilot GTest::gtest
                                         GTest::gtest_main GTest::gmock)
 

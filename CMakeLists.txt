@@ -49,6 +49,7 @@ target_sources(
          include/autopilot/estimators/ekf.hpp
          include/autopilot/estimators/eskf.hpp
          include/autopilot/estimators/sensor_data.hpp
+         include/autopilot/planning/polynomial.hpp
          include/autopilot/simulator/quadrotor_simulator.hpp
          include/autopilot/simulator/sensors.hpp)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
