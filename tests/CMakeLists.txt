@@ -19,9 +19,10 @@ target_link_libraries(
                            GTest::gtest GTest::gmock GTest::gtest_main testing)
 
 add_executable(
-  test_unit src/unit/test_spatial_rotations.cpp
+  test_unit src/unit/test_spatial_rotations.cpp src/unit/test_config_loader.cpp
             src/unit/test_quadrotor_model.cpp src/unit/test_polynomial.cpp)
-target_link_libraries(test_unit PRIVATE autopilot::autopilot GTest::gtest
-                                        GTest::gtest_main GTest::gmock testing)
+target_link_libraries(
+  test_unit PRIVATE autopilot::autopilot autopilot::extensions GTest::gtest
+                    GTest::gtest_main GTest::gmock testing)
 
 add_custom_target(tests DEPENDS test_unit test_integration)
