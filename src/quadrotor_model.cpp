@@ -9,6 +9,10 @@ std::error_code QuadrotorModelCfg::setMass(double mass) {
   if (!std::isfinite(mass)) {
     return (make_error_code(AutopilotErrc::kNumericallyNonFinite));
   }
+
+  if (mass <= 0.0) {
+    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+  }
   mass_ = mass;
   return {};
 }
@@ -157,6 +161,10 @@ std::error_code QuadrotorModelCfg::setGravVector(
     const Eigen::Ref<const Eigen::Vector3d>& grav_vector) {
   if (!grav_vector.allFinite()) {
     return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+  }
+
+  if (grav_vector.isApproxToConstant(0.0)) {
+    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
   }
 
   grav_vector_ = grav_vector;
