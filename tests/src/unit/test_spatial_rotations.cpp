@@ -6,6 +6,7 @@
 #include "autopilot/core/math.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "testing/matchers.hpp"
 
 namespace ap = autopilot;
 
@@ -49,13 +50,6 @@ using testing::Pointwise;
 MATCHER_P(QuaternionIsClose, expectation,
           ::testing::PrintToString(expectation)) {
   return ap::IsClose(arg.angularDistance(expectation), 0.0);
-}
-
-MATCHER_P(AllClose, expectation, "") {
-  // reshaped() (ravel) arguments so that Eigen iterate through them
-  // element-wise
-  return ExplainMatchResult(Pointwise(DoubleNear(1e-6), expectation.reshaped()),
-                            arg.reshaped(), result_listener);
 }
 
 MATCHER_P(AngleAxisIsClose, expectation, "") {

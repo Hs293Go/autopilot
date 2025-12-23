@@ -6,15 +6,8 @@
 #include "autopilot/simulator/quadrotor_simulator.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "testing/matchers.hpp"
 #include "validation/mission_runner.hpp"
-
-MATCHER(IsEmptyErrorCode, "") {
-  if (arg == std::error_code()) {
-    return true;
-  }
-  *result_listener << "which is error code: " << arg.message();
-  return false;
-}
 
 namespace ap = autopilot;
 class TestIntegrationCascadeControllerSim : public ::testing::Test {
