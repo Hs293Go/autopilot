@@ -6,6 +6,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "testing/matchers.hpp"
+#include "testing/mock_factory.hpp"
 
 namespace ap = autopilot;
 using ap::Bounds;
@@ -46,6 +47,8 @@ struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
   // 5. Nested Object
   NestedConfig child;
 
+  ap::Polymorphic<testing::MockComponentFactory> polymorphic_component;
+
   static constexpr auto kDescriptors = std::make_tuple(
       Describe("limited_f64", &TestConfig::limited_f64,
                F64Properties{
@@ -61,7 +64,9 @@ struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
                F64Properties{.desc = "Gains Vector",
                              .bounds = Bounds<double>::Positive()}),
       Describe("child", &TestConfig::child,
-               Properties{.desc = "Nested Child Config"}));
+               Properties{.desc = "Nested Child Config"}),
+      Describe("polymorphic_component", &TestConfig::polymorphic_component,
+               Properties{.desc = "Polymorphic Component Config"}));
 };
 
 // =============================================================================
@@ -177,16 +182,75 @@ TEST_F(TestConfigLoader, TypeMismatch) {
 }
 
 TEST_F(TestConfigLoader, ArraySizeMismatch) {
-  // Note: The generic visitor handles std::vector resizing automatically.
-  // However, fixed-size std::span or std::array visitors (if implemented)
-  // would check this.
-  // The current JsonLoader::visit(span) checks constraints on *values*,
-  // but let's verify if array inputs to scalar fields fail.
-
   const char* json = R"({
-    "required_val": [1.0, 2.0]
+    "required_val": 1,
+    "gains": [1.0, 2.0]
   })";
 
   EXPECT_EQ(load(json),
-            make_error_code(ap::AutopilotErrc::kConfigTypeMismatch));
+            make_error_code(ap::AutopilotErrc::kConfigSizeMismatch));
+}
+
+TEST_F(TestConfigLoader, PolymorphicConfigLoading) {
+  const char* json = R"({
+    "required_val": 1,
+    "polymorphic_component": {
+      "type": "ConcreteMockComponent",
+      "config": {
+        "some_parameter": 2
+      }
+    }
+  })";
+
+  auto ec = load(json);
+  ASSERT_EQ(ec, std::error_code()) << "Message: " << ec.message();
+
+  auto& poly = cfg_.polymorphic_component;
+  ASSERT_TRUE(poly.config);
+  EXPECT_EQ(poly.type, "ConcreteMockComponent");
+
+  // Downcast to MockComponentCfg to check parameters
+  auto mock_cfg =
+      std::dynamic_pointer_cast<testing::ConcreteMockComponent::Config>(
+          poly.config);
+  ASSERT_NE(mock_cfg, nullptr);
+  EXPECT_EQ(mock_cfg->some_parameter, 2L);
+}
+
+TEST_F(TestConfigLoader, PolymorphicMissingKeys) {
+  // Missing 'type' key
+  const char* json_missing_type = R"({
+    "required_val": 1,
+    "polymorphic_component": {
+      "config": {
+        "some_parameter": 2
+      }
+    }
+  })";
+
+  EXPECT_EQ(load(json_missing_type),
+            make_error_code(ap::AutopilotErrc::kConfigKeyMissing));
+
+  // Missing 'type' key
+  const char* json_empty_type = R"({
+    "required_val": 1,
+    "polymorphic_component": {
+      "type": ""
+    }
+  })";
+  EXPECT_EQ(load(json_empty_type),
+            make_error_code(ap::AutopilotErrc::kEmptyValueNotAllowed));
+
+  // This should NOT error out and use default config
+  const char* json_missing_config = R"({
+    "required_val": 1,
+    "polymorphic_component": {
+      "type": "ConcreteMockComponent"
+    }
+  })";
+
+  EXPECT_EQ(load(json_missing_config), std::error_code());
+  auto& poly = cfg_.polymorphic_component;
+  EXPECT_EQ(poly.type, "ConcreteMockComponent");
+  EXPECT_THAT(poly.config, testing::NotNull());
 }
