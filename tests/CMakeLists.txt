@@ -8,10 +8,18 @@ FetchContent_Declare(
   FIND_PACKAGE_ARGS 1.14.0 CONFIG)
 FetchContent_MakeAvailable(GTest)
 
-add_library(testing INTERFACE)
-target_sources(testing INTERFACE FILE_SET HEADERS BASE_DIRS include FILES
-                                 include/testing/matchers.hpp)
-target_link_libraries(testing INTERFACE GTest::gmock)
+add_library(testing)
+target_sources(
+  testing
+  PUBLIC FILE_SET
+         HEADERS
+         BASE_DIRS
+         include
+         FILES
+         include/testing/mock_factory.hpp
+         include/testing/matchers.hpp
+  PRIVATE src/testing/mock_factory.cpp)
+target_link_libraries(testing PUBLIC GTest::gmock autopilot::autopilot)
 
 add_executable(test_integration src/integration/test_cascade_controller_sim.cpp)
 target_link_libraries(
@@ -19,10 +27,13 @@ target_link_libraries(
                            GTest::gtest GTest::gmock GTest::gtest_main testing)
 
 add_executable(
-  test_unit src/unit/test_spatial_rotations.cpp src/unit/test_config_loader.cpp
-            src/unit/test_quadrotor_model.cpp src/unit/test_polynomial.cpp)
+  test_unit
+  src/unit/test_factory.cpp src/unit/test_spatial_rotations.cpp
+  src/unit/test_config_loader.cpp src/unit/test_quadrotor_model.cpp
+  src/unit/test_polynomial.cpp)
 target_link_libraries(
-  test_unit PRIVATE autopilot::autopilot autopilot::extensions GTest::gtest
-                    GTest::gtest_main GTest::gmock testing)
+  test_unit
+  PRIVATE autopilot::autopilot autopilot::extensions GTest::gtest
+          GTest::gtest_main GTest::gmock $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
 
 add_custom_target(tests DEPENDS test_unit test_integration)
