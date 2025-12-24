@@ -80,8 +80,7 @@ struct Properties {
   bool prefer_user_provided = false;
 };
 
-template <typename T>
-struct NumericProperties {
+struct F64Properties {
   /// Human-readable description of the parameter
   std::string_view desc;
 
@@ -89,7 +88,29 @@ struct NumericProperties {
   bool prefer_user_provided = false;
 
   /// Valid range for the parameter
-  Bounds<T> bounds = {};
+  Bounds<double> bounds = {};
+};
+
+struct EnumItem {
+  std::string_view name;
+  std::int64_t underlying;
+};
+
+/// Integer properties are special because integral values may be mapped to
+/// strings
+struct I64Properties {
+  /// Human-readable description of the parameter
+  std::string_view desc;
+
+  /// Whether to warn if the parameter is not set by the user
+  bool prefer_user_provided = false;
+
+  /// Valid range for the parameter
+  Bounds<std::int64_t> bounds = {};
+
+  static constexpr auto kNoMapping = std::span<const EnumItem>{};
+  // A view into a static array of mappings
+  std::span<const EnumItem> map = kNoMapping;
 };
 
 struct StrProperties {
@@ -102,8 +123,23 @@ struct StrProperties {
   bool non_empty = false;
 };
 
-using F64Properties = NumericProperties<double>;
-using I64Properties = NumericProperties<std::int64_t>;
+template <auto... Args>
+struct EnumMapping {
+  static_assert(sizeof...(Args) % 2 == 0, "Must be key-value pairs");
+  static constexpr size_t kSize = sizeof...(Args) / 2;
+
+  static constexpr std::array<EnumItem, kSize> value =
+      []<size_t... Is>(std::index_sequence<Is...> /*unused*/) {
+        return std::to_array({EnumItem{
+            .name = nth_value<Is * 2>(Args...),
+            .underlying =
+                static_cast<std::int64_t>(nth_value<Is * 2 + 1>(Args...)),
+        }...});
+      }(std::make_index_sequence<kSize>());
+};
+
+template <auto... A>
+constexpr auto kEnumMapping = EnumMapping<A...>::value;
 
 struct ConfigBase;
 
@@ -316,9 +352,8 @@ struct LoaderVisitor : ConfigVisitor {
   }
 
  private:
-  template <typename T>
-  VisitResult visitNumeric(std::string_view key, T& value,
-                           const NumericProperties<T>& props) {
+  template <typename T, typename Props>
+  VisitResult visitNumeric(std::string_view key, T& value, const Props& props) {
     T cand = value;
     if (auto result = safeVisit(key, cand, props); result.ec) {
       return result;
@@ -365,9 +400,7 @@ struct ReflectiveConfigBase : ConfigBase {
     std::apply(
         [this, &visitor, &res](const auto&... it) {
           ((res = res.ec ? res
-                         : visitor.visit(it.name,
-                                         adaptSpan(derived().*(it.member)),
-                                         it.props)),
+                         : visitImpl(it.name, it.member, it.props, visitor)),
            ...);
         },
         Derived::kDescriptors);
@@ -379,9 +412,7 @@ struct ReflectiveConfigBase : ConfigBase {
     std::apply(
         [this, &visitor, &res](const auto&... it) {
           ((res = res.ec ? res
-                         : visitor.visit(it.name,
-                                         adaptSpan(derived().*(it.member)),
-                                         it.props)),
+                         : visitImpl(it.name, it.member, it.props, visitor)),
            ...);
         },
         Derived::kDescriptors);
@@ -390,6 +421,89 @@ struct ReflectiveConfigBase : ConfigBase {
 
  private:
   friend Derived;
+
+  template <typename Class, typename T, typename Props>
+  VisitResult visitImpl(std::string_view key, T Class::* member,
+                        const Props& props, ConfigVisitor& visitor) {
+    if constexpr (std::is_enum_v<T>) {
+      static_assert(std::is_same_v<Props, I64Properties>,
+                    "Enum properties must be of type I64Properties");
+      return visitEnum(key, member, props, visitor);
+    } else {
+      return visitor.visit(key, adaptSpan(derived().*member), props);
+    }
+  }
+
+  template <typename Class, typename T>
+    requires std::is_enum_v<T>
+  VisitResult visitEnum(std::string_view key, T Class::* member,
+                        const I64Properties& props, ConfigVisitor& visitor) {
+    using std::ranges::find;
+    std::string enum_str;
+    if (auto it = find(props.map, static_cast<std::int64_t>(derived().*member),
+                       &EnumItem::underlying);
+        it != props.map.end()) {
+      // Optionally, prepopulate the string mapping for the current enum
+      // value. If the value is not found, inability to pre-populate the
+      // buffer with a valid enum string is NOT a hard error
+      enum_str = std::string(it->name);
+    }
+    //
+    // Init enum name string to the key we found
+    auto res =
+        visitor.visit(key, enum_str,
+                      {.desc = props.desc,
+                       .prefer_user_provided = props.prefer_user_provided,
+                       .non_empty = true});
+
+    if (res.ec) {
+      return res;
+    }
+
+    auto it = find(props.map, enum_str, &EnumItem::name);
+    if (it == props.map.end()) {
+      return {make_error_code(AutopilotErrc::kInvalidStringOption), key,
+              "String not in enum mapping"};
+    }
+    derived().*member = static_cast<T>(it->underlying);
+    return {};
+  }
+
+  template <typename Class, typename T, typename Props>
+  VisitResult visitImpl(std::string_view key, T Class::* member,
+                        const Props& props, ConstConfigVisitor& visitor) const {
+    if constexpr (std::is_enum_v<T>) {
+      static_assert(std::is_same_v<Props, I64Properties>,
+                    "Enum properties must be of type I64Properties");
+      return visitEnum(key, member, props, visitor);
+    } else {
+      return visitor.visit(key, adaptSpan(derived().*member), props);
+    }
+  }
+
+  template <typename Class, typename T>
+    requires std::is_enum_v<T>
+  VisitResult visitEnum(std::string_view key, T Class::* member,
+                        const I64Properties& props,
+                        ConstConfigVisitor& visitor) const {
+    using std::ranges::find;
+    // Find the string mapping for the current enum value. Presenting an
+    // invalid enum to a reader is a hard error.
+    auto it = find(props.map, static_cast<std::int64_t>(derived().*member),
+                   &EnumItem::underlying);
+    if (it == props.map.end()) {
+      return {make_error_code(AutopilotErrc::kInvalidEnumMapping), key,
+              "Enum value not in mapping"};
+    }
+
+    // For the const visitor, we don't need to feed back to the original enum,
+    // just run the visitor and return; We also don't need persistent string
+    // storage
+    return visitor.visit(key, std::string(it->name),
+                         {.desc = props.desc,
+                          .prefer_user_provided = props.prefer_user_provided,
+                          .non_empty = true});
+  }
 
   template <typename T>
   static constexpr decltype(auto) adaptSpan(T&& mem) {

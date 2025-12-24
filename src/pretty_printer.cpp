@@ -67,7 +67,10 @@ void PrettyPrinter::FormatKeyValue(std::ostream_iterator<char>& it,
              it = fmt::format_to(it, "{: >{}}non_empty: {}\n", "", active_width,
                                  p.non_empty);
            },
-           [&it, active_width]<typename S>(const NumericProperties<S>& p) {
+           [&it, active_width](const auto& p)
+             requires(std::is_same_v<P, F64Properties> ||
+                      std::is_same_v<P, I64Properties>)
+           {
              it = fmt::format_to(it, "{: >{}}bounds: {}\n", "", active_width,
                                  p.bounds);
            }}(props);
