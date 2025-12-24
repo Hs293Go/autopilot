@@ -116,10 +116,6 @@ struct VisitResult {
 struct ConfigVisitor {
   virtual ~ConfigVisitor() = default;
 
-  virtual void start() {}
-
-  virtual void finished() {}
-
   /// Visit a double value
   virtual VisitResult visit(std::string_view key, double& value,
                             const F64Properties& props) = 0;
@@ -165,10 +161,6 @@ struct ConfigVisitor {
 };
 struct ConstConfigVisitor {
   virtual ~ConstConfigVisitor() = default;
-
-  virtual void start() {}
-
-  virtual void finished() {}
 
   virtual VisitResult visit(std::string_view key, double value,
                             const F64Properties& props) = 0;
@@ -369,7 +361,6 @@ constexpr auto Describe(std::string_view name, T Class::* member, Props props) {
 template <typename Derived>
 struct ReflectiveConfigBase : ConfigBase {
   VisitResult accept(ConfigVisitor& visitor) override {
-    visitor.start();
     VisitResult res;
     std::apply(
         [this, &visitor, &res](const auto&... it) {
@@ -380,13 +371,11 @@ struct ReflectiveConfigBase : ConfigBase {
            ...);
         },
         Derived::kDescriptors);
-    visitor.finished();
     return res;
   }
 
   VisitResult accept(ConstConfigVisitor& visitor) const override {
     VisitResult res;
-    visitor.start();
     std::apply(
         [this, &visitor, &res](const auto&... it) {
           ((res = res.ec ? res
@@ -396,7 +385,6 @@ struct ReflectiveConfigBase : ConfigBase {
            ...);
         },
         Derived::kDescriptors);
-    visitor.finished();
     return res;
   }
 
