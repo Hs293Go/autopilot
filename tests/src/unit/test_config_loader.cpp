@@ -29,6 +29,14 @@ struct NestedConfig : public ap::ReflectiveConfigBase<NestedConfig> {
                                F64Properties{.desc = "Inner Value"}));
 };
 
+enum class TestEnum : std::int64_t {
+  kOptionA = 0,
+  kOptionB = 1,
+  kOptionC = 2,
+};
+
+using ap::operator""_s;
+
 struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
   std::string_view name() const override { return "TestConfig"; }
 
@@ -49,6 +57,8 @@ struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
 
   ap::Polymorphic<testing::MockComponentFactory> polymorphic_component;
 
+  TestEnum enum_field = TestEnum::kOptionA;
+
   static constexpr auto kDescriptors = std::make_tuple(
       Describe("limited_f64", &TestConfig::limited_f64,
                F64Properties{
@@ -66,7 +76,13 @@ struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
       Describe("child", &TestConfig::child,
                Properties{.desc = "Nested Child Config"}),
       Describe("polymorphic_component", &TestConfig::polymorphic_component,
-               Properties{.desc = "Polymorphic Component Config"}));
+               Properties{.desc = "Polymorphic Component Config"}),
+      Describe("enum_field", &TestConfig::enum_field,
+               I64Properties{
+                   .desc = "Test Enum Field",
+                   .map = ap::kEnumMapping<"OptionA"_s, TestEnum::kOptionA,
+                                           "OptionB"_s, TestEnum::kOptionB,
+                                           "OptionC"_s, TestEnum::kOptionC>}));
 };
 
 // =============================================================================
@@ -253,4 +269,41 @@ TEST_F(TestConfigLoader, PolymorphicMissingKeys) {
   auto& poly = cfg_.polymorphic_component;
   EXPECT_EQ(poly.type, "ConcreteMockComponent");
   EXPECT_THAT(poly.config, testing::NotNull());
+}
+
+TEST_F(TestConfigLoader, EnumFieldLoading) {
+  // Valid enum string
+  const char* json_valid = R"({
+    "required_val": 1,
+    "enum_field": "OptionB"
+  })";
+
+  EXPECT_EQ(load(json_valid), std::error_code());
+  EXPECT_EQ(cfg_.enum_field, TestEnum::kOptionB);
+
+  // Invalid enum string
+  const char* json_invalid = R"({
+    "required_val": 1,
+    "enum_field": "InvalidOption"
+  })";
+
+  EXPECT_EQ(load(json_invalid),
+            make_error_code(ap::AutopilotErrc::kInvalidStringOption));
+
+  // Empty enum string
+  const char* json_empty = R"({
+    "required_val": 1,
+    "enum_field": ""
+  })";
+  EXPECT_EQ(load(json_empty),
+            make_error_code(ap::AutopilotErrc::kEmptyValueNotAllowed));
+
+  // 'enum_field' expects string, got number
+  const char* json = R"({
+    "required_val": 1,
+    "enum_field": 1
+  })";
+
+  EXPECT_EQ(load(json),
+            make_error_code(ap::AutopilotErrc::kConfigTypeMismatch));
 }

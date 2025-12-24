@@ -14,6 +14,48 @@ struct Overload : Ts... {
 template <typename... Ts>
 Overload(Ts...) -> Overload<Ts...>;
 
+template <size_t N>
+struct fixed_string {  // NOLINT(readability-identifier-naming)
+  char buf[N];
+
+  consteval fixed_string(const char (&str)[N]) { std::copy_n(str, N, buf); }
+
+  // Auto-convert to string_view
+  constexpr operator std::string_view() const { return {buf, N - 1}; }
+};
+
+template <fixed_string S>
+consteval auto operator""_s() {
+  return S;
+}
+
+namespace internal {
+template <std::size_t Index, class P0, class... Pack>
+struct nth_type_t {
+  using type = typename nth_type_t<Index - 1, Pack...>::type;
+};
+template <class P0, class... Pack>
+struct nth_type_t<0, P0, Pack...> {
+  using type = P0;
+};
+}  // namespace internal
+
+template <class T>
+constexpr std::underlying_type_t<T> to_underlying(T value) noexcept {
+  return static_cast<std::underlying_type_t<T>>(value);
+}
+template <std::size_t Index, class P0, class... Pack>
+using nth_type = typename internal::nth_type_t<Index, P0, Pack...>::type;
+
+template <std::size_t Index, class T0, class... Types>
+constexpr decltype(auto) nth_value(T0&& p0, Types&&... pack) noexcept {
+  if constexpr (0 == Index) {
+    return std::forward<T0>(p0);
+  } else {
+    return nth_value<Index - 1>(std::forward<Types>(pack)...);
+  }
+}
+
 template <typename Derived>
 concept Vector2Like = static_cast<bool>(Derived::IsVectorAtCompileTime) &&
                       Derived::RowsAtCompileTime == 2;
@@ -85,6 +127,8 @@ enum class AutopilotErrc {
   kConfigSizeMismatch,
   kEmptyValueNotAllowed,
   kCreationFailure,
+  kInvalidEnumMapping,
+  kInvalidStringOption
 };
 
 namespace detail {
@@ -132,6 +176,10 @@ class AutopilotErrcCategory : public std::error_category {
         return "Empty value not allowed";
       case AutopilotErrc::kCreationFailure:
         return "Object creation failure";
+      case AutopilotErrc::kInvalidStringOption:
+        return "Invalid string option";
+      case AutopilotErrc::kInvalidEnumMapping:
+        return "Invalid enum mapping";
       default:
         return "Unknown error";
     }
