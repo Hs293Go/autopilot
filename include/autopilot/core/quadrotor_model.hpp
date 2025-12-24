@@ -223,6 +223,8 @@ struct ThrustTorque {
 
 class QuadrotorModel {
  public:
+  QuadrotorModel() : QuadrotorModel(std::make_shared<QuadrotorModelCfg>()) {}
+
   // Constructor: Attach config and compute initial derived state
   explicit QuadrotorModel(std::shared_ptr<QuadrotorModelCfg> cfg)
       : cfg_(std::move(cfg)) {
