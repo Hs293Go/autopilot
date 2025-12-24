@@ -432,10 +432,13 @@ struct Polymorphic final : ConfigBase {
 
   std::string type;
   std::shared_ptr<ConfigBase> config;
+  static constexpr StrProperties kTypePRops = {
+      .desc = "Polymorphic Object Type",
+      .prefer_user_provided = true,
+      .non_empty = true};
 
   VisitResult accept(ConfigVisitor& visitor) override {
-    auto res = visitor.visit(
-        "type", type, {.desc = "Polymorphic Object Type", .non_empty = true});
+    auto res = visitor.visit("type", type, kTypePRops);
     if (res.ec) {
       return res;
     }
@@ -453,7 +456,7 @@ struct Polymorphic final : ConfigBase {
 
   VisitResult accept(ConstConfigVisitor& visitor) const override {
     // 1. Visit the type string
-    auto res = visitor.visit("type", type, {.desc = "Polymorphic Object Type"});
+    auto res = visitor.visit("type", type, kTypePRops);
     if (res.ec) {
       return res;
     }
