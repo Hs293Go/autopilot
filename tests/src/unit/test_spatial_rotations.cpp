@@ -7,6 +7,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "testing/matchers.hpp"
+#include "unsupported/Eigen/AutoDiff"
 
 namespace ap = autopilot;
 
@@ -350,5 +351,52 @@ TEST_F(TestRotation, NearPiRotationMatrixToAngleAxisAndBack) {
           ap::AngleAxisToRotationMatrix(intermediate);
       ASSERT_THAT(result, AllClose(expectation));
     }
+  }
+}
+
+TEST_F(TestRotation, LeftRightQuaternionMatrixVsQuaternionProduct) {
+  for (int i = 0; i < kNumTrials; i++) {
+    const Eigen::Quaterniond q1 = Eigen::Quaterniond::UnitRandom();
+    const Eigen::Quaterniond q2 = Eigen::Quaterniond::UnitRandom();
+
+    const Eigen::Matrix4d left_matrix = ap::LeftQuaternionMatrix(q1);
+    const Eigen::Matrix4d right_matrix = ap::RightQuaternionMatrix(q2);
+
+    const Eigen::Quaterniond product = q1 * q2;
+    const Eigen::Quaterniond left_result(left_matrix * q2.coeffs());
+    const Eigen::Quaterniond right_result(right_matrix * q1.coeffs());
+
+    ASSERT_THAT(left_result, QuaternionIsClose(product));
+    ASSERT_THAT(right_result, QuaternionIsClose(product));
+  }
+}
+
+TEST_F(TestRotation, RotatePointByQuaternion) {
+  using ADScalar = Eigen::AutoDiffScalar<Eigen::Vector4d>;
+
+  for (int i = 0; i < kNumTrials; i++) {
+    Eigen::Vector3d point = Eigen::Vector3d::UnitX();
+    Eigen::Quaterniond rotation = Eigen::Quaterniond::UnitRandom();
+
+    const Eigen::Matrix<double, 3, 4> result =
+        autopilot::jacobians::RotatePointByQuaternion(rotation, point);
+
+    // Initialize AD components
+    Eigen::Quaternion<ADScalar> q_ad = rotation.cast<ADScalar>();
+
+    // Seed derivatives: index 0=w, 1=x, 2=y, 3=z
+    for (Eigen::Index i = 0; i < 4; ++i) {
+      q_ad.coeffs()[i].derivatives() = Eigen::Vector4d::Unit(i);
+    }
+    // Sandwich product
+    Eigen::Quaternion<ADScalar> p_ad(0, point.x(), point.y(), point.z());
+    Eigen::Quaternion<ADScalar> res_quat_ad = q_ad * p_ad * q_ad.conjugate();
+
+    Eigen::Matrix<double, 3, 4> expected_jacobian;
+    expected_jacobian << res_quat_ad.x().derivatives().transpose(),
+        res_quat_ad.y().derivatives().transpose(),
+        res_quat_ad.z().derivatives().transpose();
+
+    ASSERT_THAT(result, AllClose(expected_jacobian));
   }
 }

@@ -8,27 +8,6 @@
 
 namespace autopilot {
 
-namespace {
-// Helper for Agi-style quaternion Jacobians
-Eigen::Matrix4d qConjugateJacobian() {
-  return Eigen::Vector4d(-1, -1, -1, 1).asDiagonal();
-}
-
-Eigen::Matrix4d qLeft(const Eigen::Quaterniond& q) {
-  Eigen::Matrix4d mat;
-  mat << q.w() * Eigen::Matrix3d::Identity() + hat(q.vec()), q.vec(),
-      -q.vec().transpose(), q.w();
-  return mat;
-}
-
-Eigen::Matrix4d qRight(const Eigen::Quaterniond& q) {
-  Eigen::Matrix4d mat;
-  mat << q.w() * Eigen::Matrix3d::Identity() - hat(q.vec()), q.vec(),
-      -q.vec().transpose(), q.w();
-  return mat;
-}
-}  // namespace
-
 EkfEstimator::EkfEstimator(std::shared_ptr<QuadrotorModel> model,
                            std::shared_ptr<Config> config,
                            std::shared_ptr<spdlog::logger> logger)
@@ -88,7 +67,7 @@ std::error_code EkfEstimator::predict(
   state.odometry.twist().angular() = omega;
 
   const Eigen::Matrix3d rotation_matrix = q.toRotationMatrix();
-  const Eigen::Matrix4d left_quaternion_matrix = qLeft(q);
+  const Eigen::Matrix4d left_quaternion_matrix = LeftQuaternionMatrix(q);
   // 2. Covariance Propagation (Jacobians fjac and gjac from agi)
   StateMatrix fjac = StateMatrix::Zero();
   Eigen::Matrix<double, kNumStates, 6> gjac =
@@ -97,7 +76,7 @@ std::error_code EkfEstimator::predict(
   fjac(kPosition(), kVelocity()) = Eigen::Matrix3d::Identity();
   const Eigen::Quaterniond q_omega(0.0, omega.x(), omega.y(), omega.z());
   // d/dq q_dot
-  fjac(kOrientation(), kOrientation()) = 0.5 * qRight(q_omega);
+  fjac(kOrientation(), kOrientation()) = 0.5 * RightQuaternionMatrix(q_omega);
 
   // d/dbw q_dot
   fjac(kOrientation(), kGyroBias()) = -0.5 * left_quaternion_matrix.leftCols(3);
@@ -110,10 +89,7 @@ std::error_code EkfEstimator::predict(
   const Eigen::Quaterniond qacc{qaccvec};
 
   fjac(kVelocity(), kOrientation()) =
-      (qRight(Eigen::Quaterniond{qRight(q).transpose() * qaccvec}) +
-       left_quaternion_matrix * qLeft(qacc) * qConjugateJacobian())
-          .topRows(3);
-
+      jacobians::RotatePointByQuaternion(q, accel);
   // d/dba v_dot
   fjac(kVelocity(), kAccelBias()) = -rotation_matrix;
 

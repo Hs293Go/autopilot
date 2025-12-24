@@ -214,6 +214,48 @@ Eigen::Vector3<typename Derived::Scalar> RotationMatrixToAngleAxis(
   return QuaternionToAngleAxis(Eigen::Quaternion<typename Derived::Scalar>(R));
 }
 
+namespace details {
+
+template <auto BinaryOp, typename Derived>
+Eigen::Matrix4<typename Derived::Scalar> QuaternionMatrix(
+    const Eigen::QuaternionBase<Derived>& q) {
+  using Scalar = typename Derived::Scalar;
+  Eigen::Matrix4<Scalar> mat;
+  mat << BinaryOp(q.w() * Eigen::Matrix3d::Identity(), hat(q.vec())), q.vec(),
+      -q.vec().transpose(), q.w();
+  return mat;
+}
+}  // namespace details
+
+template <typename Derived>
+Eigen::Matrix4<typename Derived::Scalar> LeftQuaternionMatrix(
+    const Eigen::QuaternionBase<Derived>& q) {
+  return details::QuaternionMatrix<std::plus{}>(q);
+}
+
+template <typename Derived>
+Eigen::Matrix4<typename Derived::Scalar> RightQuaternionMatrix(
+    const Eigen::QuaternionBase<Derived>& q) {
+  return details::QuaternionMatrix<std::minus{}>(q);
+}
+
+namespace jacobians {
+
+template <typename QDerived, Vector3Like PDerived>
+Eigen::Matrix<typename QDerived::Scalar, 3, 4> RotatePointByQuaternion(
+    const Eigen::QuaternionBase<QDerived>& q,
+    const Eigen::MatrixBase<PDerived>& p) {
+  using Scalar = typename QDerived::Scalar;
+  Eigen::Vector3<Scalar> tqv = Scalar(2) * (q.vec().cross(p) + q.w() * p);
+  Eigen::Matrix<Scalar, 3, 4> jac;
+  jac << Scalar(2) * q.vec().dot(p) * Eigen::Matrix3<Scalar>::Identity() -
+             hat(tqv),
+      tqv;
+  return jac;
+}
+
+}  // namespace jacobians
+
 }  // namespace autopilot
 
 #endif  // AUTOPILOT_ROTATION_HPP_
