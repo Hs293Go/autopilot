@@ -22,17 +22,17 @@ VisitResult MaybePreferUserProvided(std::string_view key,
 
 template <typename T>
 VisitResult ProcessValue(std::string_view key, const json& node, T& value) {
-  if constexpr (std::is_arithmetic_v<T>) {
-    if (!node.is_number()) {
-      return {make_error_code(AutopilotErrc::kConfigTypeMismatch), key};
-    }
-    value = node.get<T>();
-    return {};
-  } else if constexpr (std::is_same_v<T, bool>) {
+  if constexpr (std::is_same_v<T, bool>) {
     if (!node.is_boolean()) {
       return {make_error_code(AutopilotErrc::kConfigTypeMismatch), key};
     }
     value = node.get<bool>();
+    return {};
+  } else if constexpr (std::is_arithmetic_v<T>) {
+    if (!node.is_number()) {
+      return {make_error_code(AutopilotErrc::kConfigTypeMismatch), key};
+    }
+    value = node.get<T>();
     return {};
   } else if constexpr (std::is_same_v<T, std::string>) {
     if (!node.is_string()) {

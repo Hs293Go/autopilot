@@ -52,7 +52,10 @@ struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
   // 4. Container (Vector)
   std::vector<double> gains = {1.0, 1.0, 1.0};
 
-  // 5. Nested Object
+  // 5. Boolean
+  bool flag = false;
+
+  // 6. Nested Object
   NestedConfig child;
 
   ap::Polymorphic<testing::MockComponentFactory> polymorphic_component;
@@ -73,6 +76,7 @@ struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
       Describe("gains", &TestConfig::gains,
                F64Properties{.desc = "Gains Vector",
                              .bounds = Bounds<double>::Positive()}),
+      Describe("flag", &TestConfig::flag, Properties{.desc = "Boolean Flag"}),
       Describe("child", &TestConfig::child,
                Properties{.desc = "Nested Child Config"}),
       Describe("polymorphic_component", &TestConfig::polymorphic_component,
@@ -115,6 +119,7 @@ TEST_F(TestConfigLoader, LoadValidConfig) {
     "required_val": 42.0,
     "id": "test_unit",
     "gains": [0.1, 0.2, 0.3],
+    "flag": true,
     "child": {
       "inner_val": 99.9
     }
@@ -127,6 +132,7 @@ TEST_F(TestConfigLoader, LoadValidConfig) {
   EXPECT_DOUBLE_EQ(cfg_.required_val, 42.0);
   EXPECT_EQ(cfg_.id, "test_unit");
   EXPECT_THAT(cfg_.gains, testing::ElementsAre(0.1, 0.2, 0.3));
+  EXPECT_TRUE(cfg_.flag);
   EXPECT_DOUBLE_EQ(cfg_.child.inner_val, 99.9);
 }
 
@@ -194,6 +200,13 @@ TEST_F(TestConfigLoader, TypeMismatch) {
   })";
 
   EXPECT_EQ(load(json),
+            make_error_code(ap::AutopilotErrc::kConfigTypeMismatch));
+
+  const char* int_bool_confusion = R"({
+    "required_val": 1,
+    "flag": 1
+  })";
+  EXPECT_EQ(load(int_bool_confusion),
             make_error_code(ap::AutopilotErrc::kConfigTypeMismatch));
 }
 
