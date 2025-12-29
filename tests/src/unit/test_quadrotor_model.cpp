@@ -59,10 +59,8 @@ class TestQuadrotorModel : public ::testing::Test {
     // Motor layout parameters (Standard X configuration)
     // Front right (0), Back left (1), Front left (2), Back right (3) - or
     // similar depending on layout
-    ASSERT_EQ(cfg->setFrontMotorPosition(kArmLength, kArmLength),
-              std::error_code());
-    ASSERT_EQ(cfg->setBackMotorPosition(kArmLength, kArmLength),
-              std::error_code());
+    ASSERT_EQ(cfg->setFrontMotorPosition(kArmX, kArmY), std::error_code());
+    ASSERT_EQ(cfg->setBackMotorPosition(kArmX, kArmY), std::error_code());
     ASSERT_EQ(cfg->setTorqueConstant(kTorqueConstant), std::error_code());
 
     // Set Gravity to standard -9.81 Z
@@ -74,7 +72,8 @@ class TestQuadrotorModel : public ::testing::Test {
 
   // Constants for testing
   static constexpr double kMass = 1.5;             // kg
-  static constexpr double kArmLength = 0.25;       // m
+  static constexpr double kArmX = 0.25;            // m
+  static constexpr double kArmY = 0.20;            // m
   static constexpr double kTorqueConstant = 0.02;  // Nm/N
   static constexpr double kGravity = 9.81;         // m/s^2
 
@@ -83,6 +82,43 @@ class TestQuadrotorModel : public ::testing::Test {
 
   std::shared_ptr<ap::QuadrotorModel> model_;
 };
+
+TEST_F(TestQuadrotorModel, MotorLayoutTorqueVerification) {
+  // Verify that the allocation matrix multiplication matches the
+  // sum-of-cross-products definition for torque generation.
+
+  // Motor thrusts for testing
+  Eigen::Vector4d motor_thrusts;
+  motor_thrusts << 5.0, 5.0, 5.0, 5.0;  // Uniform thrust
+
+  // Compute using allocation matrix
+  const auto& [_, torque] = model_->motorThrustsToThrustTorque(motor_thrusts);
+
+  // Compute using sum of cross products
+  const auto c = kTorqueConstant;
+
+  // Betaflight configuration
+  std::array<Eigen::Vector3d, 4> motor_positions = {{
+      {-kArmX, -kArmY, 0.0},  // back right
+      {kArmX, -kArmY, 0.0},   // front right
+      {-kArmX, kArmY, 0.0},   // back left
+      {kArmX, kArmY, 0.0}     // front left
+  }};
+  constexpr std::array<int, 4> kMotorDirections = {{1, -1, 1, -1}};  // CW/CCW
+
+  Eigen::Vector3d expected_torque = Eigen::Vector3d::Zero();
+  for (size_t i = 0; i < 4; ++i) {
+    const Eigen::Index si = static_cast<Eigen::Index>(i);
+    const Eigen::Vector3d lever_arm_moment =
+        motor_positions[i].cross(motor_thrusts[si] * Eigen::Vector3d::UnitZ());
+    ASSERT_DOUBLE_EQ(lever_arm_moment.z(), 0.0);
+    expected_torque.head<2>() += lever_arm_moment.head<2>();
+
+    const double reaction_torque = kMotorDirections[i] * c * motor_thrusts[si];
+    expected_torque.z() += reaction_torque;
+  }
+  ASSERT_THAT(torque, AllClose(expected_torque));
+}
 
 TEST_F(TestQuadrotorModel, MixerMatrixInversion) {
   // Test 1: Verify Wrench -> Motor Thrusts -> Wrench round trip
