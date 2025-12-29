@@ -54,6 +54,8 @@
     "dt_control": 0.005,
     "dt_gps": 0.1,
     "max_steps": 10000,
-    "acceptance_radius": 0.25
+    "acceptance_radius": 0.25,
+    "accel_cutoff_hz": 30.0,
+    "gyro_cutoff_hz": 30.0
   }
 }

@@ -20,6 +20,17 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
       cfg_(std::move(config)),
       logger_(logger ? std::move(logger) : spdlog::default_logger()) {
   if (est_) {
+    logger_->info("Using sampling frequency {:.2f} Hz for IMU filter",
+                  1.0 / cfg_.dt_sim);
+    if (cfg_.gyro_cutoff_hz > 0.0) {
+      std::ignore =
+          gyro_filter_.initialize(cfg_.gyro_cutoff_hz, 1.0 / cfg_.dt_sim);
+    }
+    if (cfg_.accel_cutoff_hz > 0.0) {
+      std::ignore =
+          accel_filter_.initialize(cfg_.accel_cutoff_hz, 1.0 / cfg_.dt_sim);
+    }
+
     logger_->info("Estimator attached: {}", est_->name());
     est_->start();
   }
@@ -35,6 +46,12 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
 
 void MissionRunner::pushEstimatorData(double& last_gps_time, double curr_time) {
   auto imu = sim_->getImuMeasurement(cfg_.dt_sim);
+  if (cfg_.gyro_cutoff_hz > 0.0) {
+    imu->gyro = gyro_filter_.compute(imu->gyro);
+  }
+  if (cfg_.accel_cutoff_hz > 0.0) {
+    imu->accel = accel_filter_.compute(imu->accel);
+  }
   // B. IMU Input (Fast: e.g. 1000Hz)
   // Note: In reality, IMU data comes *from* the step integration.
   // Ensure sim_ generates IMU data corresponding to the interval we just

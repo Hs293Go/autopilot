@@ -40,6 +40,7 @@ target_sources(
          include/autopilot/base/module.hpp
          include/autopilot/controllers/cascade_controller.hpp
          include/autopilot/controllers/geometric_controller.hpp
+         include/autopilot/core/butterworth_filter.hpp
          include/autopilot/core/common.hpp
          include/autopilot/core/definitions.hpp
          include/autopilot/core/geometry.hpp

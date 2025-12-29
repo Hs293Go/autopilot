@@ -6,6 +6,7 @@
 
 #include "autopilot/base/config_base.hpp"
 #include "autopilot/base/controller_base.hpp"
+#include "autopilot/core/butterworth_filter.hpp"
 #include "autopilot/estimators/estimator_driver_base.hpp"
 #include "autopilot/simulator/quadrotor_simulator.hpp"
 
@@ -39,6 +40,10 @@ struct MissionRunnerConfig : ReflectiveConfigBase<MissionRunnerConfig> {
   std::int64_t max_steps = 5000;
   Eigen::Vector3d geofence_min = Eigen::Vector3d(-10.0, -10.0, -1.0);
   Eigen::Vector3d geofence_max = Eigen::Vector3d(10.0, 10.0, 20.0);
+  bool filter_accel = true;
+  double accel_cutoff_hz = 40.0;
+  bool filter_gyro = true;
+  double gyro_cutoff_hz = 40.0;
 
   static constexpr auto kDescriptors = std::make_tuple(
       Describe("dt_control", &MissionRunnerConfig::dt_control,
@@ -60,7 +65,16 @@ struct MissionRunnerConfig : ReflectiveConfigBase<MissionRunnerConfig> {
       Describe("geofence_min", &MissionRunnerConfig::geofence_min,
                F64Properties{.desc = "Minimum geofence boundary (m)"}),
       Describe("geofence_max", &MissionRunnerConfig::geofence_max,
-               F64Properties{.desc = "Maximum geofence boundary (m)"}));
+               F64Properties{.desc = "Maximum geofence boundary (m)"}),
+      Describe("accel_cutoff_hz", &MissionRunnerConfig::accel_cutoff_hz,
+               F64Properties{.desc = "Cutoff frequency for Accel Butterworth "
+                                     "filter (Hz); Set to 0 to disable",
+                             .bounds = Bounds<double>::NonNegative()}),
+      Describe("gyro_cutoff_hz", &MissionRunnerConfig::gyro_cutoff_hz,
+               F64Properties{
+                   .desc = "Cutoff frequency for Gyro Butterworth filter (Hz); "
+                           "Set to 0 to disable",
+                   .bounds = Bounds<double>::NonNegative()}));
 };
 
 class MissionRunner {
@@ -99,6 +113,8 @@ class MissionRunner {
   std::vector<MissionWaypoint> mission_;
   Config cfg_;
   std::shared_ptr<spdlog::logger> logger_;
+  ButterworthFilter<double, 3> gyro_filter_;
+  ButterworthFilter<double, 3> accel_filter_;
 };
 
 }  // namespace autopilot

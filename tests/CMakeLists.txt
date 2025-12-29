@@ -28,9 +28,9 @@ target_link_libraries(
 
 add_executable(
   test_unit
-  src/unit/test_factory.cpp src/unit/test_spatial_rotations.cpp
-  src/unit/test_config_loader.cpp src/unit/test_quadrotor_model.cpp
-  src/unit/test_polynomial.cpp)
+  src/unit/test_butterworth_filter.cpp src/unit/test_factory.cpp
+  src/unit/test_spatial_rotations.cpp src/unit/test_config_loader.cpp
+  src/unit/test_quadrotor_model.cpp src/unit/test_polynomial.cpp)
 target_link_libraries(
   test_unit
   PRIVATE autopilot::autopilot autopilot::extensions GTest::gtest
