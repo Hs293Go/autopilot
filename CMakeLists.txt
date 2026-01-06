@@ -1,4 +1,14 @@
 cmake_minimum_required(VERSION 3.31)
+
+# Prevent in-source builds
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+  message(
+    FATAL_ERROR
+      "In-source builds are not allowed. Please create a separate build directory."
+      "You may need to delete CMakeCache.txt and CMakeFiles/ from the source directory."
+  )
+endif()
+
 project(autopilot)
 
 find_package(spdlog REQUIRED)
