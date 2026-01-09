@@ -37,15 +37,14 @@ FetchContent_MakeAvailable(spdlog nlohmann_json Eigen3 Boost)
 add_library(autopilot_autopilot)
 target_sources(
   autopilot_autopilot
-  PRIVATE src/async_estimator.cpp
-          src/cascade_controller.cpp
-          src/definitions.cpp
+  PRIVATE src/definitions.cpp
           src/ekf.cpp
           src/eskf.cpp
-          src/geometric_controller.cpp
           src/quadrotor_model.cpp
           src/quadrotor_simulator.cpp
           src/sensors.cpp
+          src/json_loader.cpp
+          src/pretty_printer.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
@@ -56,37 +55,60 @@ target_sources(
          include/autopilot/base/estimator_base.hpp
          include/autopilot/base/factory.hpp
          include/autopilot/base/module.hpp
-         include/autopilot/controllers/cascade_controller.hpp
-         include/autopilot/controllers/geometric_controller.hpp
          include/autopilot/core/butterworth_filter.hpp
          include/autopilot/core/common.hpp
          include/autopilot/core/definitions.hpp
          include/autopilot/core/geometry.hpp
          include/autopilot/core/math.hpp
          include/autopilot/core/quadrotor_model.hpp
-         include/autopilot/estimators/async_estimator.hpp
-         include/autopilot/estimators/ekf.hpp
-         include/autopilot/estimators/eskf.hpp
-         include/autopilot/estimators/sensor_data.hpp
+         include/autopilot/extensions/json_loader.hpp
+         include/autopilot/extensions/pretty_printer.hpp
          include/autopilot/planning/polynomial.hpp
          include/autopilot/simulator/quadrotor_simulator.hpp
          include/autopilot/simulator/sensors.hpp)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
-target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog
-                                                 Boost::math)
+target_link_libraries(
+  autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog
+                             nlohmann_json::nlohmann_json Boost::math)
 
 add_library(autopilot::autopilot ALIAS autopilot_autopilot)
 set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
 
-add_library(autopilot_extensions)
+add_library(autopilot_controllers STATIC)
 target_sources(
-  autopilot_extensions
-  PRIVATE src/json_loader.cpp src/pretty_printer.cpp
-  PUBLIC FILE_SET HEADERS BASE_DIRS include FILES
-         include/autopilot/extensions/json_loader.hpp)
-target_link_libraries(autopilot_extensions PUBLIC autopilot::autopilot
-                                                  nlohmann_json::nlohmann_json)
-add_library(autopilot::extensions ALIAS autopilot_extensions)
+  autopilot_controllers
+  PRIVATE src/cascade_controller.cpp src/geometric_controller.cpp
+  PUBLIC FILE_SET
+         HEADERS
+         BASE_DIRS
+         include
+         FILES
+         include/autopilot/controllers/cascade_controller.hpp
+         include/autopilot/controllers/geometric_controller.hpp)
+target_link_libraries(autopilot_controllers PUBLIC autopilot::autopilot)
+add_library(autopilot::controllers ALIAS autopilot_controllers)
+set_target_properties(autopilot_controllers PROPERTIES EXPORT_NAME controllers)
+
+add_library(autopilot_estimators STATIC)
+target_sources(
+  autopilot_estimators
+  PRIVATE src/async_estimator.cpp src/quadrotor_simulator.cpp src/ekf.cpp
+          src/eskf.cpp
+  PUBLIC FILE_SET
+         HEADERS
+         BASE_DIRS
+         include
+         FILES
+         include/autopilot/estimators/async_estimator.hpp
+         include/autopilot/estimators/ekf.hpp
+         include/autopilot/estimators/eskf.hpp
+         include/autopilot/estimators/sensor_data.hpp)
+target_link_libraries(
+  autopilot_estimators
+  PUBLIC autopilot::autopilot
+  PRIVATE "$<COMPILE_ONLY:Boost::math>")
+add_library(autopilot::estimators ALIAS autopilot_estimators)
+set_target_properties(autopilot_estimators PROPERTIES EXPORT_NAME estimators)
 
 option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests" ON)
 option(AUTOPILOT_BUILD_EXAMPLES "Build the autopilot examples" ON)

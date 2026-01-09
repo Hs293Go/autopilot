@@ -25,8 +25,14 @@ target_link_libraries(testing PUBLIC GTest::gmock autopilot::autopilot)
 
 add_executable(test_integration src/integration/test_cascade_controller_sim.cpp)
 target_link_libraries(
-  test_integration PRIVATE autopilot::autopilot autopilot::validation
-                           GTest::gtest GTest::gmock GTest::gtest_main testing)
+  test_integration
+  PRIVATE autopilot::autopilot
+          autopilot::validation
+          autopilot::controllers
+          GTest::gtest
+          GTest::gmock
+          GTest::gtest_main
+          testing)
 
 add_executable(
   test_unit
@@ -34,9 +40,8 @@ add_executable(
   src/unit/test_spatial_rotations.cpp src/unit/test_config_loader.cpp
   src/unit/test_quadrotor_model.cpp src/unit/test_polynomial.cpp)
 target_link_libraries(
-  test_unit
-  PRIVATE autopilot::autopilot autopilot::extensions GTest::gtest
-          GTest::gtest_main GTest::gmock $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
+  test_unit PRIVATE autopilot::autopilot GTest::gtest GTest::gtest_main
+                    GTest::gmock $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
 
 add_custom_target(tests DEPENDS test_unit test_integration)
 
