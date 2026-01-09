@@ -1,5 +1,7 @@
 project(autopilot_tests)
 
+include(GoogleTest)
+
 include(FetchContent)
 FetchContent_Declare(
   GTest
@@ -37,3 +39,13 @@ target_link_libraries(
           GTest::gtest_main GTest::gmock $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
 
 add_custom_target(tests DEPENDS test_unit test_integration)
+
+gtest_discover_tests(
+  test_unit
+  PROPERTIES LABELS "unit"
+  TIMEOUT 10)
+
+gtest_discover_tests(
+  test_integration
+  PROPERTIES LABELS "integration"
+  TIMEOUT 60)

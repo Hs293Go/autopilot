@@ -116,5 +116,18 @@
       "configuration": "Sanitize",
       "targets": ["all"]
     }
+  ],
+  "testPresets": [
+    {
+      "name": "test-default",
+      "configurePreset": "linux-default",
+      "displayName": "Run tests",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    }
   ]
 }
