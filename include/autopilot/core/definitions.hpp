@@ -157,75 +157,76 @@ struct formatter<autopilot::QuadrotorStateComponent> : NoSpecifierFormatter {
               FormatContext& ctx) const {
     switch (comp) {
       case autopilot::QuadrotorStateComponent::kPosition:
-        return format_to(ctx.out(), "Position");
+        return ::fmt::format_to(ctx.out(), "Position");
       case autopilot::QuadrotorStateComponent::kVelocity:
-        return format_to(ctx.out(), "Velocity");
+        return ::fmt::format_to(ctx.out(), "Velocity");
       case autopilot::QuadrotorStateComponent::kOrientation:
-        return format_to(ctx.out(), "Orientation");
+        return ::fmt::format_to(ctx.out(), "Orientation");
       case autopilot::QuadrotorStateComponent::kYawOnly:
-        return format_to(ctx.out(), "YawOnly");
+        return ::fmt::format_to(ctx.out(), "YawOnly");
       case autopilot::QuadrotorStateComponent::kAngularVelocity:
-        return format_to(ctx.out(), "AngularVelocity");
+        return ::fmt::format_to(ctx.out(), "AngularVelocity");
       case autopilot::QuadrotorStateComponent::kAcceleration:
-        return format_to(ctx.out(), "Acceleration");
+        return ::fmt::format_to(ctx.out(), "Acceleration");
       case autopilot::QuadrotorStateComponent::kAngularAcceleration:
-        return format_to(ctx.out(), "AngularAcceleration");
+        return ::fmt::format_to(ctx.out(), "AngularAcceleration");
       case autopilot::QuadrotorStateComponent::kForce:
-        return format_to(ctx.out(), "Force");
+        return ::fmt::format_to(ctx.out(), "Force");
       case autopilot::QuadrotorStateComponent::kTorque:
-        return format_to(ctx.out(), "Torque");
+        return ::fmt::format_to(ctx.out(), "Torque");
       case autopilot::QuadrotorStateComponent::kCollectiveThrust:
-        return format_to(ctx.out(), "CollectiveThrust");
+        return ::fmt::format_to(ctx.out(), "CollectiveThrust");
       case autopilot::QuadrotorStateComponent::kMotorThrusts:
-        return format_to(ctx.out(), "MotorThrusts");
+        return ::fmt::format_to(ctx.out(), "MotorThrusts");
       default:
         std::unreachable();
     }
   }
 };
 
-template <std::floating_point T>
+template <typename T>
 struct formatter<autopilot::Transform<T>> : NoSpecifierFormatter {
   template <typename FormatContext>
   auto format(const autopilot::Transform<T>& tf, FormatContext& ctx) const {
-    return format_to(ctx.out(), "Transform(Translation: {}, Rotation: {})",
-                     tf.translation(), tf.rotation().coeffs());
+    return ::fmt::format_to(ctx.out(),
+                            "Transform(Translation: {}, Rotation: {})",
+                            tf.translation(), tf.rotation().coeffs());
   }
 };
 
-template <std::floating_point T>
+template <typename T>
 struct formatter<autopilot::Twist<T>> : NoSpecifierFormatter {
   template <typename FormatContext>
   auto format(const autopilot::Twist<T>& twist, FormatContext& ctx) const {
-    return format_to(ctx.out(), "Twist(Linear: {}, Angular: {})",
-                     twist.linear(), twist.angular());
+    return ::fmt::format_to(ctx.out(), "Twist(Linear: {}, Angular: {})",
+                            twist.linear(), twist.angular());
   }
 };
 
-template <std::floating_point T>
+template <typename T>
 struct formatter<autopilot::Odometry<T>> : NoSpecifierFormatter {
   template <typename FormatContext>
   auto format(const autopilot::Odometry<T>& odom, FormatContext& ctx) const {
-    return format_to(ctx.out(), "Odometry(Transform: {}, Twist: {})",
-                     odom.pose(), odom.twist());
+    return ::fmt::format_to(ctx.out(), "Odometry(Transform: {}, Twist: {})",
+                            odom.pose(), odom.twist());
   }
 };
 
-template <std::floating_point T>
+template <typename T>
 struct formatter<autopilot::Accel<T>> : NoSpecifierFormatter {
   template <typename FormatContext>
   auto format(const autopilot::Accel<T>& accel, FormatContext& ctx) const {
-    return format_to(ctx.out(), "Accel(Linear: {}, Angular: {})",
-                     accel.linear(), accel.angular());
+    return ::fmt::format_to(ctx.out(), "Accel(Linear: {}, Angular: {})",
+                            accel.linear(), accel.angular());
   }
 };
 
-template <std::floating_point T>
+template <typename T>
 struct formatter<autopilot::Wrench<T>> : NoSpecifierFormatter {
   template <typename FormatContext>
   auto format(const autopilot::Wrench<T>& wrench, FormatContext& ctx) const {
-    return format_to(ctx.out(), "Wrench(Force: {}, Torque: {})", wrench.force(),
-                     wrench.torque());
+    return ::fmt::format_to(ctx.out(), "Wrench(Force: {}, Torque: {})",
+                            wrench.force(), wrench.torque());
   }
 };
 
@@ -233,12 +234,13 @@ template <>
 struct formatter<autopilot::QuadrotorState> : NoSpecifierFormatter {
   template <typename FormatContext>
   auto format(const autopilot::QuadrotorState& comp, FormatContext& ctx) const {
-    return format_to(ctx.out(),
-                     "QuadrotorState(Timestamp: {}, {}, "
-                     "{}, {}, "
-                     "Collective Thrust: {}, Motor Thrusts: {})",
-                     comp.timestamp_secs, comp.odometry, comp.accel,
-                     comp.wrench, comp.collective_thrust, comp.motor_thrusts);
+    return ::fmt::format_to(ctx.out(),
+                            "QuadrotorState(Timestamp: {}, {}, "
+                            "{}, {}, "
+                            "Collective Thrust: {}, Motor Thrusts: {})",
+                            comp.timestamp_secs, comp.odometry, comp.accel,
+                            comp.wrench, comp.collective_thrust,
+                            comp.motor_thrusts);
   }
 };
 
@@ -255,9 +257,9 @@ struct formatter<autopilot::QuadrotorCommand> : NoSpecifierFormatter {
         std::views::transform([](int i) {
           return static_cast<autopilot::QuadrotorStateComponent>(1u << i);
         });
-    return format_to(ctx.out(),
-                     "QuadrotorCommand(Setpoint: {}, Components Set: {})",
-                     cmd.setpoint(), std::move(set_components_view));
+    return ::fmt::format_to(
+        ctx.out(), "QuadrotorCommand(Setpoint: {}, Components Set: {})",
+        cmd.setpoint(), std::move(set_components_view));
   }
 };
 }  // namespace fmt
