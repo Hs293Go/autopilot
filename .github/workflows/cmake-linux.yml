@@ -1,0 +1,57 @@
+name: CMake on the Linux platform
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        configure_preset: [linux-default]
+        build_preset: [build-debug, build-release]
+        c_compiler: [gcc]
+        cpp_compiler: [g++]
+        include:
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -q && \
+          sudo apt-get install -y -q --no-install-recommends \
+            cmake \
+            clang-tidy-16 \
+            gcc-13 \
+            g++-13 \
+            libspdlog-dev \
+            ninja-build
+
+      - name: Setting default compiler versions
+        run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 && \
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+
+      - name: Configure CMake
+        run: |
+          cmake -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          --preset ${{ matrix.configure_preset }}
+
+      - name: Build
+        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+        run: cmake --build --preset ${{ matrix.build_preset }}
+
+      - name: Test
+        working-directory: ${{ steps.strings.outputs.build-output-dir }}
+        run: ctest --preset test-default
