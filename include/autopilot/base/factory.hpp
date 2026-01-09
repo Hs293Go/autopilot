@@ -157,10 +157,10 @@ class GenericFactory {
 
 template <typename T, typename Factory>
 struct Registrar {
-  explicit Registrar(std::string name) {
+  explicit Registrar(const std::string& name) {
     // The new Register function is a template that generates
     // the creators internally, so we just pass the type T and the name.
-    Factory::template Register<T>(std::move(name));
+    Factory::template Register<T>(name);
   }
 };
 

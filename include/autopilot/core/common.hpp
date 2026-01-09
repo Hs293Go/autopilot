@@ -24,10 +24,13 @@ struct fixed_string {  // NOLINT(readability-identifier-naming)
   constexpr operator std::string_view() const { return {buf, N - 1}; }
 };
 
+namespace literals {
 template <fixed_string S>
 consteval auto operator""_s() {
   return S;
 }
+
+}  // namespace literals
 
 namespace internal {
 template <std::size_t Index, class P0, class... Pack>

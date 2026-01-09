@@ -35,7 +35,7 @@ enum class TestEnum : std::int64_t {
   kOptionC = 2,
 };
 
-using ap::operator""_s;
+using namespace ap::literals;
 
 struct TestConfig : public ap::ReflectiveConfigBase<TestConfig> {
   std::string_view name() const override { return "TestConfig"; }

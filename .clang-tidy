@@ -88,4 +88,7 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.StaticConstantPrefix
     value: k
-  - { key: modernize-use-nullptr.NullMacros, value: "NULL" }
+  - key: modernize-use-nullptr.NullMacros
+    value: "NULL"
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: .*(Ptr|Ref)$

@@ -45,9 +45,6 @@ static inline const double kTinyAngle =
 
 static constexpr auto kNumTrials = 1000;
 
-using testing::DoubleNear;
-using testing::Pointwise;
-
 MATCHER_P(QuaternionIsClose, expectation,
           ::testing::PrintToString(expectation)) {
   return ap::IsClose(arg.angularDistance(expectation), 0.0);
@@ -385,8 +382,8 @@ TEST_F(TestRotation, RotatePointByQuaternion) {
     Eigen::Quaternion<ADScalar> q_ad = rotation.cast<ADScalar>();
 
     // Seed derivatives: index 0=w, 1=x, 2=y, 3=z
-    for (Eigen::Index i = 0; i < 4; ++i) {
-      q_ad.coeffs()[i].derivatives() = Eigen::Vector4d::Unit(i);
+    for (Eigen::Index k = 0; k < 4; ++k) {
+      q_ad.coeffs()[k].derivatives() = Eigen::Vector4d::Unit(k);
     }
     // Sandwich product
     Eigen::Quaternion<ADScalar> p_ad(0, point.x(), point.y(), point.z());

@@ -399,8 +399,9 @@ struct ReflectiveConfigBase : ConfigBase {
     VisitResult res;
     std::apply(
         [this, &visitor, &res](const auto&... it) {
-          ((res = res.ec ? res
-                         : visitImpl(it.name, it.member, it.props, visitor)),
+          ((res = res.ec
+                      ? res
+                      : this->visitImpl(it.name, it.member, it.props, visitor)),
            ...);
         },
         Derived::kDescriptors);
@@ -411,8 +412,9 @@ struct ReflectiveConfigBase : ConfigBase {
     VisitResult res;
     std::apply(
         [this, &visitor, &res](const auto&... it) {
-          ((res = res.ec ? res
-                         : visitImpl(it.name, it.member, it.props, visitor)),
+          ((res = res.ec
+                      ? res
+                      : this->visitImpl(it.name, it.member, it.props, visitor)),
            ...);
         },
         Derived::kDescriptors);
@@ -421,6 +423,7 @@ struct ReflectiveConfigBase : ConfigBase {
 
  private:
   friend Derived;
+  ReflectiveConfigBase() = default;
 
   template <typename Class, typename T, typename Props>
   VisitResult visitImpl(std::string_view key, T Class::* member,
