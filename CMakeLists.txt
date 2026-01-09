@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.28)
 
 # Prevent in-source builds
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -11,9 +11,11 @@ endif()
 
 project(autopilot)
 
-find_package(spdlog REQUIRED)
-find_package(Boost REQUIRED)
 include(FetchContent)
+
+FetchContent_Declare(
+  spdlog URL https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz
+             SYSTEM FIND_PACKAGE_ARGS CONFIG)
 
 FetchContent_Declare(
   Eigen3
@@ -24,7 +26,13 @@ FetchContent_Declare(
   nlohmann_json
   URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
       SYSTEM FIND_PACKAGE_ARGS 3.12 CONFIG)
-FetchContent_MakeAvailable(nlohmann_json Eigen3)
+
+set(BOOST_MATH_STANDALONE ON)
+FetchContent_Declare(
+  Boost
+  URL https://github.com/boostorg/math/archive/refs/tags/boost-1.90.0.tar.gz
+      SYSTEM FIND_PACKAGE_ARGS 1.90.0 CONFIG)
+FetchContent_MakeAvailable(spdlog nlohmann_json Eigen3 Boost)
 
 add_library(autopilot_autopilot)
 target_sources(
@@ -65,7 +73,7 @@ target_sources(
          include/autopilot/simulator/sensors.hpp)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
 target_link_libraries(autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog
-                                                 Boost::boost)
+                                                 Boost::math)
 
 add_library(autopilot::autopilot ALIAS autopilot_autopilot)
 set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
