@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
+cmake_policy(SET CMP0077 NEW)
+
 # Prevent in-source builds
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(
@@ -17,10 +19,20 @@ FetchContent_Declare(
   spdlog URL https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz
              SYSTEM FIND_PACKAGE_ARGS CONFIG)
 
+set(CMAKE_REQUIRED_QUIET ON "Silence checks in this function.")
+set(EIGEN_BUILD_DOC
+    OFF
+    CACHE BOOL "Disable building docs for eigen" FORCE)
+set(EIGEN_TEST_NOQT
+    ON
+    CACHE BOOL "Disable building qt tests for eigen" FORCE)
+set(BUILD_TESTING
+    OFF
+    CACHE BOOL "Disable building tests for eigen" FORCE)
 FetchContent_Declare(
   Eigen3
   URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.bz2
-      SYSTEM FIND_PACKAGE_ARGS 3.4 CONFIG)
+      SYSTEM)
 
 FetchContent_Declare(
   nlohmann_json
@@ -33,6 +45,7 @@ FetchContent_Declare(
   URL https://github.com/boostorg/math/archive/refs/tags/boost-1.90.0.tar.gz
       SYSTEM FIND_PACKAGE_ARGS 1.90.0 CONFIG)
 FetchContent_MakeAvailable(spdlog nlohmann_json Eigen3 Boost)
+unset(BUILD_TESTING)
 
 add_library(autopilot_autopilot)
 target_sources(
@@ -126,9 +139,11 @@ if(NOT AUTOPILOT_SKIP_BUILD_VALIDATION)
 endif()
 
 if(BUILD_TESTING)
+  message(STATUS "Autopilot: Building tests")
   add_subdirectory(tests)
 endif()
 
 if(AUTOPILOT_BUILD_EXAMPLES)
+  message(STATUS "Autopilot: Building examples")
   add_subdirectory(examples)
 endif()
