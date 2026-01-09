@@ -3,8 +3,10 @@ name: CMake on the Linux platform
 on:
   push:
     branches: ["main", "develop"]
+    paths-ignore: [README.md, .clang-tidy]
   pull_request:
     branches: ["main", "develop"]
+    paths-ignore: [README.md, .clang-tidy]
 
 jobs:
   build:
