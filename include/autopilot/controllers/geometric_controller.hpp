@@ -53,6 +53,13 @@ class GeometricPositionController : public PositionControllerBase {
 // Geometric Attitude Controller
 // Logic: Nonlinear Control on SO(3) Manifold (Sreenath/Lee)
 // =================================================================
+enum class AttitudeErrorLaw {
+  kGeometricSO3,
+  kQuaternionBased,
+  kTiltPrioritizing
+};
+
+using namespace autopilot::literals;
 
 class GeometricAttitudeController : public AttitudeControllerBase {
  public:
@@ -70,6 +77,8 @@ class GeometricAttitudeController : public AttitudeControllerBase {
     // to noise. false = Use reference state for feedforward. Robust to noise.
     bool enable_exact_linearization = false;
 
+    AttitudeErrorLaw error_law = AttitudeErrorLaw::kGeometricSO3;
+
     static constexpr auto kDescriptors = std::make_tuple(
         Describe("kR", &Config::kR,
                  F64Properties{.desc = "Attitude Error Gains",
@@ -79,7 +88,17 @@ class GeometricAttitudeController : public AttitudeControllerBase {
                                .bounds = Bounds<double>::Positive()}),
         Describe("enable_exact_linearization",
                  &Config::enable_exact_linearization,
-                 Properties{.desc = "Enable Exact Linearization (Lee 2010)"}));
+                 Properties{.desc = "Enable Exact Linearization (Lee 2010)"}),
+        Describe(
+            "error_law", &Config::error_law,
+            I64Properties{
+                .desc = "Attitude Error Computation Method",
+                .map = kEnumMapping<"QuaternionBased"_s,
+                                    AttitudeErrorLaw::kQuaternionBased,  //
+                                    "GeometricSO3"_s,
+                                    AttitudeErrorLaw::kGeometricSO3,  //
+                                    "TiltPrioritizing"_s,
+                                    AttitudeErrorLaw::kTiltPrioritizing>}));
   };
 
   GeometricAttitudeController(std::shared_ptr<QuadrotorModel> model,

@@ -29,8 +29,9 @@
       "attitude_controller_cfg": {
         "type": "GeometricAttitude",
         "config": {
-          "kR": [1.0, 1.0, 0.1],
-          "kOmega": [0.6, 0.6, 0.05]
+          "kR": [1.0, 1.0, 0.2],
+          "kOmega": [0.6, 0.6, 0.4],
+          "error_law": "TiltPrioritizing"
         }
       }
     }
