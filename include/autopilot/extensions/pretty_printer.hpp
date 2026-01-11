@@ -1,4 +1,5 @@
-#include <ostream>
+#include <expected>
+#include <filesystem>
 
 #include "autopilot/base/config_base.hpp"
 
@@ -9,48 +10,68 @@ struct PrintOptions {
   int indent_width = 2;
 };
 
-class PrettyPrinter final : public ConstConfigVisitor {
- public:
-  explicit PrettyPrinter(std::ostream& os, const PrintOptions& options = {});
+fmt::appender FormatConfig(fmt::appender out, const ConfigBase& cfg,
+                           const PrintOptions& opts = {});
 
-  VisitResult visit(std::string_view key, double value,
-                    const F64Properties& props) override;
+char* FormatConfig(char* out, const ConfigBase& cfg,
+                   const PrintOptions& opts = {});
 
-  VisitResult visit(std::string_view key, std::int64_t value,
-                    const I64Properties& props) override;
+std::string ToString(const ConfigBase& cfg, const PrintOptions& opts = {});
 
-  VisitResult visit(std::string_view key, bool value,
-                    const Properties& props) override;
-
-  VisitResult visit(std::string_view key, const std::string& value,
-                    const StrProperties& props) override;
-
-  VisitResult visit(std::string_view key, std::span<const double> value,
-                    const F64Properties& props) override;
-
-  VisitResult visit(std::string_view key, std::span<const std::int64_t> value,
-                    const I64Properties& props) override;
-
-  VisitResult visit(std::string_view key, const ConfigBase& config,
-                    const Properties& props) override;
-
-  // Supports nullable dynamic configs (e.g. inside Polymorphic)
-  VisitResult visit(std::string_view key,
-                    const std::shared_ptr<const ConfigBase>& config,
-                    const Properties& props) override;
-
- private:
-  std::ostream& os_;
-  mutable int indent_level_ = 0;
-  mutable bool object_open_ = true;
-
-  PrintOptions options_;
-
-  std::ostream_iterator<char> handleNewlineWithComma(
-      const std::ostream_iterator<char>& it) const;
-
-  template <typename T, typename P>
-  void FormatKeyValue(std::ostream_iterator<char>& it, std::string_view key,
-                      const T& value, const P& props) const;
-};
+std::expected<std::size_t, std::error_code> DumpToFile(
+    const std::filesystem::path& path, const ConfigBase& cfg,
+    const PrintOptions& opts = {});
 }  // namespace autopilot
+
+namespace fmt {
+constexpr std::expected<char const*, std::errc> FromChars(const char* begin,
+                                                          const char* end,
+                                                          int& value) {
+  value = 0;
+  for (const auto* it = begin; it != end; ++it) {
+    if (*it < '0' || *it > '9') {
+      return std::unexpected(std::errc::invalid_argument);
+    }
+    value = value * 10 + (*it - '0');
+  }
+  return end;
+}
+
+template <std::derived_from<autopilot::ConfigBase> Derived>
+struct formatter<Derived> {
+  constexpr auto parse(format_parse_context& ctx) {
+    const auto* it = ctx.begin();
+    const auto* end = ctx.end();
+
+    const auto* needle = std::ranges::find_if_not(
+        it, end, [](auto c) { return std::isdigit(c); });
+    if (needle != end && needle != it) {
+      if (const auto res = FromChars(it, needle, opts_.indent_width)) {
+        it = *res;
+      } else {
+        throw fmt::format_error("Invalid indent width in format specifier");
+      }
+    }
+
+    // Parse detailed flag (e.g., 'd')
+    if (it != end && *it == 'd') {
+      opts_.show_details = true;
+      ++it;
+    }
+
+    // Return iterator past the last parsed character
+    return it;
+  }
+
+  template <typename FormatContext>
+  auto format(const autopilot::ConfigBase& config, FormatContext& ctx) const {
+    return autopilot::FormatConfig(ctx.out(), config, opts_);
+  }
+
+  autopilot::PrintOptions opts_;
+};
+
+}  // namespace fmt
+
+static_assert(fmt::is_formattable<autopilot::ConfigBase>::value,  //
+              "autopilot::ConfigBase should be formattable with fmt");

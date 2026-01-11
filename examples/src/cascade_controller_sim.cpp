@@ -83,8 +83,7 @@ int main() {
     return -1;
   }
 
-  auto printer = autopilot::PrettyPrinter(std::cout);
-  std::ignore = cfg.accept(printer);
+  spdlog::info("Simulation Configuration:\n{:4d}", cfg);
 
   // 3. Define Mission
   std::vector<ap::MissionWaypoint> mission = {

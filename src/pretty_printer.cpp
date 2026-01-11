@@ -1,5 +1,8 @@
 #include "autopilot/extensions/pretty_printer.hpp"
 
+#include <fstream>
+#include <sstream>
+
 #include "fmt/format.h"
 #include "fmt/ranges.h"
 
@@ -39,10 +42,98 @@ struct fmt::formatter<autopilot::Bounds<T>> : NoSpecifierFormatter {
 
 namespace autopilot {
 
+template <typename OutputIter>
+class PrettyPrinter;
+
+template <class OutIt>
+void PrintTo(OutIt out, const ConfigBase& cfg, const PrintOptions& opts) {
+  PrettyPrinter<OutIt> printer(out, opts);
+  std::ignore = cfg.accept(printer);
+}
+
+fmt::appender FormatConfig(fmt::appender out, const ConfigBase& cfg,
+                           const PrintOptions& opts) {
+  PrintTo(out, cfg, opts);
+  return out;
+}
+
+char* FormatConfig(char* out, const ConfigBase& cfg, const PrintOptions& opts) {
+  PrintTo(out, cfg, opts);
+  return out;
+}
+
+std::string ToString(const ConfigBase& cfg, const PrintOptions& opts) {
+  std::ostringstream oss;
+  PrintTo(std::ostream_iterator<char>(oss), cfg, opts);
+  return oss.str();
+}
+
+std::expected<std::size_t, std::error_code> DumpToFile(
+    const std::filesystem::path& path, const ConfigBase& cfg,
+    const PrintOptions& opts) {
+  std::ofstream ofs(path);
+  if (!ofs.is_open()) {
+    return std::unexpected(make_error_code(std::errc::io_error));
+  }
+  PrintTo(std::ostream_iterator<char>(ofs), cfg, opts);
+  if (ofs.bad()) {
+    return std::unexpected(make_error_code(std::errc::io_error));
+  }
+  return static_cast<std::size_t>(ofs.tellp());
+}
+
+template <typename OutputIter>
+class PrettyPrinter final : public ConstConfigVisitor {
+ public:
+  PrettyPrinter(OutputIter it, const PrintOptions& options)
+      : it_(it), options_(options) {}
+
+  VisitResult visit(std::string_view key, double value,
+                    const F64Properties& props) override;
+
+  VisitResult visit(std::string_view key, std::int64_t value,
+                    const I64Properties& props) override;
+
+  VisitResult visit(std::string_view key, bool value,
+                    const Properties& props) override;
+
+  VisitResult visit(std::string_view key, const std::string& value,
+                    const StrProperties& props) override;
+
+  VisitResult visit(std::string_view key, std::span<const double> value,
+                    const F64Properties& props) override;
+
+  VisitResult visit(std::string_view key, std::span<const std::int64_t> value,
+                    const I64Properties& props) override;
+
+  VisitResult visit(std::string_view key, const ConfigBase& config,
+                    const Properties& props) override;
+
+  // Supports nullable dynamic configs (e.g. inside Polymorphic)
+  VisitResult visit(std::string_view key,
+                    const std::shared_ptr<const ConfigBase>& config,
+                    const Properties& props) override;
+
+ private:
+  OutputIter it_;
+  mutable int indent_level_ = 0;
+  mutable bool object_open_ = true;
+
+  PrintOptions options_;
+
+  OutputIter handleNewlineWithComma(const OutputIter& it) const;
+
+  template <typename T, typename P>
+  void FormatKeyValue(OutputIter& it, std::string_view key, const T& value,
+                      const P& props) const;
+};
+
+template <typename OutputIter>
 template <typename T, typename P>
-void PrettyPrinter::FormatKeyValue(std::ostream_iterator<char>& it,
-                                   std::string_view key, const T& value,
-                                   const P& props) const {
+void PrettyPrinter<OutputIter>::FormatKeyValue(OutputIter& it,
+                                               std::string_view key,
+                                               const T& value,
+                                               const P& props) const {
   auto active_width = options_.indent_width * indent_level_;
   if (!options_.show_details) {
     it = fmt::format_to(it, "{: >{}}{}: {}\n", "", active_width, key, value);
@@ -76,60 +167,59 @@ void PrettyPrinter::FormatKeyValue(std::ostream_iterator<char>& it,
            }}(props);
 }
 
-PrettyPrinter::PrettyPrinter(std::ostream& os, const PrintOptions& options)
-    : os_(os), options_(options) {}
-
-VisitResult PrettyPrinter::visit(std::string_view key, double value,
-                                 const F64Properties& props) {
-  std::ostream_iterator<char> it(os_);
-  FormatKeyValue(it, key, value, props);
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(std::string_view key, double value,
+                                             const F64Properties& props) {
+  FormatKeyValue(it_, key, value, props);
   return {};
 }
 
-VisitResult PrettyPrinter::visit(std::string_view key, std::int64_t value,
-                                 const I64Properties& props) {
-  std::ostream_iterator<char> it(os_);
-  FormatKeyValue(it, key, value, props);
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(std::string_view key,
+                                             std::int64_t value,
+                                             const I64Properties& props) {
+  FormatKeyValue(it_, key, value, props);
   return {};
 }
 
-VisitResult PrettyPrinter::visit(std::string_view key, bool value,
-                                 const Properties& props) {
-  std::ostream_iterator<char> it(os_);
-  FormatKeyValue(it, key, value, props);
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(std::string_view key, bool value,
+                                             const Properties& props) {
+  FormatKeyValue(it_, key, value, props);
   return {};
 }
 
-VisitResult PrettyPrinter::visit(std::string_view key, const std::string& value,
-                                 const StrProperties& props) {
-  std::ostream_iterator<char> it(os_);
-  FormatKeyValue(it, key, value, props);
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(std::string_view key,
+                                             const std::string& value,
+                                             const StrProperties& props) {
+  FormatKeyValue(it_, key, value, props);
   return {};
 }
 
-VisitResult PrettyPrinter::visit(std::string_view key,
-                                 std::span<const double> value,
-                                 const F64Properties& props) {
-  std::ostream_iterator<char> it(os_);
-  FormatKeyValue(it, key, value, props);
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(std::string_view key,
+                                             std::span<const double> value,
+                                             const F64Properties& props) {
+  FormatKeyValue(it_, key, value, props);
   return {};
 }
 
-VisitResult PrettyPrinter::visit(std::string_view key,
-                                 std::span<const std::int64_t> value,
-                                 const I64Properties& props) {
-  std::ostream_iterator<char> it(os_);
-  FormatKeyValue(it, key, value, props);
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(
+    std::string_view key, std::span<const std::int64_t> value,
+    const I64Properties& props) {
+  FormatKeyValue(it_, key, value, props);
   return {};
 }
 
-VisitResult PrettyPrinter::visit(std::string_view key, const ConfigBase& config,
-                                 const Properties& /*props*/) {
-  std::ostream_iterator<char> it(os_);
-
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(std::string_view key,
+                                             const ConfigBase& config,
+                                             const Properties& /*props*/) {
   // Nested objects don't print metadata on the opening brace line
-  it = fmt::format_to(it, "{: >{}}{}:\n", "",
-                      options_.indent_width * indent_level_, key);
+  it_ = fmt::format_to(it_, "{: >{}}{}:\n", "",
+                       options_.indent_width * indent_level_, key);
 
   indent_level_++;
   std::ignore = config.accept(*this);
@@ -139,16 +229,16 @@ VisitResult PrettyPrinter::visit(std::string_view key, const ConfigBase& config,
   return {};
 }
 
-VisitResult PrettyPrinter::visit(
+template <typename OutputIter>
+VisitResult PrettyPrinter<OutputIter>::visit(
     std::string_view key, const std::shared_ptr<const ConfigBase>& config,
     const Properties& /*props*/) {
   if (config) {
     return visit(key, *config, Properties{});
   }
 
-  std::ostream_iterator<char> it(os_);
-  it = fmt::format_to(it, "{: >{}}{}: null", "",
-                      options_.indent_width * indent_level_, key);
+  it_ = fmt::format_to(it_, "{: >{}}{}: null", "",
+                       options_.indent_width * indent_level_, key);
   return {};
 }
 
