@@ -13,6 +13,14 @@ endif()
 
 project(autopilot)
 
+set(AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE
+    20
+    CACHE STRING "Maximum size of the estimator covariance matrix")
+message(
+  STATUS
+    "Autopilot: Estimator covariance matrix max size set to ${AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE}"
+)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -116,6 +124,11 @@ target_sources(
          include/autopilot/estimators/ekf.hpp
          include/autopilot/estimators/eskf.hpp
          include/autopilot/estimators/sensor_data.hpp)
+target_compile_definitions(
+  autopilot_estimators
+  PRIVATE
+    AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE=${AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE}
+)
 target_link_libraries(
   autopilot_estimators
   PUBLIC autopilot::autopilot

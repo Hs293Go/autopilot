@@ -72,13 +72,19 @@ class EstimatorDriverBase {
   virtual std::expected<QuadrotorState, std::error_code> getStateAt(
       double timestamp_s = 0.0) const = 0;
 
-  virtual Eigen::MatrixXd getCovariance() const = 0;
+  virtual EstimatorCovarianceMatrix getCovariance() const = 0;
 
   // 3. Lifecycle
   // Reset filter to a known initial state (e.g., waiting on tarmac)
   virtual std::error_code reset(
       const QuadrotorState& initial_state,
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) = 0;
+
+  virtual std::error_code resetState(const QuadrotorState& new_state) {
+    const auto size = static_cast<Eigen::Index>(estimator_->tangentDim());
+    return reset(new_state,
+                 EstimatorCovarianceMatrix::Identity(size, size));
+  }
 
   // Check if the filter has converged enough to fly
   [[nodiscard]] virtual bool isHealthy() const = 0;

@@ -78,7 +78,12 @@ concept Matrix4Like = static_cast<bool>(Derived::RowsAtCompileTime == 4 &&
 namespace heapless {
 template <typename Scalar, Eigen::Index MaxSize>
 using VectorX = Eigen::Matrix<Scalar, Eigen::Dynamic, 1, 0, MaxSize, 1>;
-}
+
+template <typename Scalar, Eigen::Index MaxRows, Eigen::Index MaxCols>
+using MatrixX =
+    Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic, 0, MaxRows, MaxCols>;
+
+}  // namespace heapless
 
 namespace ix = Eigen::indexing;
 

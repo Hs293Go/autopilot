@@ -27,7 +27,7 @@ class EskfEstimator final : public EstimatorBase {
   struct Context : EstimatorContext {
     std::string_view coreName() const override { return kName; }
 
-    Eigen::MatrixXd covariance() const override { return P; }
+    EstimatorCovarianceMatrix covariance() const override { return P; }
 
     bool isInitialized() const override { return is_initialized; }
 
@@ -124,6 +124,9 @@ class EskfEstimator final : public EstimatorBase {
   QuadrotorState extrapolate(const QuadrotorState& state,
                              const EstimatorContext& context,
                              double t) const override;
+
+  std::size_t stateDim() const override { return 16; }
+  std::size_t tangentDim() const override { return kNumErrorStates; }
 
  private:
   template <int N>

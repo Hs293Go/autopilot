@@ -7,7 +7,18 @@
 #include "autopilot/base/module.hpp"
 #include "autopilot/core/definitions.hpp"
 
+#ifndef AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE
+#define AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE 30
+#endif
+
 namespace autopilot {
+
+static constexpr std::size_t kEstimatorCovarianceMatrixMaxSize =
+    AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE;
+
+using EstimatorCovarianceMatrix =
+    heapless::MatrixX<double, kEstimatorCovarianceMatrixMaxSize,
+                      kEstimatorCovarianceMatrixMaxSize>;
 
 struct EstimatorData {
   enum class Type {
@@ -67,7 +78,7 @@ struct EstimatorContext {
 
   virtual bool isInitialized() const = 0;
 
-  virtual Eigen::MatrixXd covariance() const = 0;
+  virtual EstimatorCovarianceMatrix covariance() const = 0;
 };
 
 class EstimatorBase : public Module {
@@ -104,6 +115,9 @@ class EstimatorBase : public Module {
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const = 0;
 
   virtual bool isHealthy(const EstimatorContext& context) const = 0;
+
+  virtual std::size_t stateDim() const = 0;
+  virtual std::size_t tangentDim() const { return stateDim(); }
 };
 
 using EstimatorFactory = GenericFactory<EstimatorBase>;

@@ -142,7 +142,7 @@ QuadrotorState AsyncEstimator::extrapolateState(const QuadrotorState& state,
   return estimator_->extrapolate(state, *context_, t);
 }
 
-Eigen::MatrixXd AsyncEstimator::getCovariance() const {
+EstimatorCovarianceMatrix AsyncEstimator::getCovariance() const {
   std::lock_guard<std::mutex> lock(context_mutex_);
   return context_->covariance();
 }

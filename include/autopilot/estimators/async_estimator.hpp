@@ -51,7 +51,7 @@ class AsyncEstimator final : public EstimatorDriverBase {
   std::expected<QuadrotorState, std::error_code> getStateAt(
       double timestamp_s = 0.0) const override;
 
-  Eigen::MatrixXd getCovariance() const override;
+  EstimatorCovarianceMatrix getCovariance() const override;
 
   // 4. Lifecycle
   std::error_code reset(

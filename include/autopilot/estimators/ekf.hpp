@@ -26,7 +26,7 @@ class EkfEstimator final : public EstimatorBase {
   struct Context : EstimatorContext {
     std::string_view coreName() const override { return kName; }
     bool isInitialized() const override { return initialized; }
-    Eigen::MatrixXd covariance() const override { return P; }
+    EstimatorCovarianceMatrix covariance() const override { return P; }
 
     StateMatrix P = StateMatrix::Zero();
     Eigen::Vector3d gyro_bias = Eigen::Vector3d::Zero();
@@ -108,6 +108,8 @@ class EkfEstimator final : public EstimatorBase {
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const override;
 
   bool isHealthy(const EstimatorContext& context) const override;
+
+  std::size_t stateDim() const override { return 16; }
 
  private:
   std::shared_ptr<Config> cfg_;

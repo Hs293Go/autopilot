@@ -78,7 +78,7 @@ int main() {
 
   auto sim = std::make_shared<ap::QuadrotorSimulator>(model, cfg.simulator);
 
-  if (auto ec = est->reset(sim->state(), Eigen::MatrixXd::Identity(15, 15))) {
+  if (auto ec = est->resetState(sim->state())) {
     spdlog::error("Estimator reset failed: {}", ec.message());
     return -1;
   }
