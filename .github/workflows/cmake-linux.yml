@@ -36,6 +36,8 @@ jobs:
             clang-tidy-16 \
             gcc-13 \
             g++-13 \
+            libeigen3-dev \
+            nlohmann-json3-dev \
             libspdlog-dev \
             ninja-build
 
@@ -48,7 +50,8 @@ jobs:
         run: |
           cmake -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-          --preset ${{ matrix.configure_preset }}
+          --preset ${{ matrix.configure_preset }} \
+          -DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=ALWAYS
 
       - name: Build
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
