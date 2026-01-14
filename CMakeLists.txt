@@ -25,7 +25,7 @@ include(FetchContent)
 
 FetchContent_Declare(
   spdlog URL https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz
-             SYSTEM FIND_PACKAGE_ARGS CONFIG)
+             SYSTEM FIND_PACKAGE_ARGS 1.9.2 CONFIG)
 
 set(CMAKE_REQUIRED_QUIET ON "Silence checks in this function.")
 set(EIGEN_BUILD_DOC
@@ -39,13 +39,13 @@ set(BUILD_TESTING
     CACHE BOOL "Disable building tests for eigen" FORCE)
 FetchContent_Declare(
   Eigen3
-  URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.bz2
-      SYSTEM)
+  URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-4.0.0.tar.bz2
+      SYSTEM FIND_PACKAGE_ARGS 3.4.0 CONFIG)
 
 FetchContent_Declare(
   nlohmann_json
   URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
-      SYSTEM FIND_PACKAGE_ARGS 3.12 CONFIG)
+      SYSTEM FIND_PACKAGE_ARGS 3.10 CONFIG)
 
 set(BOOST_MATH_STANDALONE ON)
 FetchContent_Declare(
