@@ -24,22 +24,17 @@ message(
 include(FetchContent)
 
 FetchContent_Declare(
+  fmt URL https://github.com/fmtlib/fmt/releases/download/12.1.0/fmt-12.1.0.zip
+          SYSTEM FIND_PACKAGE_ARGS 8.1.1 CONFIG)
+set(SPDLOG_FMT_EXTERNAL ON)
+FetchContent_Declare(
   spdlog URL https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz
              SYSTEM FIND_PACKAGE_ARGS 1.9.2 CONFIG)
 
-set(CMAKE_REQUIRED_QUIET ON "Silence checks in this function.")
-set(EIGEN_BUILD_DOC
-    OFF
-    CACHE BOOL "Disable building docs for eigen" FORCE)
-set(EIGEN_TEST_NOQT
-    ON
-    CACHE BOOL "Disable building qt tests for eigen" FORCE)
-set(BUILD_TESTING
-    OFF
-    CACHE BOOL "Disable building tests for eigen" FORCE)
+include(cmake/eigen_source_build_tweaks.cmake)
 FetchContent_Declare(
   Eigen3
-  URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-4.0.0.tar.bz2
+  URL https://gitlab.com/libeigen/eigen/-/archive/3.4.1/eigen-3.4.1.tar.bz2
       SYSTEM FIND_PACKAGE_ARGS 3.4.0 CONFIG)
 
 FetchContent_Declare(
@@ -52,8 +47,7 @@ FetchContent_Declare(
   Boost
   URL https://github.com/boostorg/math/archive/refs/tags/boost-1.90.0.tar.gz
       SYSTEM FIND_PACKAGE_ARGS 1.90.0 CONFIG)
-FetchContent_MakeAvailable(spdlog nlohmann_json Eigen3 Boost)
-unset(BUILD_TESTING)
+FetchContent_MakeAvailable(fmt spdlog nlohmann_json Eigen3 Boost)
 
 add_library(autopilot_autopilot)
 target_sources(
@@ -89,7 +83,7 @@ target_sources(
          include/autopilot/simulator/sensors.hpp)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
 target_link_libraries(
-  autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog
+  autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog fmt::fmt
                              nlohmann_json::nlohmann_json Boost::math)
 
 add_library(autopilot::autopilot ALIAS autopilot_autopilot)
