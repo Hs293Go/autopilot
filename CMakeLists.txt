@@ -81,6 +81,11 @@ target_sources(
          include/autopilot/planning/polynomial.hpp
          include/autopilot/simulator/quadrotor_simulator.hpp
          include/autopilot/simulator/sensors.hpp)
+target_compile_definitions(
+  autopilot_autopilot
+  PUBLIC
+    AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE=${AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE}
+)
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
 target_link_libraries(
   autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog fmt::fmt
@@ -118,11 +123,6 @@ target_sources(
          include/autopilot/estimators/ekf.hpp
          include/autopilot/estimators/eskf.hpp
          include/autopilot/estimators/sensor_data.hpp)
-target_compile_definitions(
-  autopilot_estimators
-  PRIVATE
-    AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE=${AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE}
-)
 target_link_libraries(
   autopilot_estimators
   PUBLIC autopilot::autopilot
