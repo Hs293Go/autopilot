@@ -97,12 +97,14 @@ set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
 add_library(autopilot_controllers STATIC)
 target_sources(
   autopilot_controllers
-  PRIVATE src/cascade_controller.cpp src/geometric_controller.cpp
+  PRIVATE src/attitude_error.cpp src/cascade_controller.cpp
+          src/geometric_controller.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
          include
          FILES
+         include/autopilot/controllers/attitude_error.hpp
          include/autopilot/controllers/cascade_controller.hpp
          include/autopilot/controllers/geometric_controller.hpp)
 target_link_libraries(autopilot_controllers PUBLIC autopilot::autopilot)

@@ -1,6 +1,7 @@
 #ifndef AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
 #define AUTOPILOT_LEE_POSITION_CONTROLLER_HPP_
 
+#include "autopilot/controllers/attitude_error.hpp"
 #include "autopilot/controllers/cascade_controller.hpp"
 namespace autopilot {
 // =================================================================
@@ -53,11 +54,6 @@ class GeometricPositionController : public PositionControllerBase {
 // Geometric Attitude Controller
 // Logic: Nonlinear Control on SO(3) Manifold (Sreenath/Lee)
 // =================================================================
-enum class AttitudeErrorLaw {
-  kGeometricSO3,
-  kQuaternionBased,
-  kTiltPrioritizing
-};
 
 using namespace autopilot::literals;
 

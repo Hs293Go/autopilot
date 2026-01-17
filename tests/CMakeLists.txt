@@ -36,12 +36,17 @@ target_link_libraries(
 
 add_executable(
   test_unit
-  src/unit/test_butterworth_filter.cpp src/unit/test_factory.cpp
-  src/unit/test_spatial_rotations.cpp src/unit/test_config_loader.cpp
-  src/unit/test_quadrotor_model.cpp src/unit/test_polynomial.cpp)
+  src/unit/test_butterworth_filter.cpp
+  src/unit/test_factory.cpp
+  src/unit/test_spatial_rotations.cpp
+  src/unit/test_config_loader.cpp
+  src/unit/test_quadrotor_model.cpp
+  src/unit/test_polynomial.cpp
+  src/unit/test_attitude_error.cpp)
 target_link_libraries(
-  test_unit PRIVATE autopilot::autopilot GTest::gtest GTest::gtest_main
-                    GTest::gmock $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
+  test_unit
+  PRIVATE autopilot::autopilot autopilot::controllers GTest::gtest
+          GTest::gtest_main GTest::gmock $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
 
 add_custom_target(tests DEPENDS test_unit test_integration)
 

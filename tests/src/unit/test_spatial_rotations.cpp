@@ -45,27 +45,6 @@ static inline const double kTinyAngle =
 
 static constexpr auto kNumTrials = 1000;
 
-MATCHER_P(QuaternionIsClose, expectation,
-          ::testing::PrintToString(expectation)) {
-  return ap::IsClose(arg.angularDistance(expectation), 0.0);
-}
-
-MATCHER_P(AngleAxisIsClose, expectation, "") {
-  return ExplainMatchResult(
-      testing::Conditional(
-          ap::IsClose(arg.norm(), std::numbers::pi),
-          testing::AnyOf(AllClose(-expectation), AllClose(expectation)),
-          AllClose(expectation)),
-      arg, result_listener);
-}
-
-MATCHER(IsOrthogonal,
-        "Matrix must be orthogonal, i.e. itself multiplied by its transpose is "
-        "equal to the identity matrix") {
-  return ((arg * arg.transpose()).isIdentity(1e-8) &&
-          (arg.transpose() * arg).isIdentity(1e-8));
-}
-
 MATCHER(IsNormalized, "expectation unit norm") {
   return ap::IsClose(arg.norm(), 1.0);
 }
