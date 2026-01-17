@@ -139,6 +139,31 @@ class QuadrotorCommand {
   uint32_t set_components_ = 0;
 };
 
+struct KinematicState {
+  double timestamp_secs = 0.0;
+  Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  Eigen::Vector3d velocity = Eigen::Vector3d::Zero();
+  Eigen::Vector3d acceleration = Eigen::Vector3d::Zero();
+  Eigen::Vector3d jerk = Eigen::Vector3d::Zero();
+  Eigen::Vector3d snap = Eigen::Vector3d::Zero();
+
+  QuadrotorState toQuadrotorState() const {
+    QuadrotorState state;
+    state.timestamp_secs = timestamp_secs;
+    state.odometry.pose().translation() = position;
+    state.odometry.twist().linear() = velocity;
+    state.accel.linear() = acceleration;
+    return state;
+  }
+};
+
+struct TrajectoryWaypoint {
+  double time_from_start_secs = 0.0;
+  Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  std::optional<Eigen::Vector3d> velocity = std::nullopt;
+  std::optional<Eigen::Vector3d> acceleration = std::nullopt;
+  std::optional<double> yaw = std::nullopt;
+};
 }  // namespace autopilot
 
 // Formatters for QuadrotorState and QuadrotorCommand.

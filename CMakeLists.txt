@@ -16,9 +16,16 @@ project(autopilot)
 set(AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE
     20
     CACHE STRING "Maximum size of the estimator covariance matrix")
+set(AUTOPILOT_PLANNING_POLYNOMIAL_DEGREE
+    7
+    CACHE STRING "Order of the polynomials used in planning")
 message(
   STATUS
-    "Autopilot: Estimator covariance matrix max size set to ${AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE}"
+    "Autopilot: Estimator covariance matrix max size set to ${AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE}\n"
+)
+message(
+  STATUS
+    "Autopilot: Planning polynomial order set to ${AUTOPILOT_PLANNING_POLYNOMIAL_DEGREE}"
 )
 
 include(FetchContent)
@@ -78,7 +85,6 @@ target_sources(
          include/autopilot/core/quadrotor_model.hpp
          include/autopilot/extensions/json_loader.hpp
          include/autopilot/extensions/pretty_printer.hpp
-         include/autopilot/planning/polynomial.hpp
          include/autopilot/simulator/quadrotor_simulator.hpp
          include/autopilot/simulator/sensors.hpp)
 target_compile_definitions(
@@ -93,6 +99,28 @@ target_link_libraries(
 
 add_library(autopilot::autopilot ALIAS autopilot_autopilot)
 set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
+
+add_library(autopilot_planning)
+target_sources(
+  autopilot_planning
+  PRIVATE src/flatness_map.cpp src/trajectory.cpp src/minimum_snap_solver.cpp
+  PUBLIC FILE_SET
+         HEADERS
+         BASE_DIRS
+         include
+         FILES
+         include/autopilot/planning/flatness_map.hpp
+         include/autopilot/planning/trajectory.hpp
+         include/autopilot/planning/minimum_snap_solver.hpp
+         include/autopilot/planning/polynomial.hpp)
+target_compile_definitions(
+  autopilot_planning
+  PUBLIC
+    AUTOPILOT_PLANNING_POLYNOMIAL_DEGREE=${AUTOPILOT_PLANNING_POLYNOMIAL_DEGREE}
+)
+target_link_libraries(autopilot_planning PUBLIC autopilot::autopilot)
+add_library(autopilot::planning ALIAS autopilot_planning)
+set_target_properties(autopilot_planning PROPERTIES EXPORT_NAME planning)
 
 add_library(autopilot_controllers STATIC)
 target_sources(

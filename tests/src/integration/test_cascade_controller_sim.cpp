@@ -3,6 +3,7 @@
 #include "autopilot/controllers/cascade_controller.hpp"
 #include "autopilot/controllers/geometric_controller.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
+#include "autopilot/planning/minimum_snap_solver.hpp"
 #include "autopilot/simulator/quadrotor_simulator.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -83,21 +84,25 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     // Waypoints
     // =========
     waypoints = {
-        {{5.0, 0.0, 1.0}, 0.0},
-        {{5.0, 5.0, 1.0}, std::numbers::pi / 2},
-        {{0.0, 5.0, 1.0}, std::numbers::pi},
-        {{0.0, 0.0, 1.0}, 3.0 * std::numbers::pi / 2}
+        {2, {5.0, 0.0, 1.0}},
+        {4, {5.0, 5.0, 1.0}},
+        {6, {0.0, 5.0, 1.0}},
+        {8, {0.0, 0.0, 1.0}}
         // Spiraling back to origin
     };
 
-    runner =
-        std::make_shared<ap::MissionRunner>(simulator, controller, waypoints);
+    ap::MinimumSnapSolver traj_solver;
+    auto trajectory_res = traj_solver.solve(waypoints);
+    ASSERT_TRUE(trajectory_res.has_value());
+
+    runner = std::make_shared<ap::MissionRunner>(simulator, controller,
+                                                 trajectory_res.value());
     ASSERT_THAT(runner, testing::NotNull());
   }
 
   std::shared_ptr<ap::QuadrotorSimulator> simulator;
   std::shared_ptr<ap::MissionRunner> runner;
-  std::vector<ap::MissionWaypoint> waypoints;
+  std::vector<ap::TrajectoryWaypoint> waypoints;
 };
 
 TEST_F(TestIntegrationCascadeControllerSim, RunMission) {

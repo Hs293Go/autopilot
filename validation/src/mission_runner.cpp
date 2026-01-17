@@ -10,15 +10,15 @@ namespace autopilot {
 MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<ControllerBase> ctrl,
                              std::shared_ptr<EstimatorDriverBase> est,
-                             std::span<const MissionWaypoint> mission,
-                             Config config,
+                             PolynomialTrajectory trajectory, Config config,
                              std::shared_ptr<spdlog::logger> logger)
     : sim_(std::move(sim)),
       ctrl_(std::move(ctrl)),
       est_(std::move(est)),
-      mission_(mission.begin(), mission.end()),
       cfg_(std::move(config)),
-      logger_(logger ? std::move(logger) : spdlog::default_logger()) {
+      logger_(logger ? std::move(logger) : spdlog::default_logger()),
+      current_trajectory_(std::move(trajectory)),
+      flatness_map_(sim_->model()) {
   if (est_) {
     logger_->info("Using sampling frequency {:.2f} Hz for IMU filter",
                   1.0 / cfg_.dt_sim);
@@ -38,11 +38,11 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
 
 MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<ControllerBase> ctrl,
-                             std::span<const MissionWaypoint> mission,
-                             Config config,
+                             PolynomialTrajectory trajectory, Config config,
                              std::shared_ptr<spdlog::logger> logger)
-    : MissionRunner(std::move(sim), std::move(ctrl), nullptr, mission,
-                    std::move(config), std::move(logger)) {}
+    : MissionRunner(std::move(sim), std::move(ctrl), nullptr,
+                    std::move(trajectory), std::move(config),
+                    std::move(logger)) {}
 
 void MissionRunner::pushEstimatorData(double& last_gps_time, double curr_time) {
   auto imu = sim_->getImuMeasurement(cfg_.dt_sim);
@@ -84,25 +84,6 @@ QuadrotorState MissionRunner::getStateEstimate(int step) const {
   return sim_->state();
 }
 
-bool MissionRunner::isMissionComplete(const QuadrotorState& state,
-                                      size_t& wp_idx) const {
-  auto dist =
-      (state.odometry.pose().translation() - mission_[wp_idx].position).norm();
-  if (dist < cfg_.acceptance_radius) {
-    logger_->info("Waypoint {} reached at t={:.2f}s", wp_idx,
-                  state.timestamp_secs);
-
-    wp_idx++;
-    if (wp_idx >= mission_.size()) {
-      if (logger_) {
-        logger_->info("Mission Complete.");
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
 bool MissionRunner::detectGeofenceViolation(const QuadrotorState& state) const {
   if ((state.odometry.pose().translation().array() < cfg_.geofence_min.array())
           .any()) {
@@ -127,7 +108,6 @@ bool MissionRunner::detectGeofenceViolation(const QuadrotorState& state) const {
 
 SimulationResult MissionRunner::run() {
   SimulationResult res;
-  size_t wp_idx = 0;
   QuadrotorCommand cmd;
 
   // Future proof: Query controller for number of setpoints (prediction horizon)
@@ -152,15 +132,18 @@ SimulationResult MissionRunner::run() {
     auto state = sim_->state();
 
     // 1. Check Waypoint
-    if (isMissionComplete(state, wp_idx)) {
+    auto kinematic_state =
+        current_trajectory_.sample(sim_->state().timestamp_secs);
+    auto setpoint = flatness_map_.compute(kinematic_state).value();
+    if (state.timestamp_secs >= current_trajectory_.duration()) {
       res.completed = true;
       break;
     }
 
     // 2. Control
     cmd.reset(state.timestamp_secs);
-    std::ignore = cmd.setPosition(mission_[wp_idx].position);
-    std::ignore = cmd.setYaw(mission_[wp_idx].yaw);
+    std::ignore = cmd.setPosition(setpoint.position());
+    // std::ignore = cmd.setYaw(mission_[wp_idx].yaw.value_or(0.0));
 
     sp_buf[0] = cmd;
     if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {

@@ -136,7 +136,8 @@ enum class AutopilotErrc {
   kEmptyValueNotAllowed,
   kCreationFailure,
   kInvalidEnumMapping,
-  kInvalidStringOption
+  kInvalidStringOption,
+  kSingularConfiguration,
 };
 
 namespace detail {
@@ -188,6 +189,8 @@ class AutopilotErrcCategory : public std::error_category {
         return "Invalid string option";
       case AutopilotErrc::kInvalidEnumMapping:
         return "Invalid enum mapping";
+      case AutopilotErrc::kSingularConfiguration:
+        return "Singular configuration encountered";
       default:
         return "Unknown error";
     }
