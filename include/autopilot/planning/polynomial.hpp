@@ -9,6 +9,10 @@ namespace autopilot {
 template <typename T, Eigen::Index Degree = Eigen::Dynamic>
 class Polynomial {
  public:
+  using Coefficients =
+      std::conditional_t<Degree == Eigen::Dynamic, Eigen::VectorX<T>,
+                         Eigen::Vector<T, Degree + 1>>;
+
   Polynomial() = default;
   // Initialize directly from the solver's output
   template <typename Derived>
@@ -100,12 +104,15 @@ class Polynomial {
   }
 
  private:
-  Eigen::Vector<T, Degree> coeffs_;
+  Coefficients coeffs_;
 };
 
 template <typename Derived>
 Polynomial(const Eigen::MatrixBase<Derived>&)
-    -> Polynomial<typename Derived::Scalar, Derived::RowsAtCompileTime>;
+    -> Polynomial<typename Derived::Scalar,
+                  Derived::RowsAtCompileTime == Eigen::Dynamic
+                      ? Eigen::Dynamic
+                      : Derived::RowsAtCompileTime - 1>;
 
 using PolynomialF32 = Polynomial<float>;
 using PolynomialF64 = Polynomial<double>;

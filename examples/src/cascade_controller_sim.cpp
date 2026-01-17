@@ -8,6 +8,7 @@
 #include "autopilot/estimators/eskf.hpp"
 #include "autopilot/extensions/json_loader.hpp"
 #include "autopilot/extensions/pretty_printer.hpp"
+#include "autopilot/planning/minimum_snap_solver.hpp"
 #include "validation/mission_runner.hpp"
 
 // Use a distinct namespace or alias for clarity
@@ -86,15 +87,23 @@ int main() {
   spdlog::info("Simulation Configuration:\n{:4d}", cfg);
 
   // 3. Define Mission
-  std::vector<ap::MissionWaypoint> mission = {
-      {{0.0, 0.0, 1.0}, 0.0},
-      {{5.0, 0.0, 1.0}, 0.0},
-      {{5.0, 5.0, 1.0}, std::numbers::pi / 2},
-      {{0.0, 5.0, 1.0}, std::numbers::pi},
-      {{0.0, 0.0, 1.0}, 3.0 * std::numbers::pi / 2}};
+  const ap::TrajectoryWaypoint mission[] = {{2, {0.0, 0.0, 1.0}},
+                                            {7, {5.0, 0.0, 1.0}},
+                                            {12, {5.0, 5.0, 1.0}},
+                                            {17, {0.0, 5.0, 1.0}},
+                                            {22, {0.0, 0.0, 1.0}}};
+
+  ap::MinimumSnapSolver traj_solver;
+
+  auto trajectory = traj_solver.solve(mission);
+  if (!trajectory) {
+    spdlog::error("Trajectory generation failed: {}",
+                  trajectory.error().message());
+    return -1;
+  }
 
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
-  ap::MissionRunner runner(sim, ctrl, est, mission, cfg.mission);
+  ap::MissionRunner runner(sim, ctrl, est, trajectory.value(), cfg.mission);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");

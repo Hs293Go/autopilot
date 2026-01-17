@@ -42,11 +42,17 @@ add_executable(
   src/unit/test_config_loader.cpp
   src/unit/test_quadrotor_model.cpp
   src/unit/test_polynomial.cpp
-  src/unit/test_attitude_error.cpp)
+  src/unit/test_attitude_error.cpp
+  src/unit/test_minimum_snap_solver.cpp)
 target_link_libraries(
   test_unit
-  PRIVATE autopilot::autopilot autopilot::controllers GTest::gtest
-          GTest::gtest_main GTest::gmock $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
+  PRIVATE autopilot::autopilot
+          autopilot::controllers
+          autopilot::planning
+          GTest::gtest
+          GTest::gtest_main
+          GTest::gmock
+          $<LINK_LIBRARY:WHOLE_ARCHIVE,testing>)
 
 add_custom_target(tests DEPENDS test_unit test_integration)
 

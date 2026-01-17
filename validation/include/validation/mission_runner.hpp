@@ -8,14 +8,11 @@
 #include "autopilot/base/controller_base.hpp"
 #include "autopilot/core/butterworth_filter.hpp"
 #include "autopilot/estimators/estimator_driver_base.hpp"
+#include "autopilot/planning/flatness_map.hpp"
+#include "autopilot/planning/trajectory.hpp"
 #include "autopilot/simulator/quadrotor_simulator.hpp"
 
 namespace autopilot {
-
-struct MissionWaypoint {
-  Eigen::Vector3d position;
-  double yaw;
-};
 
 struct History {
   QuadrotorState real_state;
@@ -83,24 +80,19 @@ class MissionRunner {
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                 std::shared_ptr<ControllerBase> ctrl,
-                std::span<const MissionWaypoint> mission,
-                Config config = Config(),
+                PolynomialTrajectory trajectory, Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                 std::shared_ptr<ControllerBase> ctrl,
                 std::shared_ptr<EstimatorDriverBase> est,
-                std::span<const MissionWaypoint> mission,
-                Config config = Config(),
+                PolynomialTrajectory trajectory, Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
 
   SimulationResult run();
 
  private:
   [[nodiscard]] QuadrotorState getStateEstimate(int step) const;
-
-  [[nodiscard]] bool isMissionComplete(const QuadrotorState& state,
-                                       size_t& wp_idx) const;
 
   void pushEstimatorData(double& last_gps_time, double curr_time);
 
@@ -110,11 +102,13 @@ class MissionRunner {
   std::shared_ptr<ControllerBase> ctrl_;
 
   std::shared_ptr<EstimatorDriverBase> est_ = nullptr;
-  std::vector<MissionWaypoint> mission_;
+
   Config cfg_;
   std::shared_ptr<spdlog::logger> logger_;
   ButterworthFilter<double, 3> gyro_filter_;
   ButterworthFilter<double, 3> accel_filter_;
+  PolynomialTrajectory current_trajectory_;
+  FlatnessMap flatness_map_;
 };
 
 }  // namespace autopilot
