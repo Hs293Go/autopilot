@@ -130,7 +130,8 @@ add_library(autopilot_controllers STATIC)
 target_sources(
   autopilot_controllers
   PRIVATE src/attitude_error.cpp src/cascade_controller.cpp
-          src/geometric_controller.cpp
+          src/geometric_controller.cpp src/pid.cpp
+          src/pid_attitude_controller.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
@@ -138,7 +139,10 @@ target_sources(
          FILES
          include/autopilot/controllers/attitude_error.hpp
          include/autopilot/controllers/cascade_controller.hpp
-         include/autopilot/controllers/geometric_controller.hpp)
+         include/autopilot/controllers/geometric_controller.hpp
+         include/autopilot/controllers/pid.hpp
+         include/autopilot/controllers/pid_attitude_controller.hpp)
+
 target_link_libraries(autopilot_controllers PUBLIC autopilot::autopilot)
 add_library(autopilot::controllers ALIAS autopilot_controllers)
 set_target_properties(autopilot_controllers PROPERTIES EXPORT_NAME controllers)

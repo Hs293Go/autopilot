@@ -1,0 +1,60 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[]{amsmath, amssymb, amsthm}
+\usepackage[]{mathtools,mathrsfs,bm}
+\usepackage[]{physics}
+
+\begin{document}
+The body-z axis expressed in the inertial frame is written as:
+\begin{equation}
+    \mathbf{b}_3 = \mathbf{R}_{ib}\mathbf{1}_3.
+\end{equation}
+
+Its derivative is:
+\begin{equation}
+    \dot{\mathbf{b}}_3 = \dot{\mathbf{R}}_{ib}\mathbf{1}_3 = \mathbf{R}_{ib}\bm{\omega}_b^\times \mathbf{1}_3 = -\mathbf{R}_{ib}\mathbf{1}_3^\times \bm{\omega}_b = -\mathbf{b}_3^\times \bm{\omega}_b = \bm{\omega}_b^\times \mathbf{b}_3.
+\end{equation}
+
+Its second derivative is:
+\begin{equation}
+    \ddot{\mathbf{b}}_3 = \dot{\bm{\omega}}_b^\times \mathbf{b}_3 + \bm{\omega}_b^\times \dot{\mathbf{b}}_3 = \dot{\bm{\omega}}_b^\times \mathbf{b}_3 + \bm{\omega}_b^\times \bm{\omega}_b^\times \mathbf{b}_3.
+\end{equation}
+
+Expressing the \(\ddot{\mathbf{b}}_3\) in the body frame by pre-multiplying by \(\mathbf{R}_{bi}\) gives:
+\begin{align}
+    \mathbf{R}_{bi}\ddot{\mathbf{b}}_3 & = \dot{\bm{\omega}}_b^\times \mathbf{1}_3 + \bm{\omega}_b^\times \bm{\omega}_b^\times \mathbf{1}_3, \\
+                                       & = \begin{bmatrix}
+                                               \dot{\omega}_{b,2} +  \\
+                                               -\dot{\omega}_{b,1} + \\
+                                               0
+                                           \end{bmatrix} + \begin{bmatrix}
+                                                               \omega_{b,1}\omega_{b,3} \\
+                                                               \omega_{b,2}\omega_{b,3} \\
+                                                               -\omega_{b,1}^2 - \omega_{b,2}^2
+                                                           \end{bmatrix}.
+\end{align}
+
+In parallel, \(\ddot{\mathbf{b}}_3\) can also be derived by differentiating the relationship between \(\mathbf{b}_3\) and the gravity-compensated acceleration \(\mathbf{a}\), i.e.,
+\begin{equation}
+    \mathbf{b}_3 = \frac{\mathbf{a}}{a},
+\end{equation}
+where \(a = \norm{\mathbf{a}}\). Its derivative is:
+\begin{align}
+    \dot{\mathbf{b}}_3 = \frac{\dot{\mathbf{a}}}{a} - \frac{\mathbf{a}\dot{a}}{a^2} = \frac{\mathbf{j} - \dot{a}\mathbf{b}_3}{a},
+\end{align}
+where we used:
+\begin{equation}
+    \dot{a} = \dv{}{t}\norm{\mathbf{a}} = \frac{\mathbf{a}^\top \dot{\mathbf{a}}}{\norm{\mathbf{a}}} = \mathbf{b}_3^\top \mathbf{j}.
+\end{equation}
+
+The second derivative of \(\mathbf{b}_3\) is then:
+\begin{equation}
+    \ddot{\mathbf{b}}_3 = \frac{\dot{\mathbf{j}} - \dot{a}\dot{\mathbf{b}}_3 - \ddot{a}\mathbf{b}_3}{a} - \frac{\dot{a}(\mathbf{j} - \dot{a}\mathbf{b}_3)}{a^2} = \frac{\mathbf{s} -  \ddot{a}\mathbf{b}_3 - 2\dot{a}\mathbf{b}_3}{a},
+\end{equation}
+where:
+\begin{equation}
+    \ddot{a} = \dv{}{t}\dot{a} = \dot{\mathbf{b}}_3^\top \mathbf{j} + \mathbf{b}_3^\top \dot{\mathbf{j}} = \dot{\mathbf{b}}_3^\top\left(a\dot{\mathbf{b}}_3 + \dot{a}\mathbf{b}_3^\top\right) + \mathbf{b}_3^\top \mathbf{s} = a\norm{\dot{\mathbf{b}}_3}^2 + \mathbf{b}_3^\top \mathbf{s},
+\end{equation}
+using the fact that \(\dot{\mathbf{b}}_3\) is orthogonal to \(\mathbf{b}_3\) through \(\dot{\mathbf{b}}_3 = \bm{\omega}_b^\times \mathbf{b}_3\) to eliminate an intermediate term.
+
+\end{document}

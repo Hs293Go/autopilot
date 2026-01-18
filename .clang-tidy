@@ -90,5 +90,7 @@ CheckOptions:
     value: k
   - key: modernize-use-nullptr.NullMacros
     value: "NULL"
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
   - key: performance-unnecessary-value-param.AllowedTypes
-    value: .*(Ptr|Ref)$
+    value: .*(Ptr|Ref|iterator)$
