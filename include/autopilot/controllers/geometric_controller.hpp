@@ -65,8 +65,10 @@ class GeometricAttitudeController : public AttitudeControllerBase {
     std::string_view name() const override { return kName; }
 
     // Gains (Geometric style, acting on SO(3) metric)
-    Eigen::Vector3d kR = Eigen::Vector3d::Constant(1.0);
-    Eigen::Vector3d kOmega = Eigen::Vector3d::Constant(0.1);
+    Eigen::Vector3d k_ang_rate = Eigen::Vector3d::Constant(1.0);
+    Eigen::Vector3d k_ang_torque = Eigen::Vector3d::Constant(0.1);
+    Eigen::Vector3d k_rate_torque = Eigen::Vector3d::Constant(0.1);
+    bool reference_in_desired_frame = true;
 
     // Toggle Strategy
     // true = Use current state to cancel nonlinearities (Lee 2010). Sensitive
@@ -76,10 +78,19 @@ class GeometricAttitudeController : public AttitudeControllerBase {
     AttitudeErrorLaw error_law = AttitudeErrorLaw::kGeometricSO3;
 
     static constexpr auto kDescriptors = std::make_tuple(
-        Describe("kR", &Config::kR,
-                 F64Properties{.desc = "Attitude Error Gains",
-                               .bounds = Bounds<double>::Positive()}),
-        Describe("kOmega", &Config::kOmega,
+        Describe(
+            "k_ang_rate", &Config::k_ang_rate,
+            F64Properties{
+                .desc =
+                    "Gains mapping attitude error to angular velocity setpoint",
+                .bounds = Bounds<double>::Positive()}),
+        Describe(
+            "k_ang_torque", &Config::k_ang_torque,
+            F64Properties{
+                .desc =
+                    "Gains mapping angular velocity error to torque setpoint",
+                .bounds = Bounds<double>::Positive()}),
+        Describe("k_rate_torque", &Config::k_rate_torque,
                  F64Properties{.desc = "Angular Velocity Error Gains",
                                .bounds = Bounds<double>::Positive()}),
         Describe("enable_exact_linearization",

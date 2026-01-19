@@ -78,8 +78,8 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     // GeometricAttitudeController combines attitude error (kR) and rate error
     // (kOmega). Mapping Rust "Geometric + PID" to C++ "Geometric Only": We
     // use the Geometric gains for the outer attitude loop.
-    att_ctrl->config()->kR = {1.0, 1.0, 0.1};
-    att_ctrl->config()->kOmega = {0.6, 0.6, 0.05};  // D-term equivalent
+    att_ctrl->config()->k_ang_rate = {1.0, 1.0, 0.1};
+    att_ctrl->config()->k_rate_torque = {0.6, 0.6, 0.05};  // D-term equivalent
 
     // Waypoints
     // =========

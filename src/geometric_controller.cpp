@@ -1,7 +1,5 @@
 #include "autopilot/controllers/geometric_controller.hpp"
 
-#include "autopilot/core/math.hpp"
-
 namespace autopilot {
 GeometricPositionController::GeometricPositionController(
     std::shared_ptr<QuadrotorModel> model, std::shared_ptr<Config> config,
@@ -83,9 +81,10 @@ std::error_code GeometricAttitudeController::compute(
 
   // May be used as a computed 'body_rate_setpoint', e.g., in
   // mavros_controllers. In this case the body_rate field in ref is ignored
-  const Eigen::Vector3d rate_ref_comp = config_->kR.cwiseProduct(angle_error)
-                                            .cwiseMax(-model()->max_body_rate())
-                                            .cwiseMin(model()->max_body_rate());
+  const Eigen::Vector3d rate_ref_comp =
+      config_->k_ang_rate.cwiseProduct(angle_error)
+          .cwiseMax(-model()->max_body_rate())
+          .cwiseMin(model()->max_body_rate());
   out.body_rate = -rate_ref_comp;
 
   // Precompute the transformation from desired body frame to current body frame
@@ -97,30 +96,27 @@ std::error_code GeometricAttitudeController::compute(
 
   Eigen::Vector3d rate_error = rate_fb - rate_ref_body;
 
-  out.torque = -rate_ref_comp - config_->kOmega.cwiseProduct(rate_error) +
+  out.torque = -config_->k_ang_torque.cwiseProduct(angle_error) -
+               config_->k_rate_torque.cwiseProduct(rate_error) +
                model()->inertia() * accel_ref_body;
-
+  const Eigen::Vector3d gyro_term = rate_fb.cross(model()->inertia() * rate_fb);
   // 2. Gyroscopic / Transport Toggle
   if (config_->enable_exact_linearization) {
     // Strategy A: Exact Linearization (Lee 2010)
     // Cancel natural gyro dynamics (w x Jw)
     // Handle transport theorem cross-term J(w x w_ref)
 
-    const Eigen::Vector3d gyro_cancel =
-        rate_fb.cross(model()->inertia() * rate_fb);
     const Eigen::Vector3d transport_coupling =
         model()->inertia() * rate_fb.cross(rate_ref_body);
 
-    out.torque += gyro_cancel - transport_coupling;
+    out.torque += gyro_term - transport_coupling;
 
   } else {
-    // Strategy B: Robust Feedforward (Standard)
-    // Feed-forward the expected gyroscopic torque based on trajectory
-    // Ignores 'transport_coupling' as it's a second-order error term
-    out.torque += rate_ref_body.cross(model()->inertia() * rate_ref_body);
+    out.torque += gyro_term;
   }
   return {};
 }
+
 REGISTER_POSITION_CONTROLLER(GeometricPositionController);
 REGISTER_ATTITUDE_CONTROLLER(GeometricAttitudeController);
 }  // namespace autopilot
