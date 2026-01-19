@@ -53,8 +53,20 @@ set(BOOST_MATH_STANDALONE ON)
 FetchContent_Declare(
   Boost
   URL https://github.com/boostorg/math/archive/refs/tags/boost-1.90.0.tar.gz
-      SYSTEM FIND_PACKAGE_ARGS 1.90.0 CONFIG)
+      SYSTEM FIND_PACKAGE_ARGS 1.74.0 CONFIG)
 FetchContent_MakeAvailable(fmt spdlog nlohmann_json Eigen3 Boost)
+
+add_library(_boost_math INTERFACE)
+if(TARGET Boost::math)
+  target_link_libraries(_boost_math INTERFACE Boost::math)
+elseif(TARGET Boost::boost)
+  target_link_libraries(_boost_math INTERFACE Boost::boost)
+else()
+  message(
+    FATAL_ERROR
+      "No viable Boost target found: Neither Boost::math nor Boost::boost exists."
+  )
+endif()
 
 add_library(autopilot_autopilot)
 target_sources(
@@ -95,7 +107,7 @@ target_compile_definitions(
 target_compile_features(autopilot_autopilot PUBLIC cxx_std_23)
 target_link_libraries(
   autopilot_autopilot PUBLIC Eigen3::Eigen spdlog::spdlog fmt::fmt
-                             nlohmann_json::nlohmann_json Boost::math)
+                             nlohmann_json::nlohmann_json)
 
 add_library(autopilot::autopilot ALIAS autopilot_autopilot)
 set_target_properties(autopilot_autopilot PROPERTIES EXPORT_NAME autopilot)
@@ -156,7 +168,7 @@ target_sources(
 target_link_libraries(
   autopilot_estimators
   PUBLIC autopilot::autopilot
-  PRIVATE "$<COMPILE_ONLY:Boost::math>")
+  PRIVATE "$<COMPILE_ONLY:_boost_math>")
 add_library(autopilot::estimators ALIAS autopilot_estimators)
 set_target_properties(autopilot_estimators PROPERTIES EXPORT_NAME estimators)
 
