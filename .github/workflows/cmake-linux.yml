@@ -26,7 +26,7 @@ jobs:
             cpp_compiler: g++
         find_package_mode:
           [
-            -DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER,
+            -DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER -DAUTOPILOT_INSTALL=OFF,
             -DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=ALWAYS,
           ]
 

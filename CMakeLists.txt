@@ -11,7 +11,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   )
 endif()
 
-project(autopilot)
+project(
+  autopilot
+  VERSION 0.1.0
+  LANGUAGES CXX
+  DESCRIPTION "H S Helson's portfolio autopilot library")
 
 set(AUTOPILOT_ESTIMATOR_COVARIANCE_MATRIX_MAX_SIZE
     20
@@ -161,8 +165,10 @@ target_link_libraries(
 add_library(autopilot::estimators ALIAS autopilot_estimators)
 set_target_properties(autopilot_estimators PROPERTIES EXPORT_NAME estimators)
 
-option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests" ON)
-option(AUTOPILOT_BUILD_EXAMPLES "Build the autopilot examples" ON)
+option(AUTOPILOT_BUILD_TESTING "Build the autopilot tests"
+       ${PROJECT_IS_TOP_LEVEL})
+option(AUTOPILOT_BUILD_EXAMPLES "Build the autopilot examples"
+       ${PROJECT_IS_TOP_LEVEL})
 include(CMakeDependentOption)
 cmake_dependent_option(
   AUTOPILOT_SKIP_BUILD_VALIDATION
@@ -184,4 +190,41 @@ endif()
 if(AUTOPILOT_BUILD_EXAMPLES)
   message(STATUS "Autopilot: Building examples")
   add_subdirectory(examples)
+endif()
+
+option(AUTOPILOT_INSTALL "Install the autopilot library"
+       ${PROJECT_IS_TOP_LEVEL})
+
+if(AUTOPILOT_INSTALL AND NOT CMAKE_SKIP_INSTALL_RULES)
+  include(GNUInstallDirs)
+
+  install(
+    TARGETS autopilot_autopilot autopilot_planning autopilot_controllers
+            autopilot_estimators
+    EXPORT autopilotTargets
+    FILE_SET HEADERS
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+  install(
+    EXPORT autopilotTargets
+    NAMESPACE autopilot::
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/autopilot")
+
+  include(CMakePackageConfigHelpers)
+
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/autopilotConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+
+  configure_package_config_file(
+    "${CMAKE_CURRENT_LIST_DIR}/cmake/autopilotConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/autopilotConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/autopilot")
+
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/autopilotConfig.cmake"
+                "${CMAKE_CURRENT_BINARY_DIR}/autopilotConfigVersion.cmake"
+          DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/autopilot")
 endif()
