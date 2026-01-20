@@ -120,6 +120,36 @@ TEST_F(TestQuadrotorModel, MotorLayoutTorqueVerification) {
   ASSERT_THAT(torque, AllClose(expected_torque));
 }
 
+TEST_F(TestQuadrotorModel, MixerRoundTrip) {
+  // Test 1: Verify Motor Thrusts -> Wrench -> Motor Thrusts round trip
+  // This confirms the allocation matrix is correct.
+
+  Eigen::Vector4d input_thrusts;
+  input_thrusts << 3.0, 5.0, 2.0, 4.0;  // Arbitrary thrusts
+
+  // 1. Forward Mixing: Motor Thrusts -> Wrench
+  Eigen::Vector4d moments =
+      model_->motorThrustsToThrustTorqueVector(input_thrusts);
+
+  // 2. Inverse Mixing: Wrench -> Motor Thrusts
+  Eigen::Vector4d recovered_thrusts;
+  recovered_thrusts = model_->thrustTorqueToMotorThrusts(moments);
+
+  // 3. Verify
+  EXPECT_TRUE(input_thrusts.isApprox(recovered_thrusts, 1e-9))
+      << "Mixer round-trip failed.\nInput:\n"
+      << input_thrusts.transpose() << "\nRecovered:\n"
+      << recovered_thrusts.transpose();
+
+  auto midway = model_->motorThrustsToThrustTorque(input_thrusts);
+
+  recovered_thrusts = model_->thrustTorqueToMotorThrusts(midway);
+  EXPECT_TRUE(input_thrusts.isApprox(recovered_thrusts, 1e-9))
+      << "Mixer round-trip (struct) failed.\nInput:\n"
+      << input_thrusts.transpose() << "\nRecovered:\n"
+      << recovered_thrusts.transpose();
+}
+
 TEST_F(TestQuadrotorModel, MixerMatrixInversion) {
   // Test 1: Verify Wrench -> Motor Thrusts -> Wrench round trip
   // This confirms the allocation matrix inversion is correct.
