@@ -25,20 +25,15 @@ Eigen::MatrixXd MinimumSnapSolver::computeQ(double duration,
   Eigen::MatrixXd qmat = Eigen::MatrixXd::Zero(n_coeffs, n_coeffs);
   // Standard min-snap cost: integral of (derivative order 4)^2
   // You can generalize this with weights as in your Python config
-  constexpr int kCostDerivative = 4;
+  constexpr int kCostDerivative = kContinuousDegrees;
+  using Arr = Eigen::Array<double, kCostDerivative, 1>;
   for (int i = kCostDerivative; i < n_coeffs; ++i) {
+    const double fac_i = (i - Arr::NullaryExpr(std::identity())).prod();
     for (int j = kCostDerivative; j < n_coeffs; ++j) {
-      double fac_i = 1.0;
-      for (int k = 0; k < kCostDerivative; ++k) {
-        fac_i *= (i - k);
-      }
-      double fac_j = 1.0;
-      for (int k = 0; k < kCostDerivative; ++k) {
-        fac_j *= (j - k);
-      }
-      qmat(i, j) = fac_i * fac_j *
-                   std::pow(duration, i + j - 2 * kCostDerivative + 1) /
-                   (i + j - 2 * kCostDerivative + 1);
+      const double fac_j = (j - Arr::NullaryExpr(std::identity())).prod();
+
+      const auto r = i + j - 2 * kCostDerivative + 1;
+      qmat(i, j) = fac_i * fac_j * std::pow(duration, r) / r;
     }
   }
   return qmat;
@@ -136,17 +131,8 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
   }
 
   // Sub-matrices of R
-  Eigen::MatrixXd rpp(p_idx.size(), p_idx.size());
-  Eigen::MatrixXd rpf(p_idx.size(), f_idx.size());
-  for (Eigen::Index r = 0; r < std::ssize(p_idx); ++r) {
-    auto& rth_p = p_idx[static_cast<std::size_t>(r)];
-    for (Eigen::Index c = 0; c < std::ssize(p_idx); ++c) {
-      rpp(r, c) = rmat(rth_p, p_idx[static_cast<std::size_t>(c)]);
-    }
-    for (Eigen::Index c = 0; c < std::ssize(f_idx); ++c) {
-      rpf(r, c) = rmat(rth_p, f_idx[static_cast<std::size_t>(c)]);
-    }
-  }
+  const Eigen::MatrixXd rpp = rmat(p_idx, p_idx);
+  const Eigen::MatrixXd rpf = rmat(p_idx, f_idx);
 
   // 6. Loop per dimension (X, Y, Z)
   Eigen::MatrixXd final_coeffs(3, n_all_coeffs);
@@ -191,12 +177,8 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
     }
 
     Eigen::VectorXd d_total = Eigen::VectorXd::Zero(n_d);
-    for (std::size_t k = 0; k < f_idx.size(); ++k) {
-      d_total(f_idx[k]) = d_f(static_cast<Eigen::Index>(k));
-    }
-    for (std::size_t k = 0; k < p_idx.size(); ++k) {
-      d_total(p_idx[k]) = d_p(static_cast<Eigen::Index>(k));
-    }
+    d_total(f_idx) = d_f;
+    d_total(p_idx) = d_p;
 
     final_coeffs.row(dim) = kmat * d_total;
   }
@@ -205,11 +187,11 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
   for (std::size_t i = 0; i < n_poly_unsigned; ++i) {
     const auto ith_chunk =
         ix::seqN(static_cast<Eigen::Index>(i * kNCoeffs), ix::fix<kNCoeffs>);
-    Eigen::Vector<double, 8> cx = final_coeffs(0, ith_chunk).transpose();
-    std::array<PlanningPolynomial, 3> axes = {
-        PlanningPolynomial(cx),
-        PlanningPolynomial(final_coeffs(1, ith_chunk).transpose()),
-        PlanningPolynomial(final_coeffs(2, ith_chunk).transpose())};
+    auto axes = [&]<std::size_t... I>(std::index_sequence<I...>) {
+      return std::array{
+          PlanningPolynomial(final_coeffs(I, ith_chunk).reshaped())...};
+    }(std::make_index_sequence<3>{});
+
     segments.emplace_back(durs[i], std::move(axes));
   }
 
