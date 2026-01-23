@@ -78,6 +78,14 @@ bool IsClose(T a, T b, const Tolerances<T>& tols = {}) {
   return diff < max(tols.abs, tols.rel * norm);
 }
 
+template <typename T, typename... Ts>
+Eigen::DiagonalMatrix<T, sizeof...(Ts) + 1> Diag(T arg, Ts&&... args)
+  requires(std::same_as<T, Ts> && ...)
+{
+  return Eigen::Vector<T, sizeof...(Ts) + 1>(arg, std::forward<Ts>(args)...)
+      .asDiagonal();
+}
+
 template <Vector3Like Derived>
 Eigen::Matrix3<typename Derived::Scalar> hat(
     const Eigen::MatrixBase<Derived>& v) {
