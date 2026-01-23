@@ -79,8 +79,9 @@ int main() {
 
   auto sim = std::make_shared<ap::QuadrotorSimulator>(model, cfg.simulator);
 
-  if (auto ec = est->resetState(sim->state())) {
-    spdlog::error("Estimator reset failed: {}", ec.message());
+  if (auto ec = est->resetState(sim->state());
+      ec != autopilot::AutopilotErrc::kNone) {
+    spdlog::error("Estimator reset failed: {}", ec);
     return -1;
   }
 
@@ -97,8 +98,7 @@ int main() {
 
   auto trajectory = traj_solver.solve(mission);
   if (!trajectory) {
-    spdlog::error("Trajectory generation failed: {}",
-                  trajectory.error().message());
+    spdlog::error("Trajectory generation failed: {}", trajectory.error());
     return -1;
   }
 

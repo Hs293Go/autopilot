@@ -47,9 +47,9 @@ class EstimatorDriverBase {
    *
    * @param input A reference to the InputBase object containing the control
    *              input data.
-   * @return An std::error_code indicating success or failure of the processing.
+   * @return An AutopilotErrc indicating success or failure of the processing.
    */
-  virtual std::error_code processInput(
+  virtual AutopilotErrc processInput(
       const std::shared_ptr<const InputBase>& input) = 0;
 
   /** Processes measurement data.
@@ -59,9 +59,9 @@ class EstimatorDriverBase {
    *
    * @param meas A reference to the MeasurementBase object containing the
    *             measurement data.
-   * @return An std::error_code indicating success or failure of the processing.
+   * @return An AutopilotErrc indicating success or failure of the processing.
    */
-  virtual std::error_code processMeasurement(
+  virtual AutopilotErrc processMeasurement(
       const std::shared_ptr<const MeasurementBase>& meas) = 0;
 
   // 2. State Retrieval (The "Pull")
@@ -69,21 +69,20 @@ class EstimatorDriverBase {
   // If t=0, return latest.
   // If t > latest, EXTRAPOLATE (Predict forward).
   // If t < latest, INTERPOLATE (delayed query).
-  virtual std::expected<QuadrotorState, std::error_code> getStateAt(
+  virtual std::expected<QuadrotorState, AutopilotErrc> getStateAt(
       double timestamp_s = 0.0) const = 0;
 
   virtual EstimatorCovarianceMatrix getCovariance() const = 0;
 
   // 3. Lifecycle
   // Reset filter to a known initial state (e.g., waiting on tarmac)
-  virtual std::error_code reset(
+  virtual AutopilotErrc reset(
       const QuadrotorState& initial_state,
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) = 0;
 
-  virtual std::error_code resetState(const QuadrotorState& new_state) {
+  virtual AutopilotErrc resetState(const QuadrotorState& new_state) {
     const auto size = static_cast<Eigen::Index>(estimator_->tangentDim());
-    return reset(new_state,
-                 EstimatorCovarianceMatrix::Identity(size, size));
+    return reset(new_state, EstimatorCovarianceMatrix::Identity(size, size));
   }
 
   // Check if the filter has converged enough to fly

@@ -70,13 +70,13 @@ CascadeController::CascadeController(
       "Geometric controllers.");
 }
 
-std::expected<std::size_t, std::error_code> CascadeController::compute(
+std::expected<std::size_t, AutopilotErrc> CascadeController::compute(
     const QuadrotorState& state, std::span<const QuadrotorCommand> setpoints,
     std::span<QuadrotorCommand> outputs) {
   if (outputs.empty() || setpoints.empty()) {
     logger()->error(
         "Empty input or output buffers provided to CascadeController.");
-    return std::unexpected(make_error_code(AutopilotErrc::kInvalidBufferSize));
+    return std::unexpected(AutopilotErrc::kInvalidBufferSize);
   }
 
   const auto& setpoint_cmd = setpoints[0];
@@ -99,16 +99,16 @@ std::expected<std::size_t, std::error_code> CascadeController::compute(
 
     // C. Run Position Kernel
     PositionOutput pos_out;
-    if (auto err = position_controller_->compute(state, pos_ref, pos_out);
-        err != std::error_code()) {
-      logger()->error("Position controller failed, reason: {}", err.message());
-      return std::unexpected(err);
+    if (auto ec = position_controller_->compute(state, pos_ref, pos_out);
+        ec != AutopilotErrc::kNone) {
+      logger()->error("Position controller failed, reason: {}", ec);
+      return std::unexpected(ec);
     }
 
     if (auto ec = out_cmd_.setForce(pos_out.target_force);
-        ec != std::error_code()) {
+        ec != AutopilotErrc::kNone) {
       logger()->error("Failed to set force: {}, reason: {}",
-                      pos_out.target_force, ec.message());
+                      pos_out.target_force, ec);
       return std::unexpected(ec);
     }
 
@@ -116,9 +116,9 @@ std::expected<std::size_t, std::error_code> CascadeController::compute(
     collective_thrust_ =
         (state.odometry.pose().rotation().inverse() * pos_out.target_force).z();
     if (auto ec = out_cmd_.setCollectiveThrust(collective_thrust_);
-        ec != std::error_code()) {
+        ec != AutopilotErrc::kNone) {
       logger()->error("Failed to set collective thrust: {:.4f}, reason: {}",
-                      collective_thrust_, ec.message());
+                      collective_thrust_, ec);
       return std::unexpected(ec);
     }
 
@@ -142,9 +142,9 @@ std::expected<std::size_t, std::error_code> CascadeController::compute(
     // ---------------------------------------------------
     AttitudeOutput att_out;
     // Always use FRESH state, but potentially STALE (held) reference
-    if (auto ec =
-            attitude_controller_->compute(state, last_att_ref_, att_out)) {
-      logger()->error("Attitude controller failed, reason: {}", ec.message());
+    if (auto ec = attitude_controller_->compute(state, last_att_ref_, att_out);
+        ec != AutopilotErrc::kNone) {
+      logger()->error("Attitude controller failed, reason: {}", ec);
       return std::unexpected(ec);
     }
 
@@ -162,21 +162,22 @@ std::expected<std::size_t, std::error_code> CascadeController::compute(
     const Eigen::Vector4d motor_thrusts =
         model()->thrustTorqueToMotorThrusts(thrust_moments).cwiseMax(0.0);
     if (auto ec = out_cmd_.setMotorThrusts(motor_thrusts);
-        ec != std::error_code()) {
+        ec != AutopilotErrc::kNone) {
       logger()->error("Failed to set motor thrusts: {}, reason: {}",
-                      motor_thrusts, ec.message());
+                      motor_thrusts, ec);
       return std::unexpected(ec);
     }
 
     if (auto ec = out_cmd_.setBodyRate(att_out.body_rate);
-        ec != std::error_code()) {
+        ec != AutopilotErrc::kNone) {
       logger()->error("Failed to set body rate: {}, reason: {}",
-                      att_out.body_rate, ec.message());
+                      att_out.body_rate, ec);
       return std::unexpected(ec);
     }
 
     // If we output wrench (for simulator):
-    if (auto ec = out_cmd_.setTorque(att_out.torque); ec != std::error_code()) {
+    if (auto ec = out_cmd_.setTorque(att_out.torque);
+        ec != AutopilotErrc::kNone) {
       return std::unexpected(ec);
     }
     last_attctl_time_ = state.timestamp_secs;

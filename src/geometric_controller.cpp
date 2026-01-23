@@ -27,9 +27,9 @@ GeometricAttitudeController::GeometricAttitudeController(
     : GeometricAttitudeController(std::move(model), std::make_shared<Config>(),
                                   std::move(logger)) {}
 
-std::error_code GeometricPositionController::compute(
-    const QuadrotorState& state, const PositionReference& ref,
-    PositionOutput& out) const {
+AutopilotErrc GeometricPositionController::compute(const QuadrotorState& state,
+                                                   const PositionReference& ref,
+                                                   PositionOutput& out) const {
   // --- 1. Error Calculation (Euclidean) ---
   const Eigen::Vector3d& p = state.odometry.pose().translation();
   const Eigen::Vector3d& v = state.odometry.twist().linear();
@@ -61,9 +61,9 @@ std::error_code GeometricPositionController::compute(
   return {};
 }
 
-std::error_code GeometricAttitudeController::compute(
-    const QuadrotorState& state, const AttitudeReference& ref,
-    AttitudeOutput& out) const {
+AutopilotErrc GeometricAttitudeController::compute(const QuadrotorState& state,
+                                                   const AttitudeReference& ref,
+                                                   AttitudeOutput& out) const {
   // --- 1. Unpack State ---
   const Eigen::Quaterniond& q = state.odometry.pose().rotation();
   const Eigen::Vector3d& rate_fb = state.odometry.twist().angular();

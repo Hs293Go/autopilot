@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "nlohmann/json.hpp"
-#include "spdlog/spdlog.h"
 
 namespace autopilot {
 

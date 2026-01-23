@@ -5,166 +5,165 @@
 
 namespace autopilot {
 
-std::error_code QuadrotorModelCfg::setMass(double mass) {
+AutopilotErrc QuadrotorModelCfg::setMass(double mass) {
   if (!std::isfinite(mass)) {
-    return (make_error_code(AutopilotErrc::kNumericallyNonFinite));
+    return (AutopilotErrc::kNumericallyNonFinite);
   }
 
   if (mass <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   mass_ = mass;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setInertiaElements(
+AutopilotErrc QuadrotorModelCfg::setInertiaElements(
     const InertiaElements& inertia_elems) {
   if (!std::isfinite(inertia_elems.ixx) || !std::isfinite(inertia_elems.iyy) ||
       !std::isfinite(inertia_elems.izz) || !std::isfinite(inertia_elems.ixy) ||
       !std::isfinite(inertia_elems.ixz) || !std::isfinite(inertia_elems.iyz)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (inertia_elems.ixx <= 0.0 || inertia_elems.iyy <= 0.0 ||
       inertia_elems.izz <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   if (inertia_elems.ixx + inertia_elems.iyy < inertia_elems.izz ||
       inertia_elems.ixx + inertia_elems.izz < inertia_elems.iyy ||
       inertia_elems.iyy + inertia_elems.izz < inertia_elems.ixx) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   inertia_elems_ = inertia_elems;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setFrontMotorPosition(
+AutopilotErrc QuadrotorModelCfg::setFrontMotorPosition(
     const Eigen::Ref<const Eigen::Vector2d>& position) {
   if (!position.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (position.minCoeff() <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   front_motor_position_ = position;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setBackMotorPosition(
+AutopilotErrc QuadrotorModelCfg::setBackMotorPosition(
     const Eigen::Ref<const Eigen::Vector2d>& position) {
   if (!position.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (position.minCoeff() <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   back_motor_position_ = position;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setTorqueConstant(double torque_constant) {
+AutopilotErrc QuadrotorModelCfg::setTorqueConstant(double torque_constant) {
   if (!std::isfinite(torque_constant)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (torque_constant <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   torque_constant_ = torque_constant;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setMotorTimeConstantUp(
+AutopilotErrc QuadrotorModelCfg::setMotorTimeConstantUp(
     double time_constant_up) {
   if (!std::isfinite(time_constant_up)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   if (time_constant_up <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   motor_time_constant_up_ = time_constant_up;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setMotorTimeConstantDown(
+AutopilotErrc QuadrotorModelCfg::setMotorTimeConstantDown(
     double time_constant_down) {
   if (!std::isfinite(time_constant_down)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   if (time_constant_down <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   motor_time_constant_down_ = time_constant_down;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setThrustCurveCoeff(
+AutopilotErrc QuadrotorModelCfg::setThrustCurveCoeff(
     double thrust_curve_coeff) {
   if (!std::isfinite(thrust_curve_coeff)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (thrust_curve_coeff <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   thrust_curve_coeff_ = thrust_curve_coeff;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setMinCollectiveThrust(double min_thrust) {
+AutopilotErrc QuadrotorModelCfg::setMinCollectiveThrust(double min_thrust) {
   if (!std::isfinite(min_thrust)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (min_thrust < 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   min_collective_thrust_ = min_thrust;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setMaxCollectiveThrust(double max_thrust) {
+AutopilotErrc QuadrotorModelCfg::setMaxCollectiveThrust(double max_thrust) {
   if (!std::isfinite(max_thrust)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (max_thrust <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   if (max_thrust <= min_collective_thrust_) {
-    return make_error_code(
-        AutopilotErrc::kInvalidOrdering);  // Max thrust must exceed min
+    return AutopilotErrc::kInvalidOrdering;  // Max thrust must exceed min
   }
   max_collective_thrust_ = max_thrust;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setMaxBodyRate(
+AutopilotErrc QuadrotorModelCfg::setMaxBodyRate(
     const Eigen::Ref<const Eigen::Vector3d>& max_body_rate) {
   if (!max_body_rate.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (max_body_rate.minCoeff() <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   max_body_rate_ = max_body_rate;
   return {};
 }
 
-std::error_code QuadrotorModelCfg::setGravVector(
+AutopilotErrc QuadrotorModelCfg::setGravVector(
     const Eigen::Ref<const Eigen::Vector3d>& grav_vector) {
   if (!grav_vector.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (grav_vector.isApproxToConstant(0.0)) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   grav_vector_ = grav_vector;

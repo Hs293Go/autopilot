@@ -94,32 +94,29 @@ class QuadrotorCommand {
     setpoint_.timestamp_secs = timestamp_secs;
   }
 
-  std::error_code setPosition(
-      const Eigen::Ref<const Eigen::Vector3d>& position);
+  AutopilotErrc setPosition(const Eigen::Ref<const Eigen::Vector3d>& position);
 
-  std::error_code setVelocity(
-      const Eigen::Ref<const Eigen::Vector3d>& velocity);
+  AutopilotErrc setVelocity(const Eigen::Ref<const Eigen::Vector3d>& velocity);
 
-  std::error_code setOrientation(const Eigen::Quaterniond& orientation);
+  AutopilotErrc setOrientation(const Eigen::Quaterniond& orientation);
 
-  std::error_code setYaw(double yaw);
+  AutopilotErrc setYaw(double yaw);
 
-  std::error_code setBodyRate(
-      const Eigen::Ref<const Eigen::Vector3d>& body_rate);
+  AutopilotErrc setBodyRate(const Eigen::Ref<const Eigen::Vector3d>& body_rate);
 
-  std::error_code setAcceleration(
+  AutopilotErrc setAcceleration(
       const Eigen::Ref<const Eigen::Vector3d>& acceleration);
 
-  std::error_code setAngularAcceleration(
+  AutopilotErrc setAngularAcceleration(
       const Eigen::Ref<const Eigen::Vector3d>& angular_acceleration);
 
-  std::error_code setForce(const Eigen::Ref<const Eigen::Vector3d>& force);
+  AutopilotErrc setForce(const Eigen::Ref<const Eigen::Vector3d>& force);
 
-  std::error_code setTorque(const Eigen::Ref<const Eigen::Vector3d>& torque);
+  AutopilotErrc setTorque(const Eigen::Ref<const Eigen::Vector3d>& torque);
 
-  std::error_code setCollectiveThrust(double collective_thrust);
+  AutopilotErrc setCollectiveThrust(double collective_thrust);
 
-  std::error_code setMotorThrusts(
+  AutopilotErrc setMotorThrusts(
       const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts);
 
   void reset(double timestamp_secs = 0.0);

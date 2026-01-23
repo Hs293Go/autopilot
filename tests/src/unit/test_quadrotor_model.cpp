@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 
+#include "autopilot/core/common.hpp"
 #include "autopilot/core/definitions.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
 #include "testing/matchers.hpp"
@@ -14,36 +15,36 @@ TEST(TestQuadrotorModelConfig, InvalidParameters) {
   auto cfg = std::make_shared<ap::QuadrotorModelCfg>();
 
   // 1. Negative mass
-  EXPECT_THAT(cfg->setMass(-1.0), IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setMass(-1.0), ap::AutopilotErrc::kNone);
 
   // 2. Zero inertia elements
   ap::InertiaElements zero_inertia{0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  EXPECT_THAT(cfg->setInertiaElements(zero_inertia), IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setInertiaElements(zero_inertia), ap::AutopilotErrc::kNone);
 
   // 3. Invalid motor positions (e.g., negative arm length)
-  EXPECT_THAT(cfg->setFrontMotorPosition(-0.1, 0.1), IsNonEmptyErrorCode());
-  EXPECT_THAT(cfg->setBackMotorPosition(0.1, -0.1), IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setFrontMotorPosition(-0.1, 0.1), ap::AutopilotErrc::kNone);
+  EXPECT_NE(cfg->setBackMotorPosition(0.1, -0.1), ap::AutopilotErrc::kNone);
 
   // 4. Negative torque constant
-  EXPECT_THAT(cfg->setTorqueConstant(-0.01), IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setTorqueConstant(-0.01), ap::AutopilotErrc::kNone);
 
   // 5. Invalid gravity vector (zero vector)
-  EXPECT_THAT(cfg->setGravVector(Eigen::Vector3d::Zero()),
-              IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setGravVector(Eigen::Vector3d::Zero()),
+            ap::AutopilotErrc::kNone);
 
   // 6. Negative motor time constants
-  EXPECT_THAT(cfg->setMotorTimeConstantUp(-0.05), IsNonEmptyErrorCode());
-  EXPECT_THAT(cfg->setMotorTimeConstantDown(-0.05), IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setMotorTimeConstantUp(-0.05), ap::AutopilotErrc::kNone);
+  EXPECT_NE(cfg->setMotorTimeConstantDown(-0.05), ap::AutopilotErrc::kNone);
 
   // 7. Negative collective thrust bounds
-  EXPECT_THAT(cfg->setMaxCollectiveThrust(-10.0), IsNonEmptyErrorCode());
-  EXPECT_THAT(cfg->setMinCollectiveThrust(-5.0), IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setMaxCollectiveThrust(-10.0), ap::AutopilotErrc::kNone);
+  EXPECT_NE(cfg->setMinCollectiveThrust(-5.0), ap::AutopilotErrc::kNone);
 
   // This is valid
-  EXPECT_THAT(cfg->setMinCollectiveThrust(1.0), IsEmptyErrorCode());
+  EXPECT_EQ(cfg->setMinCollectiveThrust(1.0), ap::AutopilotErrc::kNone);
 
   // Min thrust greater than max thrust
-  EXPECT_THAT(cfg->setMaxCollectiveThrust(0.5), IsNonEmptyErrorCode());
+  EXPECT_NE(cfg->setMaxCollectiveThrust(0.5), ap::AutopilotErrc::kNone);
 }
 
 class TestQuadrotorModel : public ::testing::Test {
@@ -53,19 +54,22 @@ class TestQuadrotorModel : public ::testing::Test {
     auto cfg = std::make_shared<ap::QuadrotorModelCfg>();
 
     // Physical parameters
-    ASSERT_EQ(cfg->setMass(kMass), std::error_code());
-    ASSERT_EQ(cfg->setInertiaElements(inertia_), std::error_code());
+    ASSERT_EQ(cfg->setMass(kMass), ap::AutopilotErrc::kNone);
+    ASSERT_EQ(cfg->setInertiaElements(inertia_), ap::AutopilotErrc::kNone);
 
     // Motor layout parameters (Standard X configuration)
     // Front right (0), Back left (1), Front left (2), Back right (3) - or
     // similar depending on layout
-    ASSERT_EQ(cfg->setFrontMotorPosition(kArmX, kArmY), std::error_code());
-    ASSERT_EQ(cfg->setBackMotorPosition(kArmX, kArmY), std::error_code());
-    ASSERT_EQ(cfg->setTorqueConstant(kTorqueConstant), std::error_code());
+    ASSERT_EQ(cfg->setFrontMotorPosition(kArmX, kArmY),
+              ap::AutopilotErrc::kNone);
+    ASSERT_EQ(cfg->setBackMotorPosition(kArmX, kArmY),
+              ap::AutopilotErrc::kNone);
+    ASSERT_EQ(cfg->setTorqueConstant(kTorqueConstant),
+              ap::AutopilotErrc::kNone);
 
     // Set Gravity to standard -9.81 Z
     ASSERT_EQ(cfg->setGravVector(-Eigen::Vector3d::UnitZ() * kGravity),
-              std::error_code());
+              ap::AutopilotErrc::kNone);
 
     model_ = std::make_shared<ap::QuadrotorModel>(cfg);
   }

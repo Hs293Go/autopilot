@@ -40,9 +40,9 @@ class PositionControllerBase : public Module {
       : Module(fmt::format("PositionController.{}", name), std::move(model),
                std::move(logger)) {}
 
-  virtual std::error_code compute(const QuadrotorState& state,
-                                  const PositionReference& ref,
-                                  PositionOutput& command) const = 0;
+  virtual AutopilotErrc compute(const QuadrotorState& state,
+                                const PositionReference& ref,
+                                PositionOutput& command) const = 0;
 
   virtual void reset() {}
 };
@@ -61,9 +61,9 @@ class AttitudeControllerBase : public Module {
       : Module(fmt::format("AttitudeController.{}", name), std::move(model),
                std::move(logger)) {}
 
-  virtual std::error_code compute(const QuadrotorState& attitude,
-                                  const AttitudeReference& ref,
-                                  AttitudeOutput& command) const = 0;
+  virtual AutopilotErrc compute(const QuadrotorState& attitude,
+                                const AttitudeReference& ref,
+                                AttitudeOutput& command) const = 0;
 
   virtual void reset() {}
 };
@@ -83,20 +83,20 @@ class CascadeControllerConfig
 
   double attctl_dt() const { return attctl_dt_; }
 
-  std::error_code setPosctlDt(double dt) {
+  AutopilotErrc setPosctlDt(double dt) {
     if (dt <= 0.0) {
-      return make_error_code(AutopilotErrc::kOutOfBounds);
+      return AutopilotErrc::kOutOfBounds;
     }
     posctl_dt_ = dt;
     return {};
   }
 
-  std::error_code setAttctlDt(double dt) {
+  AutopilotErrc setAttctlDt(double dt) {
     if (dt <= 0.0) {
-      return make_error_code(AutopilotErrc::kOutOfBounds);
+      return AutopilotErrc::kOutOfBounds;
     }
     if (dt > posctl_dt_) {
-      return make_error_code(AutopilotErrc::kOutOfBounds);
+      return AutopilotErrc::kOutOfBounds;
     }
     attctl_dt_ = dt;
     return {};
@@ -155,7 +155,7 @@ class CascadeController : public ControllerBase {
                     const std::shared_ptr<spdlog::logger>& logger = nullptr);
 
   // The "Fast Loop" Entry Point (e.g. 500Hz)
-  std::expected<std::size_t, std::error_code> compute(
+  std::expected<std::size_t, AutopilotErrc> compute(
       const QuadrotorState& state, std::span<const QuadrotorCommand> setpoints,
       std::span<QuadrotorCommand> outputs) override;
 

@@ -91,11 +91,11 @@ class EkfEstimator final : public EstimatorBase {
   std::unique_ptr<EstimatorContext> createContext() const override;
 
   // Interface Implementation
-  std::error_code predict(
+  AutopilotErrc predict(
       QuadrotorState& state, EstimatorContext& context,
       const std::shared_ptr<const InputBase>& u) const override;
 
-  std::error_code correct(
+  AutopilotErrc correct(
       QuadrotorState& state, EstimatorContext& context,
       const std::shared_ptr<const MeasurementBase>& z) const override;
 
@@ -103,7 +103,7 @@ class EkfEstimator final : public EstimatorBase {
                              const EstimatorContext& context,
                              double t) const override;
 
-  std::error_code reset(
+  AutopilotErrc reset(
       EstimatorContext& context, const QuadrotorState& initial_state,
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const override;
 

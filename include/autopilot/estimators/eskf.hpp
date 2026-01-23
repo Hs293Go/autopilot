@@ -105,18 +105,18 @@ class EskfEstimator final : public EstimatorBase {
 
   std::unique_ptr<EstimatorContext> createContext() const override;
   // Lifecycle
-  std::error_code reset(
+  AutopilotErrc reset(
       EstimatorContext& context, const QuadrotorState& initial_state,
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const override;
 
   bool isHealthy(const EstimatorContext& context) const override;
 
   // Core Async Logic (Worker Thread)
-  std::error_code predict(
+  AutopilotErrc predict(
       QuadrotorState& state, EstimatorContext& context,
       const std::shared_ptr<const InputBase>& u) const override;
 
-  std::error_code correct(
+  AutopilotErrc correct(
       QuadrotorState& state, EstimatorContext& context,
       const std::shared_ptr<const MeasurementBase>& z) const override;
 
@@ -151,33 +151,28 @@ class EskfEstimator final : public EstimatorBase {
 
   // Internal Prediction Implementations
   // Returns true if state was updated, false if skipped (e.g. dt=0)
-  std::error_code predictKinematics(QuadrotorState& state,
-                                    const Context& context,
-                                    const Eigen::Vector3d& accel,
-                                    const Eigen::Vector3d& gyro,
-                                    double dt) const;
+  AutopilotErrc predictKinematics(QuadrotorState& state, const Context& context,
+                                  const Eigen::Vector3d& accel,
+                                  const Eigen::Vector3d& gyro, double dt) const;
 
-  std::error_code predictCovariance(const QuadrotorState& state,
-                                    Context& context,
-                                    const Eigen::Vector3d& accel,
-                                    const Eigen::Vector3d& gyro,
-                                    double dt) const;
+  AutopilotErrc predictCovariance(const QuadrotorState& state, Context& context,
+                                  const Eigen::Vector3d& accel,
+                                  const Eigen::Vector3d& gyro, double dt) const;
 
   // Correction Implementations
   // Returns success/failure code
-  std::error_code correctGps(
+  AutopilotErrc correctGps(
       QuadrotorState& state, Context& context,
       const std::shared_ptr<const class LocalPositionData>& z) const;
-  std::error_code correctMag(
-      QuadrotorState& state, Context& context,
-      const std::shared_ptr<const class MagData>& z) const;
+  AutopilotErrc correctMag(QuadrotorState& state, Context& context,
+                           const std::shared_ptr<const class MagData>& z) const;
 
   // Helpers
   void injectError(QuadrotorState& state, Context& context,
                    const ErrorState& dx) const;
   void resetCovariance(Context& context, const ErrorState& dx) const;
 
-  std::error_code setError(AutopilotErrc ec) const;
+  AutopilotErrc setError(AutopilotErrc ec) const;
 
   // Configuration & State
   std::shared_ptr<Config> config_;

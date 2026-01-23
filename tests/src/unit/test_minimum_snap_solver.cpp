@@ -43,7 +43,7 @@ TEST(MinSnap, CatchesTooFewWaypoints) {
 
   wps.push_back({1.0, {1, 1, 0}});  // Now two waypoints
   res = solver.solve(wps);
-  ASSERT_TRUE(res.has_value()) << res.error().message();
+  ASSERT_TRUE(res.has_value()) << to_string(res.error());
 }
 
 TEST(MinSnap, InterpolatesPositionsAndContinuity) {

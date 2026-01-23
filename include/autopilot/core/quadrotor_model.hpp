@@ -106,45 +106,45 @@ class QuadrotorModelCfg final : public ReflectiveConfigBase<QuadrotorModelCfg> {
     return grav_vector_;
   }
 
-  std::error_code setMass(double mass);
+  AutopilotErrc setMass(double mass);
 
-  std::error_code setInertiaElements(const InertiaElements& inertia_elems);
+  AutopilotErrc setInertiaElements(const InertiaElements& inertia_elems);
 
   void setMotorLayout(MotorLayout layout) { motor_layout_ = layout; }
 
-  std::error_code setFrontMotorPosition(double x, double y) {
+  AutopilotErrc setFrontMotorPosition(double x, double y) {
     return setFrontMotorPosition(Eigen::Vector2d{x, y});
   }
 
-  std::error_code setFrontMotorPosition(
+  AutopilotErrc setFrontMotorPosition(
       const Eigen::Ref<const Eigen::Vector2d>& position);
 
-  std::error_code setBackMotorPosition(double x, double y) {
+  AutopilotErrc setBackMotorPosition(double x, double y) {
     return setBackMotorPosition(Eigen::Vector2d{x, y});
   }
 
-  std::error_code setBackMotorPosition(
+  AutopilotErrc setBackMotorPosition(
       const Eigen::Ref<const Eigen::Vector2d>& position);
 
-  std::error_code setTorqueConstant(double torque_constant);
+  AutopilotErrc setTorqueConstant(double torque_constant);
 
-  std::error_code setMotorTimeConstantUp(double time_constant_up);
+  AutopilotErrc setMotorTimeConstantUp(double time_constant_up);
 
-  std::error_code setMotorTimeConstantDown(double time_constant_down);
+  AutopilotErrc setMotorTimeConstantDown(double time_constant_down);
 
-  std::error_code setThrustCurveCoeff(double thrust_curve_coeff);
+  AutopilotErrc setThrustCurveCoeff(double thrust_curve_coeff);
 
-  std::error_code setMinCollectiveThrust(double min_thrust);
+  AutopilotErrc setMinCollectiveThrust(double min_thrust);
 
-  std::error_code setMaxCollectiveThrust(double max_thrust);
+  AutopilotErrc setMaxCollectiveThrust(double max_thrust);
 
-  std::error_code setMaxBodyRate(
+  AutopilotErrc setMaxBodyRate(
       const Eigen::Ref<const Eigen::Vector3d>& max_body_rate);
 
-  std::error_code setGravVector(
+  AutopilotErrc setGravVector(
       const Eigen::Ref<const Eigen::Vector3d>& grav_vector);
 
-  std::error_code setGravAcceleration(double grav_accel_magnitude) {
+  AutopilotErrc setGravAcceleration(double grav_accel_magnitude) {
     return setGravVector(Eigen::Vector3d::UnitZ() * grav_accel_magnitude);
   }
 

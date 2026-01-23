@@ -19,7 +19,9 @@ class Module {
 
   virtual ~Module() = default;
 
-  [[nodiscard]] virtual std::string_view name() const { return logger_->name(); }
+  [[nodiscard]] virtual std::string_view name() const {
+    return logger_->name();
+  }
 
   [[nodiscard]] std::shared_ptr<const QuadrotorModel> model() const {
     return model_;

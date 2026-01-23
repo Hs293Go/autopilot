@@ -96,11 +96,11 @@ class EstimatorBase : public Module {
   // 1. Math Operations (Stateless Logic)
   // Input: Last State, Context, Data
   // Output: New State, Updated Context
-  virtual std::error_code predict(
+  virtual AutopilotErrc predict(
       QuadrotorState& state, EstimatorContext& context,
       const std::shared_ptr<const InputBase>& input) const = 0;
 
-  virtual std::error_code correct(
+  virtual AutopilotErrc correct(
       QuadrotorState& state, EstimatorContext& context,
       const std::shared_ptr<const MeasurementBase>& meas) const = 0;
 
@@ -110,7 +110,7 @@ class EstimatorBase : public Module {
                                      double time) const = 0;
 
   // 3. Lifecycle
-  virtual std::error_code reset(
+  virtual AutopilotErrc reset(
       EstimatorContext& context, const QuadrotorState& initial_state,
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const = 0;
 

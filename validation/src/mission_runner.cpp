@@ -77,7 +77,7 @@ QuadrotorState MissionRunner::getStateEstimate(int step) const {
     auto x_res = est_->getStateAt(sim_->state().timestamp_secs);
     if (!x_res.has_value()) {
       logger_->error("Estimator failed to provide state at step {}: {}. ", step,
-                     x_res.error().message());
+                     x_res.error());
     }
     return x_res.value_or(sim_->state());
   }
@@ -148,7 +148,7 @@ SimulationResult MissionRunner::run() {
     sp_buf[0] = cmd;
     if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {
       logger_->error("Controller failed at t={:.2f}s, because: {}",
-                     state.timestamp_secs, result.error().message());
+                     state.timestamp_secs, result.error());
       break;
     }
 

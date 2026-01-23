@@ -8,7 +8,7 @@
 TEST(ButterworthFilterTest, ImpulseResponse) {
   // Example test case for Butterworth filter response
   autopilot::ButterworthFilter<float, 1> bw;
-  ASSERT_THAT(bw.initialize(40.0f, 100.0f), IsEmptyErrorCode());
+  ASSERT_TRUE(bw.initialize(40.0f, 100.0f));
 
   const float expected_impulse_response[] = {
       0.6389455251590224F,   0.5475887728761645F,    -0.2506954995302367F,

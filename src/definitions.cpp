@@ -12,34 +12,34 @@ double QuadrotorCommand::yaw() const {
   return QuaternionToRollPitchYaw(q).z();
 }
 
-std::error_code QuadrotorCommand::setPosition(
+AutopilotErrc QuadrotorCommand::setPosition(
     const Eigen::Ref<const Eigen::Vector3d>& position) {
   if (!position.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   setpoint_.odometry.pose().translation() = position;
   addComponent(QuadrotorStateComponent::kPosition);
   return {};
 }
 
-std::error_code QuadrotorCommand::setVelocity(
+AutopilotErrc QuadrotorCommand::setVelocity(
     const Eigen::Ref<const Eigen::Vector3d>& velocity) {
   if (!velocity.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   setpoint_.odometry.twist().linear() = velocity;
   addComponent(QuadrotorStateComponent::kVelocity);
   return {};
 }
 
-std::error_code QuadrotorCommand::setOrientation(
+AutopilotErrc QuadrotorCommand::setOrientation(
     const Eigen::Quaterniond& orientation) {
   if (!orientation.coeffs().allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (!IsClose(orientation.norm(), 1.0)) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   setpoint_.odometry.pose().rotation() = orientation;
@@ -47,9 +47,9 @@ std::error_code QuadrotorCommand::setOrientation(
   return {};
 }
 
-std::error_code QuadrotorCommand::setYaw(double yaw) {
+AutopilotErrc QuadrotorCommand::setYaw(double yaw) {
   if (!std::isfinite(yaw)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   const double half_yaw = yaw / 2.0;
   setpoint_.odometry.pose().rotation() = {std::cos(half_yaw), 0.0, 0.0,
@@ -58,71 +58,70 @@ std::error_code QuadrotorCommand::setYaw(double yaw) {
   return {};
 }
 
-std::error_code QuadrotorCommand::setBodyRate(
+AutopilotErrc QuadrotorCommand::setBodyRate(
     const Eigen::Ref<const Eigen::Vector3d>& body_rate) {
   setpoint_.odometry.twist().angular() = body_rate;
   addComponent(QuadrotorStateComponent::kAngularVelocity);
   return {};
 }
 
-std::error_code QuadrotorCommand::setAcceleration(
+AutopilotErrc QuadrotorCommand::setAcceleration(
     const Eigen::Ref<const Eigen::Vector3d>& acceleration) {
   if (!acceleration.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   setpoint_.accel.linear() = acceleration;
   addComponent(QuadrotorStateComponent::kAcceleration);
   return {};
 }
 
-std::error_code QuadrotorCommand::setAngularAcceleration(
+AutopilotErrc QuadrotorCommand::setAngularAcceleration(
     const Eigen::Ref<const Eigen::Vector3d>& angular_acceleration) {
   if (!angular_acceleration.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   setpoint_.accel.angular() = angular_acceleration;
   addComponent(QuadrotorStateComponent::kAngularAcceleration);
   return {};
 }
 
-std::error_code QuadrotorCommand::setForce(
+AutopilotErrc QuadrotorCommand::setForce(
     const Eigen::Ref<const Eigen::Vector3d>& force) {
   if (!force.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   setpoint_.wrench.force() = force;
   addComponent(QuadrotorStateComponent::kForce);
   return {};
 }
 
-std::error_code QuadrotorCommand::setTorque(
+AutopilotErrc QuadrotorCommand::setTorque(
     const Eigen::Ref<const Eigen::Vector3d>& torque) {
   if (!torque.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   setpoint_.wrench.torque() = torque;
   addComponent(QuadrotorStateComponent::kTorque);
   return {};
 }
 
-std::error_code QuadrotorCommand::setCollectiveThrust(
-    double collective_thrust) {
+AutopilotErrc QuadrotorCommand::setCollectiveThrust(double collective_thrust) {
   if (!std::isfinite(collective_thrust)) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   setpoint_.collective_thrust = collective_thrust;
   addComponent(QuadrotorStateComponent::kCollectiveThrust);
   return {};
 }
 
-std::error_code QuadrotorCommand::setMotorThrusts(
+AutopilotErrc QuadrotorCommand::setMotorThrusts(
     const Eigen::Ref<const Eigen::Vector4d>& motor_thrusts) {
   if (!motor_thrusts.allFinite()) {
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
 
   if (motor_thrusts.minCoeff() < 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   setpoint_.motor_thrusts = motor_thrusts;

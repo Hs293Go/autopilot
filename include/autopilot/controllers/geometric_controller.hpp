@@ -42,9 +42,9 @@ class GeometricPositionController : public PositionControllerBase {
 
   std::shared_ptr<Config> config() { return config_; }
 
-  std::error_code compute(const QuadrotorState& state,
-                          const PositionReference& ref,
-                          PositionOutput& out) const override;
+  AutopilotErrc compute(const QuadrotorState& state,
+                        const PositionReference& ref,
+                        PositionOutput& out) const override;
 
  private:
   std::shared_ptr<Config> config_;
@@ -119,9 +119,9 @@ class GeometricAttitudeController : public AttitudeControllerBase {
 
   std::shared_ptr<Config> config() { return config_; }
 
-  std::error_code compute(const QuadrotorState& state,
-                          const AttitudeReference& ref,
-                          AttitudeOutput& out) const override;
+  AutopilotErrc compute(const QuadrotorState& state,
+                        const AttitudeReference& ref,
+                        AttitudeOutput& out) const override;
 
  private:
   std::shared_ptr<Config> config_;

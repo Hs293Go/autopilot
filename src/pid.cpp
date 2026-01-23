@@ -13,12 +13,12 @@ namespace autopilot {
 // Swallow configuration error and leave default config if invalid
 PID::PID(const PidConfig& config) { std::ignore = setConfig(config); }
 
-std::error_code PID::setConfig(const PidConfig& config) {
+AutopilotErrc PID::setConfig(const PidConfig& config) {
   if (config.sample_time_s <= 0 || config.output_min >= config.output_max) {
-    return make_error_code(std::errc::invalid_argument);
+    return AutopilotErrc::kOutOfBounds;
   }
   if (config.kp < 0 || config.ki < 0 || config.kd < 0) {
-    return make_error_code(std::errc::invalid_argument);
+    return AutopilotErrc::kOutOfBounds;
   }
 
   config_ = config;

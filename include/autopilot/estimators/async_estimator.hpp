@@ -41,20 +41,20 @@ class AsyncEstimator final : public EstimatorDriverBase {
   void push(const std::shared_ptr<const EstimatorData>& data) override;
 
   // 2. Processing (Worker Thread)
-  std::error_code processInput(
+  AutopilotErrc processInput(
       const std::shared_ptr<const InputBase>& input) override;
 
-  std::error_code processMeasurement(
+  AutopilotErrc processMeasurement(
       const std::shared_ptr<const MeasurementBase>& meas) override;
 
   // 3. Query (Control Thread)
-  std::expected<QuadrotorState, std::error_code> getStateAt(
+  std::expected<QuadrotorState, AutopilotErrc> getStateAt(
       double timestamp_s = 0.0) const override;
 
   EstimatorCovarianceMatrix getCovariance() const override;
 
   // 4. Lifecycle
-  std::error_code reset(
+  AutopilotErrc reset(
       const QuadrotorState& initial_state,
       const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) override;
 

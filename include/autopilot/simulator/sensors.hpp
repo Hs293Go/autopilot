@@ -111,8 +111,8 @@ class NoiseProcess {
   NoiseProcess(double noise_density, double random_walk,
                double correlation_time);
 
-  std::error_code configure(double noise_density, double random_walk,
-                            double correlation_time);
+  AutopilotErrc configure(double noise_density, double random_walk,
+                          double correlation_time);
 
   void initializeBias(double turn_on_sigma);
 
@@ -148,16 +148,16 @@ class MultivariableNoiseProcess {
         correlation_time_(Vector::Ones(Dim)),
         bias_(Vector::Zero(Dim)) {}
 
-  std::error_code configure(
+  AutopilotErrc configure(
       const Eigen::Ref<const Eigen::VectorXd>& noise_density,
       const Eigen::Ref<const Eigen::VectorXd>& random_walk,
       const Eigen::Ref<const Eigen::VectorXd>& correlation_time);
 
-  std::error_code initializeBias(
+  AutopilotErrc initializeBias(
       const Eigen::Ref<const Eigen::VectorXd>& turn_on_sigma);
 
   // Updates bias and returns the corrupt value (true_val + bias + white_noise)
-  std::error_code corrupt(Eigen::Ref<Eigen::VectorXd> value, double dt);
+  AutopilotErrc corrupt(Eigen::Ref<Eigen::VectorXd> value, double dt);
 
   Eigen::VectorXd bias() const { return bias_; }
 

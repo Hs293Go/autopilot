@@ -18,7 +18,7 @@ char* FormatConfig(char* out, const ConfigBase& cfg,
 
 std::string ToString(const ConfigBase& cfg, const PrintOptions& opts = {});
 
-std::expected<std::size_t, std::error_code> DumpToFile(
+std::expected<std::size_t, std::errc> DumpToFile(
     const std::filesystem::path& path, const ConfigBase& cfg,
     const PrintOptions& opts = {});
 }  // namespace autopilot

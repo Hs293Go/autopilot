@@ -20,29 +20,33 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     // Setup Model
     // ===========
     auto model_cfg = std::make_shared<ap::QuadrotorModelCfg>();
-    ASSERT_THAT(model_cfg->setMass(1.0), IsEmptyErrorCode());
+    ASSERT_EQ(model_cfg->setMass(1.0), ap::AutopilotErrc::kNone);
 
     // Rust: diag(0.025, 0.025, 0.043)
     ASSERT_EQ(
         model_cfg->setInertiaElements({0.025, 0.025, 0.043, 0.0, 0.0, 0.0}),
-        std::error_code());
+        ap::AutopilotErrc::kNone);
 
     // Rust: k_f = 1.56252e-6, time_constant = 0.033
-    ASSERT_THAT(model_cfg->setThrustCurveCoeff(1.56252e-6), IsEmptyErrorCode());
-    ASSERT_THAT(model_cfg->setMotorTimeConstantUp(0.033), IsEmptyErrorCode());
-    ASSERT_THAT(model_cfg->setMotorTimeConstantDown(0.033), IsEmptyErrorCode());
+    ASSERT_EQ(model_cfg->setThrustCurveCoeff(1.56252e-6),
+              ap::AutopilotErrc::kNone);
+    ASSERT_EQ(model_cfg->setMotorTimeConstantUp(0.033),
+              ap::AutopilotErrc::kNone);
+    ASSERT_EQ(model_cfg->setMotorTimeConstantDown(0.033),
+              ap::AutopilotErrc::kNone);
 
     // Rust: arm lengths ~0.17? Derived from [0.075, 0.1] vectors
-    ASSERT_THAT(model_cfg->setFrontMotorPosition(0.075, 0.1),
-                IsEmptyErrorCode());
-    ASSERT_THAT(model_cfg->setBackMotorPosition(0.075, 0.1),
-                IsEmptyErrorCode());
-    ASSERT_THAT(model_cfg->setTorqueConstant(0.01386), IsEmptyErrorCode());
+    ASSERT_EQ(model_cfg->setFrontMotorPosition(0.075, 0.1),
+              ap::AutopilotErrc::kNone);
+    ASSERT_EQ(model_cfg->setBackMotorPosition(0.075, 0.1),
+              ap::AutopilotErrc::kNone);
+    ASSERT_EQ(model_cfg->setTorqueConstant(0.01386), ap::AutopilotErrc::kNone);
 
     // Allow aggressive flight
-    ASSERT_THAT(model_cfg->setMaxCollectiveThrust(40.0), IsEmptyErrorCode());
+    ASSERT_EQ(model_cfg->setMaxCollectiveThrust(40.0),
+              ap::AutopilotErrc::kNone);
     // Gravity points DOWN
-    ASSERT_THAT(model_cfg->setGravAcceleration(-9.81), IsEmptyErrorCode());
+    ASSERT_EQ(model_cfg->setGravAcceleration(-9.81), ap::AutopilotErrc::kNone);
 
     // Setup Simulator
     // ===============

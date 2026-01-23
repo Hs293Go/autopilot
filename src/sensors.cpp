@@ -13,19 +13,18 @@ NoiseProcess::NoiseProcess(double noise_density, double random_walk,
       random_walk_(random_walk),
       correlation_time_(correlation_time) {}
 
-std::error_code NoiseProcess::configure(double noise_density,
-                                        double random_walk,
-                                        double correlation_time) {
+AutopilotErrc NoiseProcess::configure(double noise_density, double random_walk,
+                                      double correlation_time) {
   if (noise_density < 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   if (random_walk < 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   if (correlation_time <= 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   noise_density_ = noise_density;
@@ -57,22 +56,22 @@ double NoiseProcess::corrupt(double true_value, double dt) {
   return true_value + bias_ + white_noise_std * dist(rng_);
 }
 
-std::error_code MultivariableNoiseProcess::configure(
+AutopilotErrc MultivariableNoiseProcess::configure(
     const Eigen::Ref<const Eigen::VectorXd>& noise_density,
     const Eigen::Ref<const Eigen::VectorXd>& random_walk,
     const Eigen::Ref<const Eigen::VectorXd>& correlation_time) {
   if (noise_density.size() != dim_ || random_walk.size() != dim_ ||
       correlation_time.size() != dim_) {
-    return make_error_code(AutopilotErrc::kInvalidDimension);
+    return AutopilotErrc::kInvalidDimension;
   }
   if (noise_density.minCoeff() < 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   if (random_walk.minCoeff() < 0.0) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
   if ((correlation_time.array() <= 0.0).any()) {
-    return make_error_code(AutopilotErrc::kPhysicallyInvalid);
+    return AutopilotErrc::kPhysicallyInvalid;
   }
 
   noise_density_ = noise_density;
@@ -81,10 +80,10 @@ std::error_code MultivariableNoiseProcess::configure(
   return {};
 }
 
-std::error_code MultivariableNoiseProcess::initializeBias(
+AutopilotErrc MultivariableNoiseProcess::initializeBias(
     const Eigen::Ref<const Eigen::VectorXd>& turn_on_sigma) {
   if (turn_on_sigma.size() != dim_) {
-    return make_error_code(AutopilotErrc::kInvalidDimension);
+    return AutopilotErrc::kInvalidDimension;
   }
 
   std::normal_distribution<double> dist(0.0, 1.0);
@@ -94,13 +93,13 @@ std::error_code MultivariableNoiseProcess::initializeBias(
   return {};
 }
 
-std::error_code MultivariableNoiseProcess::corrupt(
+AutopilotErrc MultivariableNoiseProcess::corrupt(
     Eigen::Ref<Eigen::VectorXd> value, double dt) {
   using Eigen::exp;
   using Eigen::sqrt;
 
   if (value.size() != dim_) {
-    return make_error_code(AutopilotErrc::kInvalidBufferSize);
+    return AutopilotErrc::kInvalidBufferSize;
   }
 
   // 1. Propagate Bias (Discrete Gauss-Markov)

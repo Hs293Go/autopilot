@@ -18,7 +18,7 @@ std::unique_ptr<EstimatorContext> EkfEstimator::createContext() const {
   return std::make_unique<Context>();
 }
 
-std::error_code EkfEstimator::reset(
+AutopilotErrc EkfEstimator::reset(
     EstimatorContext& context, const QuadrotorState& state,
     const Eigen::Ref<const Eigen::MatrixXd>& cov) const {
   auto& ctx = static_cast<Context&>(context);
@@ -35,16 +35,16 @@ std::error_code EkfEstimator::reset(
       -(state.odometry.pose().rotation().inverse() * model()->grav_vector());
   ctx.last_gyro.setZero();
   ctx.initialized = true;
-  return {};
+  return AutopilotErrc::kNone;
 }
 
-std::error_code EkfEstimator::predict(
+AutopilotErrc EkfEstimator::predict(
     QuadrotorState& state, EstimatorContext& context,
     const std::shared_ptr<const InputBase>& u) const {
   auto& ctx = static_cast<Context&>(context);
   const auto imu = std::dynamic_pointer_cast<const ImuData>(u);
   if (!imu) {
-    return make_error_code(std::errc::invalid_argument);
+    return AutopilotErrc::kUnknownSensorType;
   }
 
   double dt = imu->timestamp_secs() - state.timestamp_secs;
@@ -121,13 +121,14 @@ std::error_code EkfEstimator::predict(
   return {};
 }
 
-std::error_code EkfEstimator::correct(
+AutopilotErrc EkfEstimator::correct(
     QuadrotorState& state, EstimatorContext& context,
     const std::shared_ptr<const MeasurementBase>& z) const {
   auto& ctx = static_cast<Context&>(context);
   const auto gps = std::dynamic_pointer_cast<const LocalPositionData>(z);
   if (!gps) {
-    return {};  // This "dumb" version only handles position
+    return AutopilotErrc::kUnknownSensorType;  // This "dumb" version only
+                                               // handles position
   }
 
   // H maps 16D state to 3D position

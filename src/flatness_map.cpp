@@ -2,16 +2,16 @@
 
 #include "autopilot/core/math.hpp"
 
-#define TRY(expr)                        \
-  do {                                   \
-    if (std::error_code _tmp = (expr)) { \
-      return std::unexpected(_tmp);      \
-    }                                    \
+#define TRY(expr)                                                    \
+  do {                                                               \
+    if (AutopilotErrc _tmp = (expr); _tmp != AutopilotErrc::kNone) { \
+      return std::unexpected(_tmp);                                  \
+    }                                                                \
   } while (0)
 
 namespace autopilot {
 
-std::expected<QuadrotorCommand, std::error_code> FlatnessMap::compute(
+std::expected<QuadrotorCommand, AutopilotErrc> FlatnessMap::compute(
     const KinematicState& kinematics, double yaw, double yaw_rate,
     double yaw_accel) const {
   const auto& [t, pos, vel, acc, jerk, snap] = kinematics;
@@ -24,8 +24,7 @@ std::expected<QuadrotorCommand, std::error_code> FlatnessMap::compute(
   const double n_sq = sa.squaredNorm();
 
   if (n_sq < 1e-6) {
-    return std::unexpected(
-        make_error_code(AutopilotErrc::kSingularConfiguration));
+    return std::unexpected(AutopilotErrc::kSingularConfiguration);
   }
   TRY(cmd.setPosition(pos));
   TRY(cmd.setVelocity(vel));

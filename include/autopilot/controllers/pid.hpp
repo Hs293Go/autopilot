@@ -25,9 +25,9 @@ struct PidConfig final : public ReflectiveConfigBase<PidConfig>,
 
   std::string_view name() const override { return "PidConfig"; }
 
-  std::error_code setTunings(double cand_kp, double cand_ki, double cand_kd) {
+  AutopilotErrc setTunings(double cand_kp, double cand_ki, double cand_kd) {
     if (cand_kp < 0 || cand_ki < 0 || cand_kd < 0) {
-      return make_error_code(std::errc::invalid_argument);
+      return AutopilotErrc::kOutOfBounds;
     }
 
     kp = cand_kp;
@@ -36,9 +36,9 @@ struct PidConfig final : public ReflectiveConfigBase<PidConfig>,
     return {};
   }
 
-  std::error_code setSampleTime(double cand_sample_time_secs) {
+  AutopilotErrc setSampleTime(double cand_sample_time_secs) {
     if (cand_sample_time_secs <= 0) {
-      return make_error_code(std::errc::invalid_argument);
+      return AutopilotErrc::kOutOfBounds;
     }
     double ratio = cand_sample_time_secs / sample_time_s;
     ki *= ratio;
@@ -89,7 +89,7 @@ class PID {
   double compute(double input, double setpoint, double current_time_s);
 
   // Applies a new configuration.
-  std::error_code setConfig(const PidConfig& config);
+  AutopilotErrc setConfig(const PidConfig& config);
 
   // Resets the internal history (integral term, last input, time).
   // The next compute() call will be treated as a "first hit".

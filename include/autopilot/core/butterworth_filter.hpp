@@ -3,7 +3,6 @@
 
 #include <array>
 #include <cmath>
-#include <system_error>
 
 #include "Eigen/Dense"
 
@@ -35,15 +34,15 @@ class ButterworthFilter {
    * non-finite, or if the sampling frequency is less than twice the cutoff
    * frequency.
    */
-  std::error_code initialize(T cutoff_frequency, T sampling_frequency) {
+  bool initialize(T cutoff_frequency, T sampling_frequency) {
     using std::isfinite;
     if (!isfinite(cutoff_frequency) || !isfinite(sampling_frequency)) {
-      return make_error_code(std::errc::invalid_argument);
+      return false;
     }
 
     if (cutoff_frequency <= 0 || sampling_frequency <= 0 ||
         sampling_frequency < 2 * cutoff_frequency) {
-      return make_error_code(std::errc::argument_out_of_domain);
+      return false;
     }
 
     cutoff_frequency_ = cutoff_frequency;
@@ -51,7 +50,7 @@ class ButterworthFilter {
     reset_numden();
 
     reset();
-    return {};
+    return true;
   }
 
   /** @brief Set the cutoff frequency of the Butterworth filter.
@@ -64,21 +63,21 @@ class ButterworthFilter {
    * @return false if the cutoff frequency is non-positive, non-finite, or twice
    * the cutoff frequency is greater than the sampling frequency.
    */
-  std::error_code set_cutoff_frequency(T cutoff_frequency) {
+  bool set_cutoff_frequency(T cutoff_frequency) {
     using std::isfinite;
     if (!isfinite(cutoff_frequency)) {
-      return make_error_code(std::errc::invalid_argument);
+      return false;
     }
 
     if (cutoff_frequency <= 0 || sampling_frequency_ < 2 * cutoff_frequency) {
-      return make_error_code(std::errc::argument_out_of_domain);
+      return false;
     }
 
     cutoff_frequency_ = cutoff_frequency;
     // Recalculate den and num coefficients here
     reset_numden();
 
-    return {};
+    return true;
   }
 
   /** @brief Set the sampling frequency of the Butterworth filter.
@@ -91,21 +90,21 @@ class ButterworthFilter {
    * @return false if the sampling frequency is non-positive, non-finite, or
    * less than twice the cutoff frequency.
    */
-  std::error_code set_sampling_frequency(T sampling_frequency) {
+  bool set_sampling_frequency(T sampling_frequency) {
     using std::isfinite;
     if (!isfinite(sampling_frequency)) {
-      return make_error_code(std::errc::invalid_argument);
+      return false;
     }
 
     if (sampling_frequency <= 0 || sampling_frequency < 2 * cutoff_frequency_) {
-      return make_error_code(std::errc::argument_out_of_domain);
+      return false;
     }
 
     sampling_frequency_ = sampling_frequency;
     // Recalculate den and num coefficients here
     reset_numden();
 
-    return {};
+    return true;
   }
 
   /** @brief Compute the Butterworth filter output for a given sample.

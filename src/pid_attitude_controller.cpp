@@ -28,9 +28,9 @@ void PidAttitudeController::reset() {
   }
 }
 
-std::error_code PidAttitudeController::compute(const QuadrotorState& state,
-                                               const AttitudeReference& ref,
-                                               AttitudeOutput& out) const {
+AutopilotErrc PidAttitudeController::compute(const QuadrotorState& state,
+                                             const AttitudeReference& ref,
+                                             AttitudeOutput& out) const {
   // 1. Sync Configs (Cheap copy, ensures runtime tuning works)
 
   // 2. Unpack State

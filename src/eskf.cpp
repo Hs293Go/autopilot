@@ -50,7 +50,7 @@ std::unique_ptr<EstimatorContext> EskfEstimator::createContext() const {
   return std::make_unique<Context>();
 }
 
-std::error_code EskfEstimator::reset(
+AutopilotErrc EskfEstimator::reset(
     EstimatorContext& context, const QuadrotorState& initial_state,
     const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) const {
   auto& ctx = static_cast<Context&>(context);
@@ -128,7 +128,7 @@ void reportPosteriorStats(const std::shared_ptr<spdlog::logger>& logger,
 // -----------------------------------------------------------------------------
 // WORKER THREAD: Input Handling
 // -----------------------------------------------------------------------------
-std::error_code EskfEstimator::predict(
+AutopilotErrc EskfEstimator::predict(
     QuadrotorState& state, EstimatorContext& context,
     const std::shared_ptr<const InputBase>& u) const {
   if (!context.isInitialized()) {
@@ -150,12 +150,14 @@ std::error_code EskfEstimator::predict(
     }  // Out of order or duplicate
 
     // 2. Predict Error Covariance
-    if (auto ec = predictCovariance(cand, ctx, imu->accel, imu->gyro, dt); ec) {
+    if (auto ec = predictCovariance(cand, ctx, imu->accel, imu->gyro, dt);
+        ec != AutopilotErrc::kNone) {
       return ec;
     }
 
     // 3. Predict Nominal cand (Kinematics)
-    if (auto ec = predictKinematics(cand, ctx, imu->accel, imu->gyro, dt)) {
+    if (auto ec = predictKinematics(cand, ctx, imu->accel, imu->gyro, dt);
+        ec != AutopilotErrc::kNone) {
       return ec;
     }
 
@@ -175,10 +177,10 @@ std::error_code EskfEstimator::predict(
 // -----------------------------------------------------------------------------
 // WORKER THREAD: Measurement Handling
 // -----------------------------------------------------------------------------
-std::error_code EskfEstimator::correct(
+AutopilotErrc EskfEstimator::correct(
     QuadrotorState& state, EstimatorContext& context,
     const std::shared_ptr<const MeasurementBase>& z) const {
-  std::error_code ec;
+  AutopilotErrc ec;
 
   auto& ctx = static_cast<Context&>(context);
 
@@ -191,8 +193,8 @@ std::error_code EskfEstimator::correct(
     return setError(AutopilotErrc::kUnknownSensorType);
   }
 
-  if (ec) {
-    logger()->warn("ESKF Update Failed: {}", ec.message());
+  if (ec != AutopilotErrc::kNone) {
+    logger()->warn("ESKF Update Failed: {}", ec);
     // Robustness: Maybe inflate P if update fails?
   }
   return ec;
@@ -212,9 +214,10 @@ QuadrotorState EskfEstimator::extrapolate(const QuadrotorState& state,
   // Biases are applied inside predictKinematics using internal members.
   if (dt > 0) {
     if (auto ec = predictKinematics(pred_state, ctx, ctx.last_accel,
-                                    ctx.last_gyro, dt)) {
+                                    ctx.last_gyro, dt);
+        ec != AutopilotErrc::kNone) {
       logger()->warn("ESKF Extrapolation Failed at t={:.3} (dt={:.3}): {}", t,
-                     dt, ec.message());
+                     dt, ec);
       return state;  // Return unmodified state on failure
     }
   }
@@ -291,11 +294,11 @@ void EskfEstimator::reportObservationStats(
 // -----------------------------------------------------------------------------
 // Math: Kinematics (Shared by Predict and Extrapolate)
 // -----------------------------------------------------------------------------
-std::error_code EskfEstimator::predictKinematics(QuadrotorState& state,
-                                                 const Context& context,
-                                                 const Eigen::Vector3d& accel,
-                                                 const Eigen::Vector3d& gyro,
-                                                 double dt) const {
+AutopilotErrc EskfEstimator::predictKinematics(QuadrotorState& state,
+                                               const Context& context,
+                                               const Eigen::Vector3d& accel,
+                                               const Eigen::Vector3d& gyro,
+                                               double dt) const {
   // 1. Bias Correction
   Eigen::Vector3d acc_unbiased = accel - context.accel_bias;
   Eigen::Vector3d gyr_unbiased = gyro - context.gyro_bias;
@@ -324,7 +327,7 @@ std::error_code EskfEstimator::predictKinematics(QuadrotorState& state,
                     q.coeffs(), v);
     // This is a const member function (functionally pure), which doesn't leave
     // the estimator in a bad state. No need to set has_previous_error_.
-    return make_error_code(AutopilotErrc::kNumericallyNonFinite);
+    return AutopilotErrc::kNumericallyNonFinite;
   }
   state.odometry = cand;
   state.timestamp_secs += dt;
@@ -334,11 +337,11 @@ std::error_code EskfEstimator::predictKinematics(QuadrotorState& state,
 // -----------------------------------------------------------------------------
 // Math: Covariance Prediction
 // -----------------------------------------------------------------------------
-std::error_code EskfEstimator::predictCovariance(const QuadrotorState& state,
-                                                 Context& context,
-                                                 const Eigen::Vector3d& accel,
-                                                 const Eigen::Vector3d& gyro,
-                                                 double dt) const {
+AutopilotErrc EskfEstimator::predictCovariance(const QuadrotorState& state,
+                                               Context& context,
+                                               const Eigen::Vector3d& accel,
+                                               const Eigen::Vector3d& gyro,
+                                               double dt) const {
   // Jacobian F
 
   const auto& q = state.odometry.pose().rotation();
@@ -402,7 +405,7 @@ std::error_code EskfEstimator::predictCovariance(const QuadrotorState& state,
 // -----------------------------------------------------------------------------
 // Math: Corrections
 // -----------------------------------------------------------------------------
-std::error_code EskfEstimator::correctGps(
+AutopilotErrc EskfEstimator::correctGps(
     QuadrotorState& state, Context& context,
     const std::shared_ptr<const LocalPositionData>& z) const {
   // 1. Residual
@@ -462,7 +465,7 @@ std::error_code EskfEstimator::correctGps(
   return {};
 }
 
-std::error_code EskfEstimator::correctMag(
+AutopilotErrc EskfEstimator::correctMag(
     QuadrotorState& state, Context& context,
     const std::shared_ptr<const MagData>& z) const {
   // Predict: b_body = R^T * b_ref
@@ -545,9 +548,9 @@ void EskfEstimator::resetCovariance(Context& context,
   context.P = rot_reset * context.P * rot_reset.transpose();
 }
 
-std::error_code EskfEstimator::setError(AutopilotErrc ec) const {
+AutopilotErrc EskfEstimator::setError(AutopilotErrc ec) const {
   has_previous_error_ = true;
-  return make_error_code(ec);
+  return ec;
 }
 
 REGISTER_ESTIMATOR(EskfEstimator);

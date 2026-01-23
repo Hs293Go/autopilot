@@ -37,7 +37,7 @@ void AsyncEstimator::push(const std::shared_ptr<const EstimatorData>& data) {
   cv_.notify_one();  // Wake up the worker
 }
 
-std::expected<QuadrotorState, std::error_code> AsyncEstimator::getStateAt(
+std::expected<QuadrotorState, AutopilotErrc> AsyncEstimator::getStateAt(
     double timestamp) const {
   // A. Read the latest committed belief state (Thread-Safe Copy)
   QuadrotorState belief_snapshot;
@@ -55,7 +55,7 @@ std::expected<QuadrotorState, std::error_code> AsyncEstimator::getStateAt(
   return belief_snapshot;
 }
 
-std::error_code AsyncEstimator::processInput(
+AutopilotErrc AsyncEstimator::processInput(
     const std::shared_ptr<const InputBase>& input) {
   // Lock Context (Write Access)
   std::scoped_lock lock(context_mutex_);
@@ -65,7 +65,8 @@ std::error_code AsyncEstimator::processInput(
   // Your interface defined predict(state&, ...) -> error_code.
   // This implies the Core modifies the state reference passed to it.
 
-  if (auto ec = estimator_->predict(nominal_state_, *context_, input)) {
+  if (auto ec = estimator_->predict(nominal_state_, *context_, input);
+      ec != AutopilotErrc::kNone) {
     return ec;
   }
 
@@ -74,12 +75,13 @@ std::error_code AsyncEstimator::processInput(
   return {};
 }
 
-std::error_code AsyncEstimator::processMeasurement(
+AutopilotErrc AsyncEstimator::processMeasurement(
     const std::shared_ptr<const MeasurementBase>& meas) {
   // Lock Context (Write Access)
   std::lock_guard<std::mutex> lock(context_mutex_);
 
-  if (auto ec = estimator_->correct(nominal_state_, *context_, meas)) {
+  if (auto ec = estimator_->correct(nominal_state_, *context_, meas);
+      ec != AutopilotErrc::kNone) {
     return ec;
   }
 
@@ -105,7 +107,7 @@ void AsyncEstimator::workerLoop() {
 
     // Dispatch based on type (Input vs Measurement)
     // We use dynamic_cast because we erased the type in the queue
-    std::error_code ec;
+    AutopilotErrc ec;
     switch (packet.data->type()) {
       case EstimatorData::Type::kInput:
         ec = processInput(
@@ -117,8 +119,8 @@ void AsyncEstimator::workerLoop() {
         break;
     }
 
-    if (ec) {
-      logger()->error("AsyncEstimator error: {}", ec.message());
+    if (ec != AutopilotErrc::kNone) {
+      logger()->error("AsyncEstimator error: {}", ec);
     }
 
     // Cleanup
@@ -147,7 +149,7 @@ EstimatorCovarianceMatrix AsyncEstimator::getCovariance() const {
   return context_->covariance();
 }
 
-std::error_code AsyncEstimator::reset(
+AutopilotErrc AsyncEstimator::reset(
     const QuadrotorState& initial_state,
     const Eigen::Ref<const Eigen::MatrixXd>& initial_cov) {
   // Reset all states

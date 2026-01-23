@@ -16,7 +16,7 @@ static constexpr Eigen::Index kContinuousDegrees =
 class MinimumSnapSolver {
  public:
   // Port of generate_trajectory / _solve_closed_form
-  std::expected<PolynomialTrajectory, std::error_code> solve(
+  std::expected<PolynomialTrajectory, AutopilotErrc> solve(
       std::span<const TrajectoryWaypoint> waypoints) const;
 
  private:

@@ -96,9 +96,9 @@ class PidAttitudeController : public AttitudeControllerBase {
   std::shared_ptr<const Config> config() const { return config_; }
   std::shared_ptr<Config> config() { return config_; }
 
-  std::error_code compute(const QuadrotorState& state,
-                          const AttitudeReference& ref,
-                          AttitudeOutput& out) const override;
+  AutopilotErrc compute(const QuadrotorState& state,
+                        const AttitudeReference& ref,
+                        AttitudeOutput& out) const override;
 
   void reset() override;
 

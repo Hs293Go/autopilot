@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "Eigen/Core"  // IWYU pragma: keep
+#include "fmt/format.h"
 
 namespace autopilot {
 
@@ -116,6 +117,7 @@ constexpr auto SumSizes(Ts... xs) {
 }
 
 enum class AutopilotErrc {
+  kNone,
   kInvalidDimension,
   kInvalidBufferSize,
   kInvalidOrdering,
@@ -140,6 +142,56 @@ enum class AutopilotErrc {
   kSingularConfiguration,
 };
 
+constexpr std::string_view to_string(AutopilotErrc ec) {
+  switch (ec) {
+    case AutopilotErrc::kInvalidDimension:
+      return "Invalid dimension";
+    case AutopilotErrc::kInvalidBufferSize:
+      return "Invalid buffer size";
+    case AutopilotErrc::kInvalidOrdering:
+      return "Invalid ordering of parameters";
+    case AutopilotErrc::kNumericallyNonFinite:
+      return "Numerically non-finite value";
+    case AutopilotErrc::kPhysicallyInvalid:
+      return "Physically invalid value";
+    case AutopilotErrc::kOutOfBounds:
+      return "Value out of bounds";
+    case AutopilotErrc::kTimestampOutOfOrder:
+      return "Timestamp out of order";
+    case AutopilotErrc::kUnknownSensorType:
+      return "Unknown sensor type";
+    case AutopilotErrc::kNumericalInstability:
+      return "Numerical instability encountered";
+    case AutopilotErrc::kNumericalOutlier:
+      return "Numerical outlier detected";
+    case AutopilotErrc::kLinalgError:
+      return "Linear algebra error";
+    case AutopilotErrc::kEstimatorUninitialized:
+      return "Estimator not initialized";
+    case AutopilotErrc::kConfigKeyMissing:
+      return "Configuration key missing";
+    case AutopilotErrc::kConfigValueUninitialized:
+      return "Configuration value uninitialized";
+    case AutopilotErrc::kConfigTypeMismatch:
+      return "Configuration type mismatch";
+    case AutopilotErrc::kConfigSizeMismatch:
+      return "Configuration size mismatch";
+    case AutopilotErrc::kEmptyValueNotAllowed:
+      return "Empty value not allowed";
+    case AutopilotErrc::kCreationFailure:
+      return "Object creation failure";
+    case AutopilotErrc::kInvalidStringOption:
+      return "Invalid string option";
+    case AutopilotErrc::kInvalidEnumMapping:
+      return "Invalid enum mapping";
+    case AutopilotErrc::kSingularConfiguration:
+      return "Singular configuration encountered";
+    default:
+      return "Unknown error";
+  }
+  std::unreachable();
+}
+
 namespace detail {
 class AutopilotErrcCategory : public std::error_category {
  public:
@@ -148,53 +200,7 @@ class AutopilotErrcCategory : public std::error_category {
   }
 
   [[nodiscard]] std::string message(int ev) const override {
-    switch (static_cast<AutopilotErrc>(ev)) {
-      case AutopilotErrc::kInvalidDimension:
-        return "Invalid dimension";
-      case AutopilotErrc::kInvalidBufferSize:
-        return "Invalid buffer size";
-      case AutopilotErrc::kInvalidOrdering:
-        return "Invalid ordering of parameters";
-      case AutopilotErrc::kNumericallyNonFinite:
-        return "Numerically non-finite value";
-      case AutopilotErrc::kPhysicallyInvalid:
-        return "Physically invalid value";
-      case AutopilotErrc::kOutOfBounds:
-        return "Value out of bounds";
-      case AutopilotErrc::kTimestampOutOfOrder:
-        return "Timestamp out of order";
-      case AutopilotErrc::kUnknownSensorType:
-        return "Unknown sensor type";
-      case AutopilotErrc::kNumericalInstability:
-        return "Numerical instability encountered";
-      case AutopilotErrc::kNumericalOutlier:
-        return "Numerical outlier detected";
-      case AutopilotErrc::kLinalgError:
-        return "Linear algebra error";
-      case AutopilotErrc::kEstimatorUninitialized:
-        return "Estimator not initialized";
-      case AutopilotErrc::kConfigKeyMissing:
-        return "Configuration key missing";
-      case AutopilotErrc::kConfigValueUninitialized:
-        return "Configuration value uninitialized";
-      case AutopilotErrc::kConfigTypeMismatch:
-        return "Configuration type mismatch";
-      case AutopilotErrc::kConfigSizeMismatch:
-        return "Configuration size mismatch";
-      case AutopilotErrc::kEmptyValueNotAllowed:
-        return "Empty value not allowed";
-      case AutopilotErrc::kCreationFailure:
-        return "Object creation failure";
-      case AutopilotErrc::kInvalidStringOption:
-        return "Invalid string option";
-      case AutopilotErrc::kInvalidEnumMapping:
-        return "Invalid enum mapping";
-      case AutopilotErrc::kSingularConfiguration:
-        return "Singular configuration encountered";
-      default:
-        return "Unknown error";
-    }
-    std::unreachable();
+    return std::string(to_string(static_cast<AutopilotErrc>(ev)));
   }
 
   [[nodiscard]] std::error_condition default_error_condition(
@@ -209,7 +215,6 @@ class AutopilotErrcCategory : public std::error_category {
   }
 };
 }  // namespace detail
-}  // namespace autopilot
 
 inline const autopilot::detail::AutopilotErrcCategory& AutopilotErrcCategory() {
   static autopilot::detail::AutopilotErrcCategory category;
@@ -219,6 +224,8 @@ inline const autopilot::detail::AutopilotErrcCategory& AutopilotErrcCategory() {
 inline std::error_code make_error_code(autopilot::AutopilotErrc e) {
   return {static_cast<int>(e), AutopilotErrcCategory()};
 }
+
+}  // namespace autopilot
 
 namespace std {
 template <>
@@ -232,5 +239,16 @@ static_assert(
     requires(autopilot::AutopilotErrc ec) {
       { make_error_code(ec) } -> std::same_as<std::error_code>;
     }, "Cannot convert AutopilotErrc to error_code");
+
+namespace fmt {
+template <>
+struct formatter<autopilot::AutopilotErrc> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(const autopilot::AutopilotErrc& ec, FormatContext& ctx) const {
+    return fmt::format_to(ctx.out(), "{}", to_string(ec));
+  }
+};
+}  // namespace fmt
 
 #endif  // AUTOPILOT_CONCEPTS_HPP_

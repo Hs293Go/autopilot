@@ -44,10 +44,10 @@ Eigen::MatrixXd MinimumSnapSolver::computeQ(double duration,
   return qmat;
 }
 
-std::expected<PolynomialTrajectory, std::error_code> MinimumSnapSolver::solve(
+std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
     std::span<const TrajectoryWaypoint> waypoints) const {
   if (waypoints.size() < 2) {
-    return std::unexpected(make_error_code(AutopilotErrc::kInvalidBufferSize));
+    return std::unexpected(AutopilotErrc::kInvalidBufferSize);
   }
 
   constexpr auto kNCoeffs = kPolynomialDegree + 1;  // 8 for degree 7
@@ -185,8 +185,7 @@ std::expected<PolynomialTrajectory, std::error_code> MinimumSnapSolver::solve(
     } else {
       auto llt = rpp.llt();
       if (llt.info() != Eigen::Success) {
-        return std::unexpected(
-            make_error_code(AutopilotErrc::kNumericalInstability));
+        return std::unexpected(AutopilotErrc::kNumericalInstability);
       }
       d_p = -llt.solve(rpf * d_f);
     }

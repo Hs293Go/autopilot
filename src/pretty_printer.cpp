@@ -68,16 +68,16 @@ std::string ToString(const ConfigBase& cfg, const PrintOptions& opts) {
   return oss.str();
 }
 
-std::expected<std::size_t, std::error_code> DumpToFile(
+std::expected<std::size_t, std::errc> DumpToFile(
     const std::filesystem::path& path, const ConfigBase& cfg,
     const PrintOptions& opts) {
   std::ofstream ofs(path);
   if (!ofs.is_open()) {
-    return std::unexpected(make_error_code(std::errc::io_error));
+    return std::unexpected(std::errc::io_error);
   }
   PrintTo(std::ostream_iterator<char>(ofs), cfg, opts);
   if (ofs.bad()) {
-    return std::unexpected(make_error_code(std::errc::io_error));
+    return std::unexpected(std::errc::io_error);
   }
   return static_cast<std::size_t>(ofs.tellp());
 }
