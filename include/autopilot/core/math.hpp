@@ -3,6 +3,7 @@
 
 #include "Eigen/Dense"
 #include "autopilot/core/common.hpp"
+#include "autopilot/planning/trajectory.hpp"
 
 namespace autopilot {
 
@@ -79,6 +80,95 @@ template <Matrix3Like Derived>
 Eigen::Vector3<typename Derived::Scalar> vee(
     const Eigen::MatrixBase<Derived>& m) {
   return {m(2, 1), m(0, 2), m(1, 0)};
+}
+
+template <Vector2Like Derived1, Vector2Like Derived2>
+  requires(std::same_as<typename Derived1::Scalar, typename Derived2::Scalar>)
+typename Derived1::Scalar cross2d(const Eigen::MatrixBase<Derived1>& a,
+                                  const Eigen::MatrixBase<Derived2>& b) {
+  return a.x() * b.y() - a.y() * b.x();
+}
+
+struct YawKinematics {
+  double yaw = 0.0;
+  double yaw_rate = 0.0;
+  double yaw_acceleration = 0.0;
+};
+
+template <Vector2Like Derived1, Vector2Like Derived2, Vector2Like Derived3>
+YawKinematics YawFromRay(const Eigen::MatrixBase<Derived1>& r,
+                         const Eigen::MatrixBase<Derived2>& r_dot,
+                         const Eigen::MatrixBase<Derived3>& r_ddot) {
+  using std::atan2;
+  using Scalar = typename Derived1::Scalar;
+  constexpr Scalar kSqNormTol = 1e-6;
+  const double r2 = r.squaredNorm();
+  if (r2 < kSqNormTol) {
+    return {};
+  }
+  const Scalar yaw = atan2(r.y(), r.x());
+
+  const Scalar n = cross2d(r, r_dot);
+  const Scalar yaw_rate = n / r2;
+
+  const Scalar ndot = cross2d(r, r_ddot);
+  const Scalar ddot = Scalar(2) * r.dot(r_dot);
+  const Scalar yaw_acceleration = (ndot * r2 - n * ddot) / (r2 * r2);
+  return {
+      .yaw = yaw, .yaw_rate = yaw_rate, .yaw_acceleration = yaw_acceleration};
+}
+
+template <Vector2Like Derived1, Vector2Like Derived2, Vector2Like Derived3>
+YawKinematics YawFromVelocity(const Eigen::MatrixBase<Derived1>& vel2d,
+                              const Eigen::MatrixBase<Derived2>& acc2d,
+                              const Eigen::MatrixBase<Derived3>& jerk2d) {
+  using std::atan2;
+  using Scalar = typename Derived1::Scalar;
+  constexpr Scalar kSqNormTol = 1e-6;
+  const double vdv = vel2d.squaredNorm();
+  if (vdv < kSqNormTol) {
+    return {};
+  }
+  const Scalar yaw = std::atan2(vel2d.y(), vel2d.x());
+  const Scalar vxa = cross2d(vel2d, acc2d);
+  const Scalar yaw_rate = vxa / vdv;
+  const Scalar tvda = 2.0 * vel2d.dot(acc2d);
+  const Scalar vxj = cross2d(vel2d, jerk2d);
+  const Scalar yaw_acceleration = (vxj * vdv - vxa * tvda) / (vdv * vdv);
+  return {
+      .yaw = yaw, .yaw_rate = yaw_rate, .yaw_acceleration = yaw_acceleration};
+}
+
+inline KinematicState ResolveYawState(const KinematicState& state,
+                                      const HeadingPolicy& policy) {
+  auto sample = state;
+  const auto [yaw, yaw_rate, yaw_accel] = std::visit(
+      Overload{[&sample](const FollowVelocity&) {
+                 // Yaw based on velocity direction
+                 const Eigen::Vector2d v = sample.velocity.head<2>();
+                 const Eigen::Vector2d a = sample.acceleration.head<2>();
+                 const Eigen::Vector2d j = sample.jerk.head<2>();
+                 return YawFromVelocity(v, a, j);
+               },
+
+               [](const Fixed& fixed) {
+                 return YawKinematics{
+                     .yaw = fixed.yaw,
+                     .yaw_rate = fixed.yaw_rate,
+                     .yaw_acceleration = fixed.yaw_acceleration};
+               },
+               [&sample](const PointOfInterest& poi) {
+                 const Eigen::Vector2d r =
+                     (poi.point - sample.position).head<2>();  // poi - pos
+                 const Eigen::Vector2d r_dot = -sample.velocity.head<2>();
+                 const Eigen::Vector2d r_ddot = -sample.acceleration.head<2>();
+                 return YawFromRay(r, r_dot, r_ddot);
+               }},
+      policy);
+  sample.yaw = yaw;
+  sample.yaw_rate = yaw_rate;
+  sample.yaw_acceleration = yaw_accel;
+  return sample;
 }
 
 template <typename Derived>
@@ -259,3 +349,47 @@ Eigen::Matrix<typename QDerived::Scalar, 3, 4> RotatePointByQuaternion(
 }  // namespace autopilot
 
 #endif  // AUTOPILOT_ROTATION_HPP_
+        // [&sample](const Lookahead& lookahead) {
+        //   // 2D kinematics (use 3D vectors but only xy matters for yaw)
+        //   const Eigen::Vector2d v = sample.velocity.head<2>();
+        //   const Eigen::Vector2d a = sample.acceleration.head<2>();
+        //   const Eigen::Vector2d j = sample.jerk.head<2>();
+        //
+        //   const double v2_sq = v.squaredNorm();
+        //
+        //   // Choose lookahead time t:
+        //   //  - If Lookahead provides a time horizon, use it.
+        //   //  - Else if it provides a distance, convert to time using
+        //   //  speed.
+        //   //  - Else default to 0.
+        //   double t = std::max(lookahead.look_ahead_time_secs, 0.0);
+        //
+        //   // Predicted relative displacement to lookahead point:
+        //   // r(t) = v t + 1/2 a t^2 + 1/6 j t^3
+        //   const double t2 = t * t;
+        //   const double t3 = t2 * t;
+        //
+        //   const Eigen::Vector3d r3 =
+        //       v * t + 0.5 * a * t2 + (1.0 / 6.0) * j * t3;
+        //
+        //   // Time derivatives:
+        //   // r_dot(t)  = v + a t + 1/2 j t^2
+        //   // r_ddot(t) = a + j t
+        //   const Eigen::Vector3d r_dot3 = v + a * t + 0.5 * j * t2;
+        //   const Eigen::Vector3d r_ddot3 = a + j * t;
+        //
+        //   const Eigen::Vector2d r = r3.head<2>();
+        //   const Eigen::Vector2d r_dot = r_dot3.head<2>();
+        //   const Eigen::Vector2d r_ddot = r_ddot3.head<2>();
+        //
+        //   // If lookahead displacement is degenerate, fall back to
+        //   // velocity heading
+        //   if (r.squaredNorm() <= kSqNormTol) {
+        //     if (v2_sq < kSqNormTol) {
+        //       return YawKinematics{};
+        //     }
+        //     return resolveYawFromVelocity(v, a, j);
+        //   }
+        //
+        //   return resolveYawFromRay(r, r_dot, r_ddot);
+        // },

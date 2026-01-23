@@ -23,7 +23,7 @@ struct History {
 };
 
 struct SimulationResult {
-  bool completed;
+  bool completed = false;
   std::vector<double> time;
   std::vector<History> hist;
 };

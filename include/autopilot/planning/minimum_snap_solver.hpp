@@ -17,7 +17,8 @@ class MinimumSnapSolver {
  public:
   // Port of generate_trajectory / _solve_closed_form
   std::expected<PolynomialTrajectory, AutopilotErrc> solve(
-      std::span<const TrajectoryWaypoint> waypoints) const;
+      std::span<const TrajectoryWaypoint> waypoints,
+      const HeadingPolicy& policy = FollowVelocity{}) const;
 
  private:
   // Helpers mirroring Python _compute_Q, _compute_tvec

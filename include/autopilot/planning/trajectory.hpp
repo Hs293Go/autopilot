@@ -47,7 +47,8 @@ class TrajectorySegment {
 class PolynomialTrajectory {
  public:
   PolynomialTrajectory(std::span<const TrajectorySegment> segments,
-                       double start_time = 0.0);
+                       double start_time = 0.0,
+                       const HeadingPolicy& policy = {});
 
   [[nodiscard]] KinematicState sample(double timestamp) const;
 
@@ -61,6 +62,7 @@ class PolynomialTrajectory {
   std::vector<TrajectorySegment> segments_;
   std::vector<double> cumulative_times_;
   double start_time_;
+  HeadingPolicy heading_policy_;
 };
 
 }  // namespace autopilot

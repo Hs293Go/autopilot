@@ -10,7 +10,7 @@ std::expected<Sample, AutopilotErrc> TimeSampler::getSetpoint(
 
   // We can inject yaw logic here (e.g., look-ahead or fixed)
 
-  auto setpoint = mapper_.compute(kinematics, 0.0, 0.0);
+  auto setpoint = mapper_.compute(kinematics);
   if (!setpoint.has_value()) {
     return std::unexpected(setpoint.error());
   }

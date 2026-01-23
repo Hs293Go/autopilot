@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <ranges>
+#include <variant>
 
 #include "autopilot/core/geometry.hpp"
 #if __has_include(<spdlog/fmt/ranges.h>)
@@ -139,6 +140,20 @@ class QuadrotorCommand {
   uint32_t set_components_ = 0;
 };
 
+struct FollowVelocity {};
+
+struct Fixed {
+  double yaw = 0.0;
+  double yaw_rate = 0.0;
+  double yaw_acceleration = 0.0;
+};
+
+struct PointOfInterest {
+  Eigen::Vector3d point = Eigen::Vector3d::Zero();
+};
+
+using HeadingPolicy = std::variant<FollowVelocity, Fixed, PointOfInterest>;
+
 struct KinematicState {
   double timestamp_secs = 0.0;
   Eigen::Vector3d position = Eigen::Vector3d::Zero();
@@ -146,6 +161,15 @@ struct KinematicState {
   Eigen::Vector3d acceleration = Eigen::Vector3d::Zero();
   Eigen::Vector3d jerk = Eigen::Vector3d::Zero();
   Eigen::Vector3d snap = Eigen::Vector3d::Zero();
+
+  double yaw = 0.0;
+  double yaw_rate = 0.0;
+  double yaw_acceleration = 0.0;
+
+  auto translational() const {
+    return std::tie(position, velocity, acceleration, jerk, snap);
+  }
+  auto rotational() const { return std::tie(yaw, yaw_rate, yaw_acceleration); }
 
   QuadrotorState toQuadrotorState() const {
     QuadrotorState state;

@@ -20,8 +20,7 @@ class FlatnessMap {
    * @param yaw_rate Desired heading rate (rad/s).
    */
   [[nodiscard]] std::expected<QuadrotorCommand, AutopilotErrc> compute(
-      const KinematicState& kinematics, double yaw = 0.0, double yaw_rate = 0.0,
-      double yaw_accel = 0.0) const;
+      const KinematicState& kinematics) const;
 
  private:
   std::shared_ptr<const QuadrotorModel> model_;

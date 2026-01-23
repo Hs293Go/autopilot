@@ -40,7 +40,8 @@ Eigen::MatrixXd MinimumSnapSolver::computeQ(double duration,
 }
 
 std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
-    std::span<const TrajectoryWaypoint> waypoints) const {
+    std::span<const TrajectoryWaypoint> waypoints,
+    const HeadingPolicy& policy) const {
   if (waypoints.size() < 2) {
     return std::unexpected(AutopilotErrc::kInvalidBufferSize);
   }
@@ -195,7 +196,8 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
     segments.emplace_back(durs[i], std::move(axes));
   }
 
-  return PolynomialTrajectory(segments, waypoints.front().time_from_start_secs);
+  return PolynomialTrajectory(segments, waypoints.front().time_from_start_secs,
+                              policy);
 }
 
 }  // namespace autopilot

@@ -97,7 +97,7 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     };
 
     ap::MinimumSnapSolver traj_solver;
-    auto trajectory_res = traj_solver.solve(waypoints);
+    auto trajectory_res = traj_solver.solve(waypoints, ap::Fixed{});
     ASSERT_TRUE(trajectory_res.has_value());
 
     runner = std::make_shared<ap::MissionRunner>(simulator, controller,

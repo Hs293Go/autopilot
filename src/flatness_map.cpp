@@ -12,10 +12,11 @@
 namespace autopilot {
 
 std::expected<QuadrotorCommand, AutopilotErrc> FlatnessMap::compute(
-    const KinematicState& kinematics, double yaw, double yaw_rate,
-    double yaw_accel) const {
-  const auto& [t, pos, vel, acc, jerk, snap] = kinematics;
-  QuadrotorCommand cmd(t);
+    const KinematicState& kinematics) const {
+  const auto& [pos, vel, acc, jerk, snap] = kinematics.translational();
+  const auto [yaw, yaw_rate, yaw_accel] = kinematics.rotational();
+
+  QuadrotorCommand cmd(kinematics.timestamp_secs);
 
   const double m = model_->mass();
 

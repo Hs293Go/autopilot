@@ -2,6 +2,8 @@
 
 #include <numeric>
 
+#include "autopilot/core/math.hpp"
+
 namespace autopilot {
 [[nodiscard]] KinematicState TrajectorySegment::sample(double t) const {
   // Position
@@ -24,8 +26,11 @@ namespace autopilot {
 }
 
 PolynomialTrajectory::PolynomialTrajectory(
-    std::span<const TrajectorySegment> segments, double start_time)
-    : segments_(segments.begin(), segments.end()), start_time_(start_time) {
+    std::span<const TrajectorySegment> segments, double start_time,
+    const HeadingPolicy& policy)
+    : segments_(segments.begin(), segments.end()),
+      start_time_(start_time),
+      heading_policy_(policy) {
   // Precompute cumulative times for efficient segment lookups
   cumulative_times_.reserve(segments_.size() + 1);
   cumulative_times_.push_back(0.0);
@@ -53,7 +58,9 @@ PolynomialTrajectory::PolynomialTrajectory(
       std::distance(cumulative_times_.begin(), it) - 1);
 
   double t_local = t_rel - cumulative_times_[idx];
-  return segments_[idx].sample(t_local);
+  auto sample = segments_[idx].sample(t_local);
+  sample = ResolveYawState(sample, heading_policy_);
+  return sample;
 }
 
 }  // namespace autopilot
