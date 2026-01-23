@@ -54,6 +54,9 @@ class QuadrotorCommand {
                   .accel = {},
                   .wrench = {}} {}
 
+  explicit QuadrotorCommand(const QuadrotorState& setpoint)
+      : setpoint_(setpoint) {}
+
   const QuadrotorState& setpoint() const { return setpoint_; }
 
   const Eigen::Vector3d& position() const {

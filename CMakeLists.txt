@@ -108,6 +108,7 @@ add_library(autopilot_planning)
 target_sources(
   autopilot_planning
   PRIVATE src/flatness_map.cpp src/trajectory.cpp src/minimum_snap_solver.cpp
+          src/time_sampler.cpp
   PUBLIC FILE_SET
          HEADERS
          BASE_DIRS
@@ -116,7 +117,8 @@ target_sources(
          include/autopilot/planning/flatness_map.hpp
          include/autopilot/planning/trajectory.hpp
          include/autopilot/planning/minimum_snap_solver.hpp
-         include/autopilot/planning/polynomial.hpp)
+         include/autopilot/planning/polynomial.hpp
+         include/autopilot/planning/time_sampler.hpp)
 target_compile_definitions(
   autopilot_planning
   PUBLIC

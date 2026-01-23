@@ -3,6 +3,7 @@
 #include <thread>
 #include <utility>
 
+#include "autopilot/planning/time_sampler.hpp"
 #include "fmt/ranges.h"
 
 namespace autopilot {
@@ -12,13 +13,13 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<EstimatorDriverBase> est,
                              PolynomialTrajectory trajectory, Config config,
                              std::shared_ptr<spdlog::logger> logger)
-    : sim_(std::move(sim)),
+    : sampler_(std::make_shared<TimeSampler>(sim->model())),
+      sim_(std::move(sim)),
       ctrl_(std::move(ctrl)),
       est_(std::move(est)),
       cfg_(std::move(config)),
       logger_(logger ? std::move(logger) : spdlog::default_logger()),
-      current_trajectory_(std::move(trajectory)),
-      flatness_map_(sim_->model()) {
+      current_trajectory_(std::move(trajectory)) {
   if (est_) {
     logger_->info("Using sampling frequency {:.2f} Hz for IMU filter",
                   1.0 / cfg_.dt_sim);
@@ -108,7 +109,6 @@ bool MissionRunner::detectGeofenceViolation(const QuadrotorState& state) const {
 
 SimulationResult MissionRunner::run() {
   SimulationResult res;
-  QuadrotorCommand cmd;
 
   // Future proof: Query controller for number of setpoints (prediction horizon)
   std::vector<QuadrotorCommand> sp_buf(1);
@@ -132,20 +132,19 @@ SimulationResult MissionRunner::run() {
     auto state = sim_->state();
 
     // 1. Check Waypoint
-    auto kinematic_state =
-        current_trajectory_.sample(sim_->state().timestamp_secs);
-    auto setpoint = flatness_map_.compute(kinematic_state).value();
-    if (state.timestamp_secs >= current_trajectory_.duration()) {
+    auto sample = sampler_->getSetpoint(current_trajectory_, state_est);
+    if (!sample.has_value()) {
+      logger_->error("Sampler failed at t={:.2f}s: {}", state.timestamp_secs,
+                     sample.error());
+      break;
+    }
+    const auto& [setpoint, is_finished, is_hover] = sample.value();
+    if (is_finished) {
       res.completed = true;
       break;
     }
 
-    // 2. Control
-    cmd.reset(state.timestamp_secs);
-    std::ignore = cmd.setPosition(setpoint.position());
-    // std::ignore = cmd.setYaw(mission_[wp_idx].yaw.value_or(0.0));
-
-    sp_buf[0] = cmd;
+    sp_buf[0] = setpoint;
     if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {
       logger_->error("Controller failed at t={:.2f}s, because: {}",
                      state.timestamp_secs, result.error());

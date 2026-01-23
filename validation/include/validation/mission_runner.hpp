@@ -9,6 +9,7 @@
 #include "autopilot/core/butterworth_filter.hpp"
 #include "autopilot/estimators/estimator_driver_base.hpp"
 #include "autopilot/planning/flatness_map.hpp"
+#include "autopilot/planning/sampler_base.hpp"
 #include "autopilot/planning/trajectory.hpp"
 #include "autopilot/simulator/quadrotor_simulator.hpp"
 
@@ -98,6 +99,7 @@ class MissionRunner {
 
   bool detectGeofenceViolation(const QuadrotorState& state) const;
 
+  std::shared_ptr<SamplerBase> sampler_;
   std::shared_ptr<QuadrotorSimulator> sim_;
   std::shared_ptr<ControllerBase> ctrl_;
 
@@ -108,7 +110,6 @@ class MissionRunner {
   ButterworthFilter<double, 3> gyro_filter_;
   ButterworthFilter<double, 3> accel_filter_;
   PolynomialTrajectory current_trajectory_;
-  FlatnessMap flatness_map_;
 };
 
 }  // namespace autopilot

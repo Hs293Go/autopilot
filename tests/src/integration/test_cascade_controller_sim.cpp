@@ -88,6 +88,7 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     // Waypoints
     // =========
     waypoints = {
+        {0, {0.0, 0.0, 1.0}},
         {2, {5.0, 0.0, 1.0}},
         {4, {5.0, 5.0, 1.0}},
         {6, {0.0, 5.0, 1.0}},
@@ -112,7 +113,7 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
 TEST_F(TestIntegrationCascadeControllerSim, RunMission) {
   // Initial State: Hover at [0,0,1]
   ap::QuadrotorState initial_state;
-  initial_state.odometry.pose().translation() = {0.0, 0.0, 1.0};
+  initial_state.odometry.pose().translation() = waypoints.front().position;
   initial_state.odometry.pose().rotation().setIdentity();
   simulator->setState(initial_state);
 

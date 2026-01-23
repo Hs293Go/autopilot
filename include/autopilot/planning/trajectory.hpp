@@ -53,6 +53,10 @@ class PolynomialTrajectory {
 
   [[nodiscard]] double duration() const { return cumulative_times_.back(); }
 
+  [[nodiscard]] double startTime() const { return start_time_; }
+
+  [[nodiscard]] double endTime() const { return start_time_ + duration(); }
+
  private:
   std::vector<TrajectorySegment> segments_;
   std::vector<double> cumulative_times_;
