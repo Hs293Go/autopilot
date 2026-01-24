@@ -9,11 +9,7 @@
 #include "autopilot/core/geometry.hpp"
 #include "autopilot/core/math.hpp"
 #include "boost/math/distributions/chi_squared.hpp"
-#if __has_include(<spdlog/fmt/ranges.h>)
-#include "spdlog/fmt/ranges.h"
-#else
 #include "fmt/ranges.h"
-#endif
 
 namespace autopilot {
 

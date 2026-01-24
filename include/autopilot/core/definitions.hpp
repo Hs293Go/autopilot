@@ -6,14 +6,7 @@
 #include <variant>
 
 #include "autopilot/core/geometry.hpp"
-#if __has_include(<spdlog/fmt/ranges.h>)
-#include "spdlog/fmt/ranges.h"
-#else
-#if !SPDLOG_FMT_EXTERNAL
-#error Including fmt/ranges.h directly is supported only on Ubuntu 22.04, whose spdlog from libspdlog-dev package uses external fmt library.
-#endif
 #include "fmt/ranges.h"  // IWYU pragma: keep
-#endif
 
 namespace autopilot {
 
