@@ -103,7 +103,10 @@ int main() {
   }
 
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
-  ap::MissionRunner runner(sim, ctrl, est, trajectory.value(), cfg.mission);
+  ap::MissionRunner runner(
+      sim, ctrl, est,
+      std::make_shared<ap::PolynomialTrajectory>(trajectory.value()),
+      cfg.mission);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");

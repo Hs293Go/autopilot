@@ -100,8 +100,9 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     auto trajectory_res = traj_solver.solve(waypoints, ap::Fixed{});
     ASSERT_TRUE(trajectory_res.has_value());
 
-    runner = std::make_shared<ap::MissionRunner>(simulator, controller,
-                                                 trajectory_res.value());
+    runner = std::make_shared<ap::MissionRunner>(
+        simulator, controller,
+        std::make_shared<ap::PolynomialTrajectory>(trajectory_res.value()));
     ASSERT_THAT(runner, testing::NotNull());
   }
 

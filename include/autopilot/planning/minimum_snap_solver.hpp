@@ -4,7 +4,7 @@
 #include <expected>
 
 #include "Eigen/Dense"
-#include "autopilot/planning/trajectory.hpp"
+#include "autopilot/planning/polynomial_trajectory.hpp"
 
 namespace autopilot {
 

@@ -3,7 +3,7 @@
 namespace autopilot {
 
 std::expected<Sample, AutopilotErrc> TimeSampler::getSetpoint(
-    const PolynomialTrajectory& traj, const QuadrotorState& state) {
+    const TrajectoryBase& traj, const QuadrotorState& state) {
   // Standard time-based sampling
   const double curr_time_secs = state.timestamp_secs;
   const KinematicState kinematics = traj.sample(curr_time_secs);
@@ -17,7 +17,7 @@ std::expected<Sample, AutopilotErrc> TimeSampler::getSetpoint(
 
   return Sample{
       .command = QuadrotorCommand(setpoint.value()),
-      .is_finished = (curr_time_secs - traj.startTime()) >= traj.duration(),
+      .is_finished = traj.checkComplete(state),
       .is_hover = false  // WIP: Implement hover detection
   };
 }

@@ -81,13 +81,15 @@ class MissionRunner {
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                 std::shared_ptr<ControllerBase> ctrl,
-                PolynomialTrajectory trajectory, Config config = Config(),
+                std::shared_ptr<TrajectoryBase> trajectory,
+                Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                 std::shared_ptr<ControllerBase> ctrl,
                 std::shared_ptr<EstimatorDriverBase> est,
-                PolynomialTrajectory trajectory, Config config = Config(),
+                std::shared_ptr<TrajectoryBase> trajectory,
+                Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
 
   SimulationResult run();
@@ -109,7 +111,7 @@ class MissionRunner {
   std::shared_ptr<spdlog::logger> logger_;
   ButterworthFilter<double, 3> gyro_filter_;
   ButterworthFilter<double, 3> accel_filter_;
-  PolynomialTrajectory current_trajectory_;
+  std::shared_ptr<TrajectoryBase> current_trajectory_;
 };
 
 }  // namespace autopilot

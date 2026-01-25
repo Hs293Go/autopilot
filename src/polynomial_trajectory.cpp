@@ -1,4 +1,4 @@
-#include "autopilot/planning/trajectory.hpp"
+#include "autopilot/planning/polynomial_trajectory.hpp"
 
 #include <numeric>
 
@@ -63,4 +63,7 @@ PolynomialTrajectory::PolynomialTrajectory(
   return sample;
 }
 
+bool PolynomialTrajectory::checkComplete(const QuadrotorState& state) const {
+  return state.timestamp_secs >= endTime();
+}
 }  // namespace autopilot

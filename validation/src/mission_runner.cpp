@@ -1,6 +1,5 @@
 #include "validation/mission_runner.hpp"
 
-#include <thread>
 #include <utility>
 
 #include "autopilot/planning/time_sampler.hpp"
@@ -11,7 +10,8 @@ namespace autopilot {
 MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<ControllerBase> ctrl,
                              std::shared_ptr<EstimatorDriverBase> est,
-                             PolynomialTrajectory trajectory, Config config,
+                             std::shared_ptr<TrajectoryBase> trajectory,
+                             Config config,
                              std::shared_ptr<spdlog::logger> logger)
     : sampler_(std::make_shared<TimeSampler>(sim->model())),
       sim_(std::move(sim)),
@@ -39,7 +39,8 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
 
 MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<ControllerBase> ctrl,
-                             PolynomialTrajectory trajectory, Config config,
+                             std::shared_ptr<TrajectoryBase> trajectory,
+                             Config config,
                              std::shared_ptr<spdlog::logger> logger)
     : MissionRunner(std::move(sim), std::move(ctrl), nullptr,
                     std::move(trajectory), std::move(config),
@@ -132,7 +133,7 @@ SimulationResult MissionRunner::run() {
     auto state = sim_->state();
 
     // 1. Check Waypoint
-    auto sample = sampler_->getSetpoint(current_trajectory_, state_est);
+    auto sample = sampler_->getSetpoint(*current_trajectory_, state_est);
     if (!sample.has_value()) {
       logger_->error("Sampler failed at t={:.2f}s: {}", state.timestamp_secs,
                      sample.error());

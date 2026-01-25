@@ -12,7 +12,7 @@ class TimeSampler : public SamplerBase {
       : mapper_(std::move(model)) {}
 
   std::expected<Sample, AutopilotErrc> getSetpoint(
-      const PolynomialTrajectory& traj, const QuadrotorState& state) override;
+      const TrajectoryBase& traj, const QuadrotorState& state) override;
 
  private:
   FlatnessMap mapper_;

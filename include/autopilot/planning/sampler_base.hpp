@@ -3,7 +3,6 @@
 
 #include <expected>
 
-#include "autopilot/base/config_base.hpp"
 #include "autopilot/planning/trajectory.hpp"
 
 namespace autopilot {
@@ -21,7 +20,7 @@ class SamplerBase {
   // The Sampler returns a command based on the provided trajectory and current
   // state.
   virtual std::expected<Sample, AutopilotErrc> getSetpoint(
-      const PolynomialTrajectory& traj, const QuadrotorState& state) = 0;
+      const TrajectoryBase& traj, const QuadrotorState& state) = 0;
 };
 
 }  // namespace autopilot
