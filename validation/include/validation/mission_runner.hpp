@@ -1,14 +1,13 @@
 #ifndef VALIDATION_MISSION_RUNNER_HPP_
 #define VALIDATION_MISSION_RUNNER_HPP_
 
-#include <utility>
 #include <vector>
 
 #include "autopilot/base/config_base.hpp"
 #include "autopilot/base/controller_base.hpp"
 #include "autopilot/core/butterworth_filter.hpp"
 #include "autopilot/estimators/estimator_driver_base.hpp"
-#include "autopilot/planning/flatness_map.hpp"
+#include "autopilot/planning/mission.hpp"
 #include "autopilot/planning/sampler_base.hpp"
 #include "autopilot/planning/trajectory.hpp"
 #include "autopilot/simulator/quadrotor_simulator.hpp"
@@ -80,15 +79,13 @@ class MissionRunner {
   using Config = MissionRunnerConfig;
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
-                std::shared_ptr<ControllerBase> ctrl,
-                std::shared_ptr<TrajectoryBase> trajectory,
+                std::shared_ptr<ControllerBase> ctrl, Mission trajectory,
                 Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                 std::shared_ptr<ControllerBase> ctrl,
-                std::shared_ptr<EstimatorDriverBase> est,
-                std::shared_ptr<TrajectoryBase> trajectory,
+                std::shared_ptr<EstimatorDriverBase> est, Mission trajectory,
                 Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
 
@@ -111,7 +108,7 @@ class MissionRunner {
   std::shared_ptr<spdlog::logger> logger_;
   ButterworthFilter<double, 3> gyro_filter_;
   ButterworthFilter<double, 3> accel_filter_;
-  std::shared_ptr<TrajectoryBase> current_trajectory_;
+  Mission current_trajectory_;
 };
 
 }  // namespace autopilot

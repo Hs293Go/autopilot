@@ -48,13 +48,17 @@ class PolynomialTrajectory : public TrajectoryBase {
                        double start_time = 0.0,
                        const HeadingPolicy& policy = {});
 
+  bool requiresEquilibriumCheck() const override { return false; }
+
   KinematicState sample(double timestamp) const override;
 
   double duration() const override { return cumulative_times_.back(); }
 
   double startTime() const override { return start_time_; }
 
-  bool checkComplete(const QuadrotorState& state) const override;
+  EquilibriumStatus checkEquilibrium(
+      const QuadrotorState& state,
+      const EquilibriumTolerances& tols) const override;
 
  private:
   std::vector<TrajectorySegment> segments_;

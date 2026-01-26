@@ -116,8 +116,10 @@ target_sources(
          FILES
          include/autopilot/planning/flatness_map.hpp
          include/autopilot/planning/trajectory.hpp
+         include/autopilot/planning/preset_trajectories.hpp
          include/autopilot/planning/polynomial_trajectory.hpp
          include/autopilot/planning/minimum_snap_solver.hpp
+         include/autopilot/planning/mission.hpp
          include/autopilot/planning/polynomial.hpp
          include/autopilot/planning/time_sampler.hpp)
 target_compile_definitions(
