@@ -42,11 +42,15 @@ class TrajectorySegment {
 
 /// @brief Redesign of PiecewisePolynomialTrajectory from Python.
 /// Manages the sequence of segments and global timing.
-class PolynomialTrajectory : public TrajectoryBase {
+class PolynomialTrajectory final : public TrajectoryBase {
  public:
   PolynomialTrajectory(std::span<const TrajectorySegment> segments,
                        double start_time = 0.0,
                        const HeadingPolicy& policy = {});
+
+  std::unique_ptr<TrajectoryBase> clone() const override {
+    return std::make_unique<PolynomialTrajectory>(*this);
+  }
 
   KinematicState sample(double timestamp) const override;
 
@@ -54,13 +58,18 @@ class PolynomialTrajectory : public TrajectoryBase {
 
   double startTime() const override { return start_time_; }
 
-  bool checkComplete(const QuadrotorState& state) const override;
+  bool checkExpiry(const QuadrotorState& state) const override;
+
+  EquilibriumStatus checkEquilibrium(
+      const QuadrotorState& state,
+      const EquilibriumTolerances& tols) const override;
 
  private:
   std::vector<TrajectorySegment> segments_;
   std::vector<double> cumulative_times_;
   double start_time_;
   HeadingPolicy heading_policy_;
+  mutable KinematicState cache_sample_;
 };
 
 }  // namespace autopilot

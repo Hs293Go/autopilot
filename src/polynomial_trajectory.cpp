@@ -63,7 +63,25 @@ PolynomialTrajectory::PolynomialTrajectory(
   return sample;
 }
 
-bool PolynomialTrajectory::checkComplete(const QuadrotorState& state) const {
+bool PolynomialTrajectory::checkExpiry(const QuadrotorState& state) const {
   return state.timestamp_secs >= endTime();
+}
+
+EquilibriumStatus PolynomialTrajectory::checkEquilibrium(
+    const QuadrotorState& state, const EquilibriumTolerances& tols) const {
+  const auto ref = sample(state.timestamp_secs);
+  const double d_p =
+      (state.odometry.pose().translation() - ref.position).norm();
+  const double d_v = (state.odometry.twist().linear() - ref.velocity).norm();
+
+  // Dynamic equilibrium: Tracking within 10cm and 0.2m/s
+  if (d_p < tols.position_tol && d_v < tols.velocity_tol) {
+    return {.state = EquilibriumState::kDynamic,
+            .position_error_mag = d_p,
+            .velocity_error_mag = d_v};
+  }
+  return {.state = EquilibriumState::kNone,
+          .position_error_mag = d_p,
+          .velocity_error_mag = d_v};
 }
 }  // namespace autopilot

@@ -104,25 +104,24 @@ int main() {
   spdlog::info("Simulation Configuration:\n{:4d}", cfg);
 
   // 3. Define Mission
-  const ap::TrajectoryWaypoint mission[] = {{2, {0.0, 0.0, 1.0}},
-                                            {7, {5.0, 0.0, 1.0}},
-                                            {12, {5.0, 5.0, 1.0}},
-                                            {17, {0.0, 5.0, 1.0}},
-                                            {22, {0.0, 0.0, 1.0}}};
+  const ap::TrajectoryWaypoint wps[] = {{2, {0.0, 0.0, 1.0}},
+                                        {7, {5.0, 0.0, 1.0}},
+                                        {12, {5.0, 5.0, 1.0}},
+                                        {17, {0.0, 5.0, 1.0}},
+                                        {22, {0.0, 0.0, 1.0}}};
 
   ap::MinimumSnapSolver traj_solver;
 
-  auto trajectory = traj_solver.solve(mission);
+  auto trajectory = traj_solver.solve(wps);
   if (!trajectory) {
     spdlog::error("Trajectory generation failed: {}", trajectory.error());
     return -1;
   }
 
+  ap::Mission mission;
+  mission.append(trajectory.value());
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
-  ap::MissionRunner runner(
-      sim, ctrl, est,
-      std::make_shared<ap::PolynomialTrajectory>(trajectory.value()),
-      cfg.mission);
+  ap::MissionRunner runner(sim, ctrl, est, mission, cfg.mission);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");
