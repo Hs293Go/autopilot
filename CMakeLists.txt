@@ -118,6 +118,7 @@ target_sources(
          include/autopilot/planning/trajectory.hpp
          include/autopilot/planning/polynomial_trajectory.hpp
          include/autopilot/planning/minimum_snap_solver.hpp
+         include/autopilot/planning/mission.hpp
          include/autopilot/planning/polynomial.hpp
          include/autopilot/planning/time_sampler.hpp)
 target_compile_definitions(

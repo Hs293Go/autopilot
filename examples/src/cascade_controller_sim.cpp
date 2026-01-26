@@ -64,6 +64,7 @@ int main() {
     return -1;
   }
 
+  rec.set_time_duration_secs("sim_time", 0.0);
   ap::examples::QuadrotorVisualizer viz(
       rec, "world", static_cast<std::size_t>(cfg.mission.max_steps));
   ap::examples::MultiaxisPlotter motor_plotter(
@@ -101,28 +102,53 @@ int main() {
     return -1;
   }
 
-  spdlog::info("Simulation Configuration:\n{:4d}", cfg);
+  spdlog::info("Simulation Configuration:\n{}", cfg);
 
   // 3. Define Mission
-  const ap::TrajectoryWaypoint mission[] = {{2, {0.0, 0.0, 1.0}},
-                                            {7, {5.0, 0.0, 1.0}},
-                                            {12, {5.0, 5.0, 1.0}},
-                                            {17, {0.0, 5.0, 1.0}},
-                                            {22, {0.0, 0.0, 1.0}}};
+  const Eigen::Vector3d wps[] = {{0.0, 0.0, 1.0},
+                                 {5.0, 0.0, 1.0},
+                                 {5.0, 5.0, 1.0},
+                                 {0.0, 5.0, 1.0},
+                                 {0.0, 0.0, 1.0}};
 
   ap::MinimumSnapSolver traj_solver;
 
-  auto trajectory = traj_solver.solve(mission);
-  if (!trajectory) {
-    spdlog::error("Trajectory generation failed: {}", trajectory.error());
+  ap::Mission mission;
+  ap::TrajectoryWaypoint wp_start[2] = {
+      {.time_from_start_secs = 0.0},
+      {.time_from_start_secs = 5.0, .position = wps[0], .yaw = 0.0}};
+  auto start_traj = traj_solver.solve(wp_start);
+  if (!start_traj) {
+    spdlog::error("Trajectory generation failed: {}", start_traj.error());
     return -1;
+  }
+  mission.append(start_traj.value());
+  mission.append(ap::Hover(wps[0], 5.0, 3.0));  // Initial hover to stabilize
+  double yaw = 0.0;
+  double time = 8.0;
+  for (int i = 0; i < std::ssize(wps) - 1; ++i) {
+    const ap::TrajectoryWaypoint ms_traj[] = {
+        {.time_from_start_secs = time, .position = wps[i], .yaw = yaw},
+        {.time_from_start_secs = time + 5.0,
+         .position = wps[i + 1],
+         .yaw = yaw}};
+    auto trajectory = traj_solver.solve(ms_traj);
+    if (!trajectory) {
+      spdlog::error("Trajectory generation failed: {}", trajectory.error());
+      return -1;
+    }
+    time += 5.0;
+    mission.append(trajectory.value());
+
+    double end_yaw = ap::wrapToPi(yaw + ap::deg2rad(90.0));
+    ap::HeadingChange heading_change(wps[i + 1], yaw, end_yaw, time, 3.0);
+    mission.append(heading_change);
+    yaw = end_yaw;
+    time += 3.0;
   }
 
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
-  ap::MissionRunner runner(
-      sim, ctrl, est,
-      std::make_shared<ap::PolynomialTrajectory>(trajectory.value()),
-      cfg.mission);
+  ap::MissionRunner runner(sim, ctrl, est, mission, cfg.mission);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");
