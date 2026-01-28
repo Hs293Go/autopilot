@@ -122,6 +122,9 @@ SimulationResult MissionRunner::run() {
       "Starting Mission Runner for up to {} steps, with {} simulation substeps",
       cfg_.max_steps, sim_substeps);
 
+  SampleContext sample_context{.num_samples = 1,
+                               .sampling_interval = cfg_.dt_control};
+  std::vector<QuadrotorCommand> command_buffer(1);
   for (int step = 0; step < cfg_.max_steps; ++step) {
     if (est_) {
       if (!est_->isHealthy()) {
@@ -133,19 +136,19 @@ SimulationResult MissionRunner::run() {
     auto state = sim_->state();
 
     // 1. Check Waypoint
-    auto sample = sampler_->getSetpoint(*current_trajectory_, state_est);
+    auto sample = sampler_->getSetpoint(*current_trajectory_, state_est,
+                                        sample_context, command_buffer);
     if (!sample.has_value()) {
       logger_->error("Sampler failed at t={:.2f}s: {}", state.timestamp_secs,
                      sample.error());
       break;
     }
-    const auto& [setpoint, is_finished, is_hover] = sample.value();
-    if (is_finished) {
+
+    if (sample->all_finished) {
       res.completed = true;
       break;
     }
 
-    sp_buf[0] = setpoint;
     if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {
       logger_->error("Controller failed at t={:.2f}s, because: {}",
                      state.timestamp_secs, result.error());
