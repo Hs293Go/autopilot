@@ -1,24 +1,18 @@
-#include <iostream>
 #include <ranges>
-#include <rerun.hpp>
 
-#include "autopilot/controllers/cascade_controller.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
 #include "autopilot/estimators/async_estimator.hpp"
-#include "autopilot/estimators/eskf.hpp"
 #include "autopilot/extensions/json_loader.hpp"
 #include "autopilot/extensions/pretty_printer.hpp"
 #include "autopilot/planning/minimum_snap_solver.hpp"
+#include "examples/visualization.hpp"
+#include "rerun/recording_stream.hpp"
 #include "validation/mission_runner.hpp"
 
 // Use a distinct namespace or alias for clarity
 namespace rr = rerun;
 namespace rrc = rerun::components;
 namespace ap = autopilot;
-
-static const rrc::Color kRed(255, 0, 0);
-static const rrc::Color kGreen(0, 255, 0);
-static const rrc::Color kBlue(0, 0, 255);
 
 struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
   std::string_view name() const override { return "SimConfig"; }
@@ -70,6 +64,28 @@ int main() {
     return -1;
   }
 
+  ap::examples::QuadrotorVisualizer viz(
+      rec, "world", static_cast<std::size_t>(cfg.mission.max_steps));
+  ap::examples::MultiaxisPlotter motor_plotter(
+      rec, {.axis_count = 4,
+            .prefix = "actuators/motors",
+            .suffix_style = ap::examples::SuffixStyle::kIndex,
+            .line_specs = {}});
+  ap::examples::MultiaxisPlotter force_plotter(
+      rec, {.axis_count = 3,
+            .prefix = "commands/force",
+            .suffix_style = ap::examples::SuffixStyle::kComponents,
+            .line_specs = {
+                {0xFFFFFF00, 2.0f}, {0xFF00FF00, 2.0f}, {0xFF0000FF, 2.0f}}});
+
+  ap::examples::Plotter est_err_plotter(
+      rec, "estimation/position_error_magnitude",
+      autopilot::examples::LineSpec{.color = 0xFFFFFF00, .linewidth = 2.0f});
+
+  ap::examples::Plotter est_var_plotter(
+      rec, "estimation/position_3sigma_magnitude",
+      autopilot::examples::LineSpec{.color = 0xFF00FFFF, .linewidth = 2.0f});
+
   auto model = std::make_shared<ap::QuadrotorModel>(cfg.quadrotor_model);
 
   auto ctrl = ap::ControllerFactory::Create(cfg.controller.config, model);
@@ -113,46 +129,6 @@ int main() {
   auto result = runner.run();
   spdlog::info("Simulation Complete. Steps: {}", result.time.size());
 
-  struct RerunHistory {
-    rrc::Translation3D real_position;
-    rr::Quaternion real_orientation;
-    rrc::Translation3D est_position;
-    rr::Quaternion est_orientation;
-    float motor_thrusts[4];
-  };
-
-  std::vector<RerunHistory> hist;
-  std::ranges::transform(
-      result.hist, std::back_inserter(hist), [](const autopilot::History& it) {
-        const auto& [real_state, est_state, cmd, _] = it;
-        const Eigen::Vector3f p =
-            real_state.odometry.pose().translation().cast<float>();
-        const Eigen::Quaternionf q =
-            real_state.odometry.pose().rotation().cast<float>();
-        const Eigen::Vector3f p_est =
-            est_state.odometry.pose().translation().cast<float>();
-        const Eigen::Quaternionf q_est =
-            est_state.odometry.pose().rotation().cast<float>();
-        return RerunHistory{
-            .real_position = rrc::Translation3D(p.x(), p.y(), p.z()),
-            .real_orientation =
-                rr::Quaternion::from_xyzw(q.x(), q.y(), q.z(), q.w()),
-            .est_position = rrc::Translation3D(p_est.x(), p_est.y(), p_est.z()),
-            .est_orientation = rr::Quaternion::from_xyzw(q_est.x(), q_est.y(),
-                                                         q_est.z(), q_est.w()),
-            .motor_thrusts = {static_cast<float>(real_state.motor_thrusts[0]),
-                              static_cast<float>(real_state.motor_thrusts[1]),
-                              static_cast<float>(real_state.motor_thrusts[2]),
-                              static_cast<float>(real_state.motor_thrusts[3])}};
-      });
-
-  const auto frame =
-      rr::Arrows3D()
-          .with_origins({rrc::Vector3D(0.0F, 0.0F, 0.0F)})
-          .with_vectors(
-              {{1.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}, {0.0F, 0.0F, 1.0F}})
-          .with_colors({kRed, kGreen, kBlue});
-  rec.log("world/drone", frame);
   // 5. LOG (Post-Process)
   // We explicitly associate simulation time with the data here.
   for (size_t i = 0; i < result.time.size(); ++i) {
@@ -162,77 +138,22 @@ int main() {
 
     // -- Log Ground Truth --
 
-    std::vector<rrc::Vector3D> real_positions(i + 1);
-    auto get_position = [](const RerunHistory& h) { return h.real_position; };
-    std::ranges::copy(
-        hist | std::views::take(i + 1) | std::views::transform(get_position),
-        real_positions.begin());
-    rec.log("world/trajectory",
-            rr::LineStrips3D()
-                .with_colors({0xFFFFFFFF})
-                .with_radii({0.02f})
-                .with_strips(rrc::LineStrip3D(real_positions)));
-    std::vector<rrc::Vector3D> est_positions(i + 1);
-    std::ranges::copy(
-        hist | std::views::take(i + 1) | std::views::transform(get_position),
-        est_positions.begin());
-    rec.log("world/est_trajectory",
-            rr::LineStrips3D()
-                .with_colors({0xFFFF00FF})
-                .with_radii({0.04f})
-                .with_strips(rrc::LineStrip3D(est_positions)));
-
-    // Rerun expects Quaternion as (x, y, z, w) or (w, x, y, z) depending on
-    // constructor. Rerun C++ Quaternion::from_xyzw(x, y, z, w) matches Eigen's
-    // internal storage order usually, but check Eigen::Quaternion coeffs()
-    // order (x, y, z, w).
-    auto tform = rr::Transform3D()
-                     .with_translation(hist[i].real_position)
-                     .with_quaternion(hist[i].real_orientation);
-    rec.log("world/drone", tform);
-
-    auto cmd = result.hist[i].command;
-    // -- Log Setpoint (Ghost Drone / Marker) --
-    if (cmd.hasComponent(ap::QuadrotorStateComponent::kPosition)) {
-      const Eigen::Vector3f setpoint = cmd.position().cast<float>();
-      rec.log("world/setpoint",
-              rr::Points3D({{setpoint.x(), setpoint.y(), setpoint.z()}})
-                  .with_colors({0xFF0000FF})  // Red
-                  .with_radii({0.05f}));
-    } else {
-      spdlog::warn("Command at t={} missing position component.", t);
-    }
+    viz.log(result.hist[i].real_state, result.hist[i].command);
 
     // -- Log Motor Thrusts (as a bar chart or scalar series) --
     // We can log these as scalars to visualize saturation
-    rec.log("actuators/motors/1", rr::Scalars(hist[i].motor_thrusts[0]));
-    rec.log("actuators/motors/2", rr::Scalars(hist[i].motor_thrusts[1]));
-    rec.log("actuators/motors/3", rr::Scalars(hist[i].motor_thrusts[2]));
-    rec.log("actuators/motors/4", rr::Scalars(hist[i].motor_thrusts[3]));
+    motor_plotter.log(result.hist[i].real_state.motor_thrusts);
+    force_plotter.log(result.hist[i].real_state.wrench.force());
 
-    rec.log("commands/force/x",
-            rr::Scalars(result.hist[i].real_state.wrench.force().x()));
-    rec.log("commands/force/y",
-            rr::Scalars(result.hist[i].real_state.wrench.force().y()));
-    rec.log("commands/force/z",
-            rr::Scalars(result.hist[i].real_state.wrench.force().z()));
-
-    const Eigen::Vector3f position_est_error =
+    const double position_est_error_norm =
         (result.hist[i].real_state.odometry.pose().translation() -
          result.hist[i].estimated_state.odometry.pose().translation())
-            .cwiseAbs()
-            .cast<float>();
-    const Eigen::Vector3f position_est_3sigma =
-        3.0 * result.hist[i]
-                  .est_variance(Eigen::seqN(0, 3))
-                  .cwiseSqrt()
-                  .cast<float>();
-    rec.log("estimation/error/x", rr::Scalars(position_est_error.x()));
-    rec.log("estimation/error/y", rr::Scalars(position_est_error.y()));
-    rec.log("estimation/error/z", rr::Scalars(position_est_error.z()));
-    rec.log("estimation/variance/x", rr::Scalars(position_est_3sigma.x()));
-    rec.log("estimation/variance/y", rr::Scalars(position_est_3sigma.y()));
-    rec.log("estimation/variance/z", rr::Scalars(position_est_3sigma.z()));
+            .norm();
+
+    const double position_est_3sigma =
+        3.0 * std::sqrt(result.hist[i].est_variance(Eigen::seqN(0, 3)).sum());
+    est_err_plotter.log(position_est_error_norm);
+    est_var_plotter.log(position_est_3sigma);
   }
 
   spdlog::info("Done.");
