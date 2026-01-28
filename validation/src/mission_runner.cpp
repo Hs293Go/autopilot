@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "autopilot/planning/preset_trajectories.hpp"
 #include "autopilot/planning/time_sampler.hpp"
 #include "fmt/ranges.h"
 
@@ -10,8 +11,7 @@ namespace autopilot {
 MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<ControllerBase> ctrl,
                              std::shared_ptr<EstimatorDriverBase> est,
-                             std::shared_ptr<TrajectoryBase> trajectory,
-                             Config config,
+                             Mission trajectory, Config config,
                              std::shared_ptr<spdlog::logger> logger)
     : sampler_(std::make_shared<TimeSampler>(sim->model())),
       sim_(std::move(sim)),
@@ -39,8 +39,7 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
 
 MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
                              std::shared_ptr<ControllerBase> ctrl,
-                             std::shared_ptr<TrajectoryBase> trajectory,
-                             Config config,
+                             Mission trajectory, Config config,
                              std::shared_ptr<spdlog::logger> logger)
     : MissionRunner(std::move(sim), std::move(ctrl), nullptr,
                     std::move(trajectory), std::move(config),
@@ -122,6 +121,8 @@ SimulationResult MissionRunner::run() {
       "Starting Mission Runner for up to {} steps, with {} simulation substeps",
       cfg_.max_steps, sim_substeps);
 
+  SampleContext sample_context{.num_samples = 1,
+                               .sampling_interval = cfg_.dt_control};
   for (int step = 0; step < cfg_.max_steps; ++step) {
     if (est_) {
       if (!est_->isHealthy()) {
@@ -133,19 +134,20 @@ SimulationResult MissionRunner::run() {
     auto state = sim_->state();
 
     // 1. Check Waypoint
-    auto sample = sampler_->getSetpoint(*current_trajectory_, state_est);
+    const auto* active = current_trajectory_.current();
+    auto sample =
+        sampler_->getSetpoint(*active, state_est, sample_context, sp_buf);
     if (!sample.has_value()) {
       logger_->error("Sampler failed at t={:.2f}s: {}", state.timestamp_secs,
                      sample.error());
       break;
     }
-    const auto& [setpoint, is_finished, is_hover] = sample.value();
-    if (is_finished) {
+
+    if (sample->all_finished) {
       res.completed = true;
       break;
     }
 
-    sp_buf[0] = setpoint;
     if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {
       logger_->error("Controller failed at t={:.2f}s, because: {}",
                      state.timestamp_secs, result.error());

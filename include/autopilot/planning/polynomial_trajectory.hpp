@@ -48,19 +48,30 @@ class PolynomialTrajectory : public TrajectoryBase {
                        double start_time = 0.0,
                        const HeadingPolicy& policy = {});
 
+  bool requiresEquilibrium() const override {
+    return requires_equilibrium_check_;
+  }
+
+  void setRequiresEquilibrium(bool requires_check) {
+    requires_equilibrium_check_ = requires_check;
+  }
+
   KinematicState sample(double timestamp) const override;
 
   double duration() const override { return cumulative_times_.back(); }
 
   double startTime() const override { return start_time_; }
 
-  bool checkComplete(const QuadrotorState& state) const override;
+  EquilibriumStatus checkEquilibrium(
+      const QuadrotorState& state,
+      const EquilibriumTolerances& tols) const override;
 
  private:
   std::vector<TrajectorySegment> segments_;
   std::vector<double> cumulative_times_;
   double start_time_;
   HeadingPolicy heading_policy_;
+  bool requires_equilibrium_check_ = false;
 };
 
 }  // namespace autopilot
