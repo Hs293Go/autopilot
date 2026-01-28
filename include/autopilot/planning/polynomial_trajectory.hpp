@@ -29,6 +29,8 @@ class TrajectorySegment {
 
   [[nodiscard]] double duration() const { return duration_; }
 
+  AutopilotErrc setDuration(double new_duration);
+
   /**
    * @brief Samples the segment to produce a QuadrotorState.
    * Leverages the Polynomial::derivVal API for feed-forward terms.
@@ -48,19 +50,36 @@ class PolynomialTrajectory : public TrajectoryBase {
                        double start_time = 0.0,
                        const HeadingPolicy& policy = {});
 
+  bool requiresEquilibrium() const override {
+    return requires_equilibrium_check_;
+  }
+
+  void setRequiresEquilibrium(bool requires_check) {
+    requires_equilibrium_check_ = requires_check;
+  }
+
   KinematicState sample(double timestamp) const override;
 
   double duration() const override { return cumulative_times_.back(); }
 
+  AutopilotErrc truncate(double new_end_time_secs) override;
+
   double startTime() const override { return start_time_; }
 
-  bool checkComplete(const QuadrotorState& state) const override;
+  AutopilotErrc shiftStartTime(double shift_duration) override;
+
+  EquilibriumStatus checkEquilibrium(
+      const QuadrotorState& state,
+      const EquilibriumTolerances& tols) const override;
 
  private:
+  void updateCumulativeTimes();
+
   std::vector<TrajectorySegment> segments_;
   std::vector<double> cumulative_times_;
   double start_time_;
   HeadingPolicy heading_policy_;
+  bool requires_equilibrium_check_ = false;
 };
 
 }  // namespace autopilot

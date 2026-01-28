@@ -11,8 +11,10 @@ class TimeSampler : public SamplerBase {
   explicit TimeSampler(std::shared_ptr<QuadrotorModel> model)
       : mapper_(std::move(model)) {}
 
-  std::expected<Sample, AutopilotErrc> getSetpoint(
-      const TrajectoryBase& traj, const QuadrotorState& state) override;
+  std::expected<SampleResult, AutopilotErrc> getSetpoint(
+      std::span<const std::shared_ptr<TrajectoryBase>> traj, const QuadrotorState& state,
+      const SampleContext& context,
+      std::span<QuadrotorCommand> sampled_commands) override;
 
  private:
   FlatnessMap mapper_;
