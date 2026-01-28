@@ -64,6 +64,7 @@ int main() {
     return -1;
   }
 
+  rec.set_time_duration_secs("sim_time", 0.0);
   ap::examples::QuadrotorVisualizer viz(
       rec, "world", static_cast<std::size_t>(cfg.mission.max_steps));
   ap::examples::MultiaxisPlotter motor_plotter(
@@ -101,28 +102,27 @@ int main() {
     return -1;
   }
 
-  spdlog::info("Simulation Configuration:\n{:4d}", cfg);
+  spdlog::info("Simulation Configuration:\n{}", cfg);
 
   // 3. Define Mission
-  const ap::TrajectoryWaypoint mission[] = {{2, {0.0, 0.0, 1.0}},
-                                            {7, {5.0, 0.0, 1.0}},
-                                            {12, {5.0, 5.0, 1.0}},
-                                            {17, {0.0, 5.0, 1.0}},
-                                            {22, {0.0, 0.0, 1.0}}};
+  const Eigen::Vector3d wps[] = {{0.0, 0.0, 1.0},
+                                 {5.0, 0.0, 1.0},
+                                 {5.0, 5.0, 1.0},
+                                 {0.0, 5.0, 1.0},
+                                 {0.0, 0.0, 1.0}};
 
   ap::MinimumSnapSolver traj_solver;
 
-  auto trajectory = traj_solver.solve(mission);
-  if (!trajectory) {
-    spdlog::error("Trajectory generation failed: {}", trajectory.error());
-    return -1;
+  ap::Mission mission;
+  for (int i = 0; i < std::ssize(wps); ++i) {
+    mission.lineTo(wps[i], 5.0, traj_solver);
+    if (i > 0) {
+      mission.yawBy(std::numbers::pi / 2.0, 3.0);
+    }
   }
 
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
-  ap::MissionRunner runner(
-      sim, ctrl, est,
-      std::make_shared<ap::PolynomialTrajectory>(trajectory.value()),
-      cfg.mission);
+  ap::MissionRunner runner(sim, ctrl, est, mission, cfg.mission);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");
