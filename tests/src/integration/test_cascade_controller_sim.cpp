@@ -4,6 +4,7 @@
 #include "autopilot/controllers/geometric_controller.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
 #include "autopilot/planning/minimum_snap_solver.hpp"
+#include "autopilot/planning/preset_trajectories.hpp"
 #include "autopilot/simulator/quadrotor_simulator.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -11,7 +12,7 @@
 #include "validation/mission_runner.hpp"
 
 namespace ap = autopilot;
-class TestIntegrationCascadeControllerSim : public ::testing::Test {
+class TestTrajectoryExecution : public ::testing::Test {
  public:
   void SetUp() override {
     // Best practice: reduce log level to avoid cluttering test output
@@ -58,8 +59,7 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     // Setup Controller
     // ================
     auto controller_cfg = std::make_shared<ap::CascadeController::Config>();
-    auto controller =
-        std::make_shared<ap::CascadeController>(model, controller_cfg);
+    controller = std::make_shared<ap::CascadeController>(model, controller_cfg);
 
     // TUNING: We must apply the Rust gains to the C++ controllers.
     // NOTE: This assumes you added accessors like `positionController()`
@@ -84,35 +84,33 @@ class TestIntegrationCascadeControllerSim : public ::testing::Test {
     // use the Geometric gains for the outer attitude loop.
     att_ctrl->config()->k_ang_rate = {1.0, 1.0, 0.1};
     att_ctrl->config()->k_rate_torque = {0.6, 0.6, 0.05};  // D-term equivalent
-
-    // Waypoints
-    // =========
-    waypoints = {
-        {0, {0.0, 0.0, 1.0}},
-        {2, {5.0, 0.0, 1.0}},
-        {4, {5.0, 5.0, 1.0}},
-        {6, {0.0, 5.0, 1.0}},
-        {8, {0.0, 0.0, 1.0}}
-        // Spiraling back to origin
-    };
-
-    ap::MinimumSnapSolver traj_solver;
-    auto trajectory_res = traj_solver.solve(waypoints, ap::Fixed{});
-    ASSERT_TRUE(trajectory_res.has_value());
-
-    mission.append(trajectory_res.value());
-    ap::MissionRunner mr(simulator, controller, mission);
-    runner = std::make_shared<ap::MissionRunner>(mr);
-    ASSERT_THAT(runner, testing::NotNull());
   }
 
   std::shared_ptr<ap::QuadrotorSimulator> simulator;
-  std::shared_ptr<ap::MissionRunner> runner;
-  ap::Mission mission;
-  std::vector<ap::TrajectoryWaypoint> waypoints;
+  std::shared_ptr<ap::CascadeController> controller;
 };
 
-TEST_F(TestIntegrationCascadeControllerSim, RunMission) {
+TEST_F(TestTrajectoryExecution, MinsnapTrajectoryTest) {
+  // Waypoints
+  // =========
+  std::vector<ap::TrajectoryWaypoint> waypoints = {
+      {0, {0.0, 0.0, 1.0}},
+      {2, {5.0, 0.0, 1.0}},
+      {4, {5.0, 5.0, 1.0}},
+      {6, {0.0, 5.0, 1.0}},
+      {8, {0.0, 0.0, 1.0}}
+      // Spiraling back to origin
+  };
+
+  ap::MinimumSnapSolver traj_solver;
+  auto trajectory_res = traj_solver.solve(waypoints, ap::Fixed{});
+  ASSERT_TRUE(trajectory_res.has_value());
+
+  ap::Mission mission;
+  ap::TrajectoryRunner runner(
+      simulator, controller,
+      std::make_unique<ap::PolynomialTrajectory>(trajectory_res.value()));
+
   // Initial State: Hover at [0,0,1]
   ap::QuadrotorState initial_state;
   initial_state.odometry.pose().translation() = waypoints.front().position;
@@ -122,6 +120,53 @@ TEST_F(TestIntegrationCascadeControllerSim, RunMission) {
   // ---------------------------------------------------------------------------
   // 4. Simulation Loop
   // ---------------------------------------------------------------------------
-  auto result = runner->run();
+  auto result = runner.run();
   ASSERT_TRUE(result.completed);
+}
+
+struct InitialStateAndTrajectory {
+  ap::QuadrotorState initial_state;
+  std::shared_ptr<ap::TrajectoryBase> trajectory;
+};
+
+class TestPresetTrajectoryExecution
+    : public TestTrajectoryExecution,
+      public testing::WithParamInterface<InitialStateAndTrajectory> {};
+
+static const ap::QuadrotorState kTestInitialPosition = ap::QuadrotorState{
+    0.0, ap::OdometryF64(ap::TransformF64::PureTranslation(0.0, 0.0, 1.0), {})};
+
+INSTANTIATE_TEST_SUITE_P(
+    PresetTrajectories, TestPresetTrajectoryExecution,
+    testing::Values(
+        InitialStateAndTrajectory{
+            .initial_state = kTestInitialPosition,
+            .trajectory = std::make_shared<ap::Hover>(
+                Eigen::Vector3d::UnitZ() * 1.0, 0.0, 0.0)},
+        InitialStateAndTrajectory{
+            .initial_state = kTestInitialPosition,
+            .trajectory = std::make_shared<ap::HeadingChange>(
+                kTestInitialPosition.odometry.pose().translation(), 0.0,
+                std::numbers::pi / 2, 0.0, 2.0)}));
+
+TEST_P(TestPresetTrajectoryExecution, SettlingTest) {
+  const auto& [initial_state, trajectory] = GetParam();
+
+  simulator->setState(initial_state);
+
+  // 2. Setup Mission with a single Hover segment
+  ASSERT_TRUE(trajectory != nullptr);
+  ap::RunnerBase::Config cfg;
+  ap::TrajectoryRunner runner(simulator, controller, trajectory, cfg);
+
+  auto result = runner.run();
+  ASSERT_TRUE(result.completed);
+
+  auto final_state = simulator->state();
+  auto equilibrium = trajectory->checkEquilibrium(final_state, {0.1, 0.1});
+
+  EXPECT_EQ(equilibrium.state, ap::EquilibriumState::kStatic);
+  EXPECT_LT(equilibrium.position_error_mag, 0.1);
+  EXPECT_LT(equilibrium.velocity_error_mag, 0.1);
+  EXPECT_LT(equilibrium.angle_error_mag, 0.1);
 }
