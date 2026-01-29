@@ -25,7 +25,7 @@ struct MainConfig : public ap::ReflectiveConfigBase<MainConfig> {
   std::shared_ptr<ap::QuadrotorSimulator::Config> simulator =
       std::make_shared<ap::QuadrotorSimulator::Config>();
 
-  ap::MissionRunner::Config mission;
+  ap::EstimationControlMissionRunner::Config mission;
 
   static constexpr auto kDescriptors = std::make_tuple(
       Describe("quadrotor_model", &MainConfig::quadrotor_model,
@@ -122,7 +122,8 @@ int main() {
   }
 
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
-  ap::MissionRunner runner(sim, ctrl, est, mission, cfg.mission);
+  ap::EstimationControlMissionRunner runner(sim, ctrl, est, mission,
+                                            cfg.mission);
 
   // 4. EXECUTE (Fast!)
   spdlog::info("Running Simulation...");

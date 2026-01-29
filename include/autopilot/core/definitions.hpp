@@ -33,8 +33,8 @@ inline constexpr uint32_t kNumQuadrotorStateComponents =
 struct QuadrotorState {
   double timestamp_secs = 0.0;
   OdometryF64 odometry;
-  AccelF64 accel;
-  WrenchF64 wrench;
+  AccelF64 accel = AccelF64::Zero();
+  WrenchF64 wrench = WrenchF64::Zero();
   double collective_thrust = 0.0;
   Eigen::Vector4d motor_thrusts = Eigen::Vector4d::Zero();
 };
