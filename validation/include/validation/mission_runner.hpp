@@ -28,6 +28,10 @@ struct SimulationResult {
   std::vector<History> hist;
 };
 
+enum class ExitCondition { kCompleted, kEquilibrium };
+
+using namespace autopilot::literals;
+
 struct MissionRunnerConfig : ReflectiveConfigBase<MissionRunnerConfig> {
   MissionRunnerConfig() = default;
   std::string_view name() const override { return "MissionRunnerConfig"; }
@@ -42,6 +46,7 @@ struct MissionRunnerConfig : ReflectiveConfigBase<MissionRunnerConfig> {
   double accel_cutoff_hz = 40.0;
   bool filter_gyro = true;
   double gyro_cutoff_hz = 40.0;
+  ExitCondition exit_condition = ExitCondition::kCompleted;
 
   static constexpr auto kDescriptors = std::make_tuple(
       Describe("dt_control", &MissionRunnerConfig::dt_control,
@@ -72,44 +77,117 @@ struct MissionRunnerConfig : ReflectiveConfigBase<MissionRunnerConfig> {
                F64Properties{
                    .desc = "Cutoff frequency for Gyro Butterworth filter (Hz); "
                            "Set to 0 to disable",
-                   .bounds = Bounds<double>::NonNegative()}));
+                   .bounds = Bounds<double>::NonNegative()}),
+      Describe(
+          "exit_condition", &MissionRunnerConfig::exit_condition,
+          I64Properties{
+              .desc = "Condition to exit the mission runner",
+              .map =
+                  kEnumMapping<"Completed"_s, ExitCondition::kCompleted,
+                               "Equilibrium"_s, ExitCondition::kEquilibrium>}));
 };
 
-class MissionRunner {
+class RunnerBase {
+ public:
+  struct StateAndCovariance {
+    QuadrotorState state;
+    std::optional<EstimatorCovarianceMatrix> covariance;
+  };
+  using Config = MissionRunnerConfig;
+  RunnerBase(std::shared_ptr<QuadrotorSimulator> sim,
+             std::shared_ptr<ControllerBase> ctrl, Config config = Config(),
+             std::shared_ptr<spdlog::logger> logger = nullptr);
+
+  virtual ~RunnerBase() = default;
+
+  virtual StateAndCovariance getStateEstimate(int /*step*/) const {
+    return {sim_->state(), std::nullopt};
+  }
+
+  virtual std::expected<bool, AutopilotErrc> getCurrentCommand(
+      const QuadrotorState& state,
+      std::span<QuadrotorCommand> commands) const = 0;
+
+  SimulationResult run();
+
+  virtual bool onSimStepStart(int /*step*/) { return true; }
+  virtual bool onSimStepEnd(int /*step*/) { return true; };
+
+  virtual bool onStepStart(int /*step*/) { return true; };
+  virtual bool onStepEnd(int /*step*/) { return true; };
+
+ protected:
+  std::shared_ptr<QuadrotorSimulator> sim_;
+  std::shared_ptr<ControllerBase> ctrl_;
+  Config cfg_;
+  std::shared_ptr<spdlog::logger> logger_;
+
+ private:
+  bool detectGeofenceViolation(const QuadrotorState& state) const;
+};
+
+class TrajectoryRunner : public RunnerBase {
+ public:
+  using Config = MissionRunnerConfig;
+
+  TrajectoryRunner(std::shared_ptr<QuadrotorSimulator> sim,
+                   std::shared_ptr<ControllerBase> ctrl,
+                   std::unique_ptr<TrajectoryBase> trajectory,
+                   Config config = Config(),
+                   std::shared_ptr<spdlog::logger> logger = nullptr);
+
+ private:
+  std::expected<bool, AutopilotErrc> getCurrentCommand(
+      const QuadrotorState& state,
+      std::span<QuadrotorCommand> commands) const override;
+
+  std::shared_ptr<SamplerBase> sampler_;
+  std::unique_ptr<TrajectoryBase> trajectory_;
+};
+
+class MissionRunner : public RunnerBase {
  public:
   using Config = MissionRunnerConfig;
 
   MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
-                std::shared_ptr<ControllerBase> ctrl, Mission trajectory,
+                std::shared_ptr<ControllerBase> ctrl, Mission mission,
                 Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
-
-  MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
-                std::shared_ptr<ControllerBase> ctrl,
-                std::shared_ptr<EstimatorDriverBase> est, Mission trajectory,
-                Config config = Config(),
-                std::shared_ptr<spdlog::logger> logger = nullptr);
-
-  SimulationResult run();
 
  private:
-  [[nodiscard]] QuadrotorState getStateEstimate(int step) const;
-
-  void pushEstimatorData(double& last_gps_time, double curr_time);
-
-  bool detectGeofenceViolation(const QuadrotorState& state) const;
+  std::expected<bool, AutopilotErrc> getCurrentCommand(
+      const QuadrotorState& state,
+      std::span<QuadrotorCommand> commands) const override;
 
   std::shared_ptr<SamplerBase> sampler_;
-  std::shared_ptr<QuadrotorSimulator> sim_;
-  std::shared_ptr<ControllerBase> ctrl_;
+  Mission mission_;
+};
+
+class EstimationControlMissionRunner : public MissionRunner {
+ public:
+  using Config = MissionRunnerConfig;
+
+  EstimationControlMissionRunner(
+      std::shared_ptr<QuadrotorSimulator> sim,
+      std::shared_ptr<ControllerBase> ctrl,
+      std::shared_ptr<EstimatorDriverBase> est, Mission trajectory,
+      Config config = Config(),
+      std::shared_ptr<spdlog::logger> logger = nullptr);
+
+ private:
+  bool onStepStart(int step) override;
+
+  bool onStepEnd(int step) override;
+
+  bool onSimStepEnd(int step) override;
+
+  [[nodiscard]] StateAndCovariance getStateEstimate(int step) const override;
 
   std::shared_ptr<EstimatorDriverBase> est_ = nullptr;
 
-  Config cfg_;
-  std::shared_ptr<spdlog::logger> logger_;
   ButterworthFilter<double, 3> gyro_filter_;
   ButterworthFilter<double, 3> accel_filter_;
-  Mission current_trajectory_;
+  double last_gps_time_ = -1;
 };
 
 }  // namespace autopilot

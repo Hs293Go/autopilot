@@ -160,6 +160,24 @@ class Transform : public TransformBase<Transform<T>> {
   template <typename Derived>
   static Transform exp(const TwistBase<Derived>& twist);
 
+  static Transform identity() {
+    return {Eigen::Vector3<T>::Zero(), Eigen::Quaternion<T>::Identity()};
+  }
+
+  template <Vector3Like Derived>
+  static Transform PureTranslation(const Eigen::MatrixBase<Derived>& t) {
+    return {t, Eigen::Quaternion<T>::Identity()};
+  }
+
+  static Transform PureTranslation(T x, T y, T z) {
+    return {Eigen::Vector3<T>(x, y, z), Eigen::Quaternion<T>::Identity()};
+  }
+
+  template <typename RDerived>
+  static Transform PureRotation(const Eigen::QuaternionBase<RDerived>& r) {
+    return {Eigen::Vector3<T>::Zero(), r};
+  }
+
  private:
   Eigen::Vector3<T> translation_ = Eigen::Vector3<T>::Zero();
   Eigen::Quaternion<T> rotation_ = Eigen::Quaternion<T>::Identity();
@@ -357,6 +375,10 @@ class Twist : public TwistBase<Twist<T>> {
   Eigen::Vector3<T>& linear() { return linear_; }
   Eigen::Vector3<T>& angular() { return angular_; }
 
+  static Twist zero() {
+    return {Eigen::Vector3<T>::Zero(), Eigen::Vector3<T>::Zero()};
+  }
+
  private:
   Eigen::Vector3<T> linear_ = Eigen::Vector3<T>::Zero();
   Eigen::Vector3<T> angular_ = Eigen::Vector3<T>::Zero();
@@ -526,6 +548,10 @@ class Accel : public AccelBase<Accel<T>> {
 
   Eigen::Vector3<T>& linear() { return linear_; }
   Eigen::Vector3<T>& angular() { return angular_; }
+
+  static Accel Zero() {
+    return {Eigen::Vector3<T>::Zero(), Eigen::Vector3<T>::Zero()};
+  }
 
  private:
   Eigen::Vector3<T> linear_ = Eigen::Vector3<T>::Zero();
@@ -707,6 +733,9 @@ class Wrench : public WrenchBase<Wrench<T>> {
   const Eigen::Vector3<T>& torque() const { return torque_; }
   Eigen::Vector3<T>& force() { return force_; }
   Eigen::Vector3<T>& torque() { return torque_; }
+  static Wrench<T> Zero() {
+    return {Eigen::Vector3<T>::Zero(), Eigen::Vector3<T>::Zero()};
+  }
 
  private:
   Eigen::Vector3<T> force_ = Eigen::Vector3<T>::Zero();
