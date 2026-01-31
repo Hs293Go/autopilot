@@ -21,7 +21,7 @@ class Polynomial {
 
   template <typename... Ts>
     requires(sizeof...(Ts) > 0 &&  // Prevent ambiguity with default ctor
-             (Degree == sizeof...(Ts) + 1 || Degree == Eigen::Dynamic))
+             (Degree == sizeof...(Ts) || Degree == Eigen::Dynamic))
   explicit Polynomial(T t1, Ts... terms) {
     if constexpr (Degree == Eigen::Dynamic) {
       coeffs_.resize(sizeof...(Ts) + 1);
