@@ -94,8 +94,7 @@ class RunnerBase {
   }
 
   virtual std::expected<bool, AutopilotErrc> getCurrentCommand(
-      const QuadrotorState& state,
-      std::span<QuadrotorCommand> commands) const = 0;
+      const QuadrotorState& state, std::span<QuadrotorCommand> commands) = 0;
 
   SimulationResult run();
 
@@ -128,7 +127,7 @@ class TrajectoryRunner : public RunnerBase {
  private:
   std::expected<bool, AutopilotErrc> getCurrentCommand(
       const QuadrotorState& state,
-      std::span<QuadrotorCommand> commands) const override;
+      std::span<QuadrotorCommand> commands) override;
 
   std::shared_ptr<SamplerBase> sampler_;
   std::shared_ptr<TrajectoryBase> trajectory_;
@@ -146,10 +145,11 @@ class MissionRunner : public RunnerBase {
  private:
   std::expected<bool, AutopilotErrc> getCurrentCommand(
       const QuadrotorState& state,
-      std::span<QuadrotorCommand> commands) const override;
+      std::span<QuadrotorCommand> commands) override;
 
   std::shared_ptr<SamplerBase> sampler_;
   Mission mission_;
+  bool last_sample_finished_ = false;
 };
 
 class EstimationControlMissionRunner : public MissionRunner {

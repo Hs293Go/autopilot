@@ -104,22 +104,36 @@ int main() {
   spdlog::info("Simulation Configuration:\n{:4d}", cfg);
 
   // 3. Define Mission
-  const ap::TrajectoryWaypoint wps[] = {{2, {0.0, 0.0, 1.0}},
-                                        {7, {5.0, 0.0, 1.0}},
-                                        {12, {5.0, 5.0, 1.0}},
-                                        {17, {0.0, 5.0, 1.0}},
-                                        {22, {0.0, 0.0, 1.0}}};
+  const Eigen::Vector3d wps[] = {{0.0, 0.0, 1.0},
+                                 {5.0, 0.0, 1.0},
+                                 {5.0, 5.0, 1.0},
+                                 {0.0, 5.0, 1.0},
+                                 {0.0, 0.0, 1.0}};
 
   ap::MinimumSnapSolver traj_solver;
 
-  auto trajectory = traj_solver.solve(wps);
-  if (!trajectory) {
-    spdlog::error("Trajectory generation failed: {}", trajectory.error());
-    return -1;
+  ap::Mission mission;
+  double yaw = 0.0;
+  double time = 0.0;
+  for (int i = 0; i < std::ssize(wps) - 1; ++i) {
+    const ap::TrajectoryWaypoint ms_traj[] = {
+        {.time_from_start_secs = time, .position = wps[i]},
+        {.time_from_start_secs = time + 5.0, .position = wps[i + 1]}};
+    auto trajectory = traj_solver.solve(ms_traj);
+    if (!trajectory) {
+      spdlog::error("Trajectory generation failed: {}", trajectory.error());
+      return -1;
+    }
+    time += 5.0;
+    mission.append(trajectory.value());
+
+    double end_yaw = ap::wrapToPi(yaw + ap::deg2rad(90.0));
+    ap::HeadingChange heading_change(wps[i + 1], yaw, end_yaw, time, 3.0);
+    mission.append(heading_change);
+    yaw = end_yaw;
+    time += 3.0;
   }
 
-  ap::Mission mission;
-  mission.append(trajectory.value());
   // ap::MissionRunner runner(sim, ctrl, mission, mission_cfg);
   ap::EstimationControlMissionRunner runner(sim, ctrl, est, mission,
                                             cfg.mission);

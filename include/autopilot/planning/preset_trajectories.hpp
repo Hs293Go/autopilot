@@ -4,6 +4,7 @@
 #include "autopilot/core/math.hpp"
 #include "autopilot/planning/polynomial.hpp"
 #include "autopilot/planning/trajectory.hpp"
+#include "spdlog/spdlog.h"
 
 namespace autopilot {
 

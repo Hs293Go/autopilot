@@ -127,7 +127,7 @@ MissionRunner::MissionRunner(std::shared_ptr<QuadrotorSimulator> sim,
       mission_(std::move(mission)) {}
 
 std::expected<bool, AutopilotErrc> TrajectoryRunner::getCurrentCommand(
-    const QuadrotorState& state, std::span<QuadrotorCommand> commands) const {
+    const QuadrotorState& state, std::span<QuadrotorCommand> commands) {
   SampleContext sample_context{.num_samples = 1,
                                .sampling_interval = cfg_.dt_control};
   auto sample =
@@ -146,22 +146,32 @@ std::expected<bool, AutopilotErrc> TrajectoryRunner::getCurrentCommand(
 }
 
 std::expected<bool, AutopilotErrc> MissionRunner::getCurrentCommand(
-    const QuadrotorState& state, std::span<QuadrotorCommand> commands) const {
+    const QuadrotorState& state, std::span<QuadrotorCommand> commands) {
   SampleContext sample_context{.num_samples = 1,
                                .sampling_interval = cfg_.dt_control};
 
-  const auto* active = mission_.current();
-  auto sample = sampler_->getSetpoint(*active, state, sample_context, commands);
-  if (!sample.has_value()) {
-    logger_->error("Sampler failed at t={:.2f}s: {}", state.timestamp_secs,
-                   sample.error());
+  auto traj = mission_.getUpdatedTrajectory(state, last_sample_finished_);
+
+  // 2. Sampling Step: Get the commands for the (potentially new) active
+  // segment.
+  auto sample = sampler_->getSetpoint(*traj, state, sample_context, commands);
+  if (!sample) {
     return std::unexpected(sample.error());
   }
 
-  if (active->requiresEquilibriumCheck()) {
-    return active->checkEquilibrium(state, {}).state != EquilibriumState::kNone;
+  // 3. Persistent Feedback: Save the flag for the next loop's executive
+  // decision.
+  last_sample_finished_ = sample->all_finished;
+
+  ;
+  // 4. Global Completion: The mission is "dry" only when the planned queue
+  // is empty AND the drone has settled on the final fallback anchor.
+  if (mission_.empty() && traj->requiresEquilibriumCheck()) {
+    // If the queue is empty, getUpdatedTrajectory returned the Hover fallback.
+    return traj->checkEquilibrium(state, {}).state != EquilibriumState::kNone;
   }
-  return sample->all_finished;
+
+  return false;  // Still processing segments
 }
 
 EstimationControlMissionRunner::EstimationControlMissionRunner(
