@@ -89,16 +89,18 @@ typename Derived1::Scalar cross2d(const Eigen::MatrixBase<Derived1>& a,
   return a.x() * b.y() - a.y() * b.x();
 }
 
+template <typename T>
 struct YawKinematics {
-  double yaw = 0.0;
-  double yaw_rate = 0.0;
-  double yaw_acceleration = 0.0;
+  T yaw{0};
+  T yaw_rate{0};
+  T yaw_acceleration{0};
 };
 
 template <Vector2Like Derived1, Vector2Like Derived2, Vector2Like Derived3>
-YawKinematics YawFromRay(const Eigen::MatrixBase<Derived1>& r,
-                         const Eigen::MatrixBase<Derived2>& r_dot,
-                         const Eigen::MatrixBase<Derived3>& r_ddot) {
+YawKinematics<typename Derived1::Scalar> YawFromRay(
+    const Eigen::MatrixBase<Derived1>& r,
+    const Eigen::MatrixBase<Derived2>& r_dot,
+    const Eigen::MatrixBase<Derived3>& r_ddot) {
   using std::atan2;
   using Scalar = typename Derived1::Scalar;
   constexpr Scalar kSqNormTol = 1e-6;
@@ -119,9 +121,10 @@ YawKinematics YawFromRay(const Eigen::MatrixBase<Derived1>& r,
 }
 
 template <Vector2Like Derived1, Vector2Like Derived2, Vector2Like Derived3>
-YawKinematics YawFromVelocity(const Eigen::MatrixBase<Derived1>& vel2d,
-                              const Eigen::MatrixBase<Derived2>& acc2d,
-                              const Eigen::MatrixBase<Derived3>& jerk2d) {
+YawKinematics<typename Derived1::Scalar> YawFromVelocity(
+    const Eigen::MatrixBase<Derived1>& vel2d,
+    const Eigen::MatrixBase<Derived2>& acc2d,
+    const Eigen::MatrixBase<Derived3>& jerk2d) {
   using std::atan2;
   using Scalar = typename Derived1::Scalar;
   constexpr Scalar kSqNormTol = 1e-6;
@@ -129,10 +132,10 @@ YawKinematics YawFromVelocity(const Eigen::MatrixBase<Derived1>& vel2d,
   if (vdv < kSqNormTol) {
     return {};
   }
-  const Scalar yaw = std::atan2(vel2d.y(), vel2d.x());
+  const Scalar yaw = atan2(vel2d.y(), vel2d.x());
   const Scalar vxa = cross2d(vel2d, acc2d);
   const Scalar yaw_rate = vxa / vdv;
-  const Scalar tvda = 2.0 * vel2d.dot(acc2d);
+  const Scalar tvda = Scalar(2) * vel2d.dot(acc2d);
   const Scalar vxj = cross2d(vel2d, jerk2d);
   const Scalar yaw_acceleration = (vxj * vdv - vxa * tvda) / (vdv * vdv);
   return {
