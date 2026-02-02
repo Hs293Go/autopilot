@@ -12,7 +12,7 @@ class TimeSampler : public SamplerBase {
       : mapper_(std::move(model)) {}
 
   std::expected<SampleResult, AutopilotErrc> getSetpoint(
-      const TrajectoryBase& traj, const QuadrotorState& state,
+      std::span<const std::shared_ptr<TrajectoryBase>> traj, const QuadrotorState& state,
       const SampleContext& context,
       std::span<QuadrotorCommand> sampled_commands) override;
 
