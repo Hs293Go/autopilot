@@ -19,11 +19,6 @@ class MinimumSnapSolver {
   std::expected<PolynomialTrajectory, AutopilotErrc> solve(
       std::span<const TrajectoryWaypoint> waypoints,
       const HeadingPolicy& policy = FollowVelocity{}) const;
-
- private:
-  // Helpers mirroring Python _compute_Q, _compute_tvec
-  Eigen::MatrixXd computeQ(double duration, int n_coeffs) const;
-  Eigen::RowVectorXd computeTVector(double t, int r, int n_coeffs) const;
 };
 
 }  // namespace autopilot
