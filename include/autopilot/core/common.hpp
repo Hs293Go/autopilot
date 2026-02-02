@@ -8,6 +8,43 @@
 
 namespace autopilot {
 
+template <auto I, typename F, typename... Args>
+constexpr void ForILoop(F&& f, Args&&... args)
+  requires(std::is_integral_v<decltype(I)> && (I >= 0))
+{
+  using IT = decltype(I);
+  [&]<IT... Is>(std::integer_sequence<IT, Is...>) {
+    (std::invoke(f, Is, args...), ...);
+  }(std::make_integer_sequence<IT, I>{});
+}
+
+template <auto I0, auto I, typename F, typename... Args>
+constexpr void ForILoop(F&& f, Args&&... args)
+  requires(std::is_integral_v<decltype(I)> &&
+           std::is_integral_v<decltype(I0)> && (I >= I0) && (I0 >= 0))
+{
+  using IT = decltype(I);
+  [&]<IT... Is>(std::integer_sequence<IT, Is...>) {
+    (std::invoke(f, Is + I0, args...), ...);
+  }(std::make_integer_sequence<IT, I - I0>{});
+}
+
+template <auto I, typename F, typename... Args>
+  requires(
+      std::is_integral_v<decltype(I)> && (I >= 0) &&
+      std::convertible_to<std::invoke_result_t<F, decltype(I), Args&...>, bool>)
+constexpr bool FilterForILoop(F&& f, Args&&... args) {
+  using IT = decltype(I);
+  if (I == 0) {
+    return true;
+  }
+
+  return [&]<IT... Is>(std::integer_sequence<IT, Is...>) {
+    // We pass args as lvalues because the loop runs multiple times
+    return (std::invoke(f, Is, args...) && ...);
+  }(std::make_integer_sequence<IT, I>{});
+}
+
 template <typename... Ts>
 struct Overload : Ts... {
   using Ts::operator()...;
