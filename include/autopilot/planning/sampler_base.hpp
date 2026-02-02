@@ -26,8 +26,8 @@ class SamplerBase {
   // The Sampler returns a command based on the provided trajectory and current
   // state.
   virtual std::expected<SampleResult, AutopilotErrc> getSetpoint(
-      const TrajectoryBase& traj, const QuadrotorState& state,
-      const SampleContext& context,
+      std::span<const std::shared_ptr<TrajectoryBase>> traj,
+      const QuadrotorState& state, const SampleContext& context,
       std::span<QuadrotorCommand> sampled_commands) = 0;
 };
 
