@@ -6,36 +6,39 @@
 namespace autopilot {
 
 // Helper to compute t-vector derivatives: [0, 0, r!, (r+1)!*t, ...]
-Eigen::RowVectorXd MinimumSnapSolver::computeTVector(double t, int r,
-                                                     int n_coeffs) const {
-  Eigen::RowVectorXd v = Eigen::RowVectorXd::Zero(n_coeffs);
-  for (int i = r; i < n_coeffs; ++i) {
-    double res = 1.0;
-    for (int k = 0; k < r; ++k) {
-      res *= (i - k);
+template <int N>
+Eigen::RowVector<double, N> computeTVector(double t, int r) {
+  Eigen::RowVector<double, N> v = Eigen::RowVector<double, N>::Zero();
+
+  ForILoop<N>([&](int i) {
+    if (i >= r) {
+      double res = 1.0;
+      for (int k = 0; k < r; ++k) {
+        res *= (i - k);
+      }
+      v(i) = res * std::pow(t, i - r);
     }
-    v(i) = res * std::pow(t, i - r);
-  }
+  });
   return v;
 }
 
 // Port of _compute_Q from Python
-Eigen::MatrixXd MinimumSnapSolver::computeQ(double duration,
-                                            int n_coeffs) const {
-  Eigen::MatrixXd qmat = Eigen::MatrixXd::Zero(n_coeffs, n_coeffs);
+template <int N>
+Eigen::Matrix<double, N, N> computeQ(double duration) {
+  Eigen::Matrix<double, N, N> qmat = Eigen::Matrix<double, N, N>::Zero();
   // Standard min-snap cost: integral of (derivative order 4)^2
   // You can generalize this with weights as in your Python config
   constexpr int kCostDerivative = kContinuousDegrees;
   using Arr = Eigen::Array<double, kCostDerivative, 1>;
-  for (int i = kCostDerivative; i < n_coeffs; ++i) {
+  ForILoop<kCostDerivative, N>([&](int i) {
     const double fac_i = (i - Arr::NullaryExpr(std::identity())).prod();
-    for (int j = kCostDerivative; j < n_coeffs; ++j) {
+    ForILoop<kCostDerivative, N>([&](int j) {
       const double fac_j = (j - Arr::NullaryExpr(std::identity())).prod();
 
       const auto r = i + j - 2 * kCostDerivative + 1;
       qmat(i, j) = fac_i * fac_j * std::pow(duration, r) / r;
-    }
-  }
+    });
+  });
   return qmat;
 }
 
@@ -70,15 +73,15 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
     const auto ith_chunk =
         ix::seqN(static_cast<Eigen::Index>(i * kNCoeffs), ix::fix<kNCoeffs>);
 
-    qmat_all(ith_chunk, ith_chunk) = computeQ(durs[i], kNCoeffs);
+    qmat_all(ith_chunk, ith_chunk) = computeQ<kNCoeffs>(durs[i]);
 
     const auto row_base = static_cast<Eigen::Index>(i) * 2 * kContinuousDegrees;
     const auto row_base_offset = row_base + kContinuousDegrees;
-    for (int r = 0; r < kContinuousDegrees; ++r) {
-      amat(row_base + r, ith_chunk) = computeTVector(0.0, r, kNCoeffs);
+    ForILoop<kContinuousDegrees>([&](int r) {
+      amat(row_base + r, ith_chunk) = computeTVector<kNCoeffs>(0.0, r);
       amat(row_base_offset + r, ith_chunk) =
-          computeTVector(durs[i], r, kNCoeffs);
-    }
+          computeTVector<kNCoeffs>(durs[i], r);
+    });
   }
 
   // 3. Selection Matrix M mapping unique node derivatives to A's output
@@ -106,7 +109,7 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
   for (int i = 0; i <= n_poly; ++i) {
     const bool is_endpoint = (i == 0 || i == n_poly);
     const auto& wp = waypoints[static_cast<std::size_t>(i)];
-    for (int r = 0; r < kContinuousDegrees; ++r) {
+    ForILoop<kContinuousDegrees>([&](Eigen::Index r) {
       bool fixed = false;
       switch (r) {
         case 0:
@@ -128,16 +131,16 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
       }
 
       (fixed ? f_idx : p_idx).push_back(i * kContinuousDegrees + r);
-    }
+    });
   }
 
   // Sub-matrices of R
-  const Eigen::MatrixXd rpp = rmat(p_idx, p_idx);
-  const Eigen::MatrixXd rpf = rmat(p_idx, f_idx);
+  const Eigen::Ref<const Eigen::MatrixXd> rpp = rmat(p_idx, p_idx);
+  const Eigen::Ref<const Eigen::MatrixXd> rpf = rmat(p_idx, f_idx);
 
   // 6. Loop per dimension (X, Y, Z)
   Eigen::MatrixXd final_coeffs(3, n_all_coeffs);
-  for (int dim = 0; dim < 3; ++dim) {
+  const bool success = FilterForILoop<3>([&](auto dim) {
     Eigen::VectorXd d_f(f_idx.size());
     for (std::size_t k = 0; k < f_idx.size(); ++k) {
       const auto res = std::div(f_idx[k], kContinuousDegrees);
@@ -172,7 +175,7 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
     } else {
       auto llt = rpp.llt();
       if (llt.info() != Eigen::Success) {
-        return std::unexpected(AutopilotErrc::kNumericalInstability);
+        return false;
       }
       d_p = -llt.solve(rpf * d_f);
     }
@@ -182,6 +185,10 @@ std::expected<PolynomialTrajectory, AutopilotErrc> MinimumSnapSolver::solve(
     d_total(p_idx) = d_p;
 
     final_coeffs.row(dim) = kmat * d_total;
+    return true;
+  });
+  if (!success) {
+    return std::unexpected(AutopilotErrc::kNumericalInstability);
   }
 
   // 7. Assemble Segments
