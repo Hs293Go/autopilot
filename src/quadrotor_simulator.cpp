@@ -4,29 +4,6 @@
 
 namespace autopilot {
 
-template <typename T, int N>
-struct StateAndDerivative {
-  Eigen::Vector<T, N> state;
-  Eigen::Vector<T, N> derivative;
-};
-
-template <typename Fcn, typename Derived>
-  requires(std::invocable<Fcn, const Eigen::MatrixBase<Derived>&> &&
-           bool(Eigen::MatrixBase<Derived>::IsVectorAtCompileTime))
-StateAndDerivative<typename Derived::Scalar, Derived::SizeAtCompileTime>
-RK4Step(Fcn f, const Eigen::MatrixBase<Derived>& x,
-        typename Derived::Scalar dt) {
-  using Scalar = typename Derived::Scalar;
-  using VectorType = Eigen::Vector<Scalar, Derived::SizeAtCompileTime>;
-  const VectorType k1 = f(x);
-  const VectorType k2 = f(x + k1 * (dt / Scalar(2)));
-  const VectorType k3 = f(x + k2 * (dt / Scalar(2)));
-  const VectorType k4 = f(x + k3 * dt);
-  const VectorType avg_derivative =
-      (k1 + Scalar(2) * k2 + Scalar(2) * k3 + k4) / Scalar(6);
-  return {.state = x + avg_derivative * dt, .derivative = avg_derivative};
-}
-
 QuadrotorSimulator::SimStateVector QuadrotorSimulator::computeSystemDerivative(
     const SimStateVector& x, const Eigen::Vector4d& target_motor_speeds) {
   // Unpack state vector into 13x1 odometry and 4x1 motor speeds
@@ -72,7 +49,9 @@ QuadrotorSimulator::QuadrotorSimulator(std::shared_ptr<QuadrotorModel> model,
                                        std::shared_ptr<Config> config,
                                        std::shared_ptr<spdlog::logger> logger)
     : Module("QuadrotorSimulator", std::move(model), std::move(logger)),
-      config_(std::move(config)) {
+      config_(std::move(config)),
+      integrator_(
+          std::bind_front(&QuadrotorSimulator::computeSystemDerivative, this)) {
   // Config parameters are now assumed to be in model_->cfg()
   state_.timestamp_secs = 0.0;
   state_.odometry.pose().rotation().setIdentity();
@@ -111,14 +90,8 @@ void QuadrotorSimulator::step(const QuadrotorCommand& input_cmd, double dt) {
   SimStateVector x;
   x << state_.odometry.params(), motor_speeds_;
   // Apply updates
-  const auto& [x_new, dx] = RK4Step(
-      [this, &target_motor_speeds](auto&& state_vec) {
-        return computeSystemDerivative(
-            std::forward<decltype(state_vec)>(state_vec), target_motor_speeds);
-      },
-      x, dt);
-
-  // 4. Unpack State
+  const auto& [x_new, dx] = integrator_.stepWithDerivatives(
+      x, target_motor_speeds, dt);  // 4. Unpack State
   state_.timestamp_secs += dt;
   state_.odometry = OdometryViewF64(x_new.data());
   motor_speeds_ = x_new.tail<4>().cwiseMax(0.0);

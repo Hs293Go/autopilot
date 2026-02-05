@@ -4,6 +4,7 @@
 #include "Eigen/Dense"
 #include "autopilot/base/module.hpp"
 #include "autopilot/core/definitions.hpp"
+#include "autopilot/core/integrator.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
 #include "autopilot/estimators/sensor_data.hpp"
 #include "autopilot/simulator/sensors.hpp"
@@ -73,6 +74,8 @@ class QuadrotorSimulator : public Module {
       MultivariableNoiseProcess::Dimension<3>()};
   MultivariableNoiseProcess gyro_noise_{
       MultivariableNoiseProcess::Dimension<3>()};
+
+  Integrator<double, {.state_dim = 17, .input_dim = 4}> integrator_;
 
   // GPS Noise is simple white noise, so we just keep the generator
   std::mt19937 gps_rng_;
