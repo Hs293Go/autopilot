@@ -3,7 +3,7 @@
 
 #include "Eigen/Dense"
 #include "autopilot/core/common.hpp"
-#include "autopilot/planning/trajectory.hpp"
+#include "autopilot/core/definitions.hpp"
 
 namespace autopilot {
 
@@ -37,6 +37,19 @@ constexpr T deg2rad(T degrees) {
 template <std::floating_point T>
 constexpr T rad2deg(T radians) {
   return radians * (static_cast<T>(180) / std::numbers::pi_v<T>);
+}
+
+template <typename T>
+T wrapTo2Pi(T angle) {
+  using std::fmod;
+  constexpr auto kTwoPi = T(2) * std::numbers::pi_v<T>;
+  T wrapped = fmod(angle, kTwoPi);
+  return wrapped < T(0) ? wrapped += kTwoPi : wrapped;
+}
+
+template <typename T>
+T wrapToPi(T angle) {
+  return wrapTo2Pi(angle + std::numbers::pi_v<T>) - std::numbers::pi_v<T>;
 }
 
 template <std::floating_point T>
