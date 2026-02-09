@@ -38,6 +38,7 @@ add_executable(
   test_unit
   src/unit/test_butterworth_filter.cpp
   src/unit/test_factory.cpp
+  src/unit/test_heading_policy.cpp
   src/unit/test_spatial_rotations.cpp
   src/unit/test_angles.cpp
   src/unit/test_config_loader.cpp
