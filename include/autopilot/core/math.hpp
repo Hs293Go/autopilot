@@ -109,26 +109,24 @@ struct YawKinematics {
   T yaw_acceleration{0};
 };
 
-template <Vector2Like Derived1, Vector2Like Derived2, Vector2Like Derived3>
+template <Vector2Like Derived1, Vector2Like Derived2, Vector2Like Derived3,
+          typename Scalar = typename Derived1::Scalar>
 YawKinematics<typename Derived1::Scalar> YawFromRay(
     const Eigen::MatrixBase<Derived1>& r,
     const Eigen::MatrixBase<Derived2>& r_dot,
-    const Eigen::MatrixBase<Derived3>& r_ddot) {
+    const Eigen::MatrixBase<Derived3>& r_ddot,
+    Scalar focus_radius = Scalar(0.1)) {
   using std::atan2;
-  using Scalar = typename Derived1::Scalar;
-  constexpr Scalar kSqNormTol = 1e-6;
-  const double r2 = r.squaredNorm();
-  if (r2 < kSqNormTol) {
-    return {};
-  }
+  const Scalar r2 = r.squaredNorm();
+  const Scalar denom = r2 + pown<2>(focus_radius);
   const Scalar yaw = atan2(r.y(), r.x());
 
   const Scalar n = cross2d(r, r_dot);
-  const Scalar yaw_rate = n / r2;
+  const Scalar yaw_rate = n / denom;
 
   const Scalar ndot = cross2d(r, r_ddot);
   const Scalar ddot = Scalar(2) * r.dot(r_dot);
-  const Scalar yaw_acceleration = (ndot * r2 - n * ddot) / (r2 * r2);
+  const Scalar yaw_acceleration = (ndot * r2 - n * ddot) / pown<2>(denom);
   return {
       .yaw = yaw, .yaw_rate = yaw_rate, .yaw_acceleration = yaw_acceleration};
 }
@@ -155,15 +153,14 @@ YawKinematics<typename Derived1::Scalar> YawFromVelocity(
       .yaw = yaw, .yaw_rate = yaw_rate, .yaw_acceleration = yaw_acceleration};
 }
 
-inline KinematicState ResolveYawState(const KinematicState& state,
+inline KinematicState ResolveYawState(KinematicState state,
                                       const HeadingPolicy& policy) {
-  auto sample = state;
   const auto [yaw, yaw_rate, yaw_accel] = std::visit(
-      Overload{[&sample](const FollowVelocity&) {
+      Overload{[&state](const FollowVelocity&) {
                  // Yaw based on velocity direction
-                 const Eigen::Vector2d v = sample.velocity.head<2>();
-                 const Eigen::Vector2d a = sample.acceleration.head<2>();
-                 const Eigen::Vector2d j = sample.jerk.head<2>();
+                 const auto v = state.velocity.head<2>();
+                 const auto a = state.acceleration.head<2>();
+                 const auto j = state.jerk.head<2>();
                  return YawFromVelocity(v, a, j);
                },
 
@@ -173,18 +170,17 @@ inline KinematicState ResolveYawState(const KinematicState& state,
                      .yaw_rate = fixed.yaw_rate,
                      .yaw_acceleration = fixed.yaw_acceleration};
                },
-               [&sample](const PointOfInterest& poi) {
-                 const Eigen::Vector2d r =
-                     (poi.point - sample.position).head<2>();  // poi - pos
-                 const Eigen::Vector2d r_dot = -sample.velocity.head<2>();
-                 const Eigen::Vector2d r_ddot = -sample.acceleration.head<2>();
-                 return YawFromRay(r, r_dot, r_ddot);
+               [&state](const PointOfInterest& poi) {
+                 const auto r = (poi.point - state.position).head<2>();
+                 const auto r_dot = -state.velocity.head<2>();
+                 const auto r_ddot = -state.acceleration.head<2>();
+                 return YawFromRay(r, r_dot, r_ddot, poi.focus_radius);
                }},
       policy);
-  sample.yaw = yaw;
-  sample.yaw_rate = yaw_rate;
-  sample.yaw_acceleration = yaw_accel;
-  return sample;
+  state.yaw = yaw;
+  state.yaw_rate = yaw_rate;
+  state.yaw_acceleration = yaw_accel;
+  return state;
 }
 
 template <typename Derived>

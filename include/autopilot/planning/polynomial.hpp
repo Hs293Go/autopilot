@@ -103,6 +103,50 @@ class Polynomial {
     return coeffs_ == other.coeffs_;
   }
 
+  static Polynomial Linear(T intercept, T slope)
+    requires(Degree != Eigen::Dynamic)
+  {
+    Coefficients coeffs = Coefficients::Zero();
+    coeffs[0] = intercept;
+    coeffs[1] = slope;
+    return Polynomial(coeffs);
+  }
+
+  static Polynomial Linear(Eigen::Index degree, T intercept, T slope)
+    requires(Degree == Eigen::Dynamic)
+  {
+    Coefficients coeffs = Coefficients::Zero(degree + 1);
+    coeffs[0] = intercept;
+    coeffs[1] = slope;
+    return Polynomial(coeffs);
+  }
+
+  static Polynomial Constant(T value)
+    requires(Degree != Eigen::Dynamic)
+  {
+    return Polynomial(Coefficients::UnitX() * value);
+  }
+
+  static Polynomial Constant(Eigen::Index degree, T value)
+    requires(Degree == Eigen::Dynamic)
+  {
+    Coefficients coeffs = Coefficients::Zero(degree + 1);
+    coeffs[0] = value;
+    return Polynomial(coeffs);
+  }
+
+  static Polynomial Zero()
+    requires(Degree != Eigen::Dynamic)
+  {
+    return Polynomial(Coefficients::Zero());
+  }
+
+  static Polynomial Zero(Eigen::Index degree)
+    requires(Degree == Eigen::Dynamic)
+  {
+    return Polynomial(Coefficients::Zero(degree + 1));
+  }
+
  private:
   Coefficients coeffs_;
 };
