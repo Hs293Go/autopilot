@@ -46,10 +46,11 @@ PolynomialTrajectory::PolynomialTrajectory(
 
   // Boundary handling matching Python's sample logic
   if (t_rel <= 0) {
-    return segments_.front().sample(0);
+    return ResolveYawState(segments_.front().sample(0), heading_policy_);
   }
   if (t_rel >= total_duration) {
-    return segments_.back().sample(segments_.back().duration());
+    return ResolveYawState(segments_.back().sample(segments_.back().duration()),
+                           heading_policy_);
   }
 
   // Binary search for the correct segment (more efficient than Python loop)

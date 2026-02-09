@@ -143,6 +143,7 @@ struct Fixed {
 
 struct PointOfInterest {
   Eigen::Vector3d point = Eigen::Vector3d::Zero();
+  double focus_radius = 0.1;  // Below 10cm, freeze yaw to avoid singularity
 };
 
 using HeadingPolicy = std::variant<FollowVelocity, Fixed, PointOfInterest>;
