@@ -21,6 +21,12 @@ struct History {
   Eigen::VectorXd est_variance = Eigen::VectorXd::Zero(15);
 };
 
+struct StepResult {
+  bool success = true;
+  bool completed = false;
+  std::optional<History> hist = std::nullopt;
+};
+
 struct SimulationResult {
   bool completed = false;
   std::vector<double> time;
@@ -98,6 +104,8 @@ class RunnerBase {
 
   SimulationResult run();
 
+  StepResult step(int step);
+
   virtual bool onSimStepStart(int /*step*/) { return true; }
   virtual bool onSimStepEnd(int /*step*/) { return true; };
 
@@ -108,6 +116,7 @@ class RunnerBase {
   std::shared_ptr<QuadrotorSimulator> sim_;
   std::shared_ptr<ControllerBase> ctrl_;
   Config cfg_;
+  std::size_t sim_substeps_ = 1;
   std::shared_ptr<spdlog::logger> logger_;
 
  private:
@@ -141,6 +150,10 @@ class MissionRunner : public RunnerBase {
                 std::shared_ptr<ControllerBase> ctrl, Mission mission,
                 Config config = Config(),
                 std::shared_ptr<spdlog::logger> logger = nullptr);
+
+  const Mission& mission() const { return mission_; }
+
+  Mission& mission() { return mission_; }
 
  private:
   std::expected<bool, AutopilotErrc> getCurrentCommand(
