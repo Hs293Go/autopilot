@@ -2,7 +2,6 @@
 
 #include <utility>
 
-#include "autopilot/planning/preset_trajectories.hpp"
 #include "autopilot/planning/time_sampler.hpp"
 #include "fmt/ranges.h"
 
@@ -14,72 +13,98 @@ RunnerBase::RunnerBase(std::shared_ptr<QuadrotorSimulator> sim,
     : sim_(std::move(sim)),
       ctrl_(std::move(ctrl)),
       cfg_(std::move(config)),
+      sim_substeps_(
+          static_cast<std::size_t>(std::ceil(cfg_.dt_control / cfg_.dt_sim))),
       logger_(logger ? std::move(logger) : spdlog::default_logger()) {}
+
+StepResult RunnerBase::step(int step) {
+  // Future proof: Query controller for number of setpoints (prediction
+  // horizon)
+  std::vector<QuadrotorCommand> sp_buf(1);
+  std::vector<QuadrotorCommand> out_buf(1);
+
+  if (!onStepStart(step)) {
+    logger_->error("onStepStart failed at step {}. Terminating simulation.",
+                   step);
+    return {.success = false, .completed = false};
+  }
+  auto state = sim_->state();
+  auto [state_est, cov] = getStateEstimate(step);
+  History history;
+  history.real_state = state;
+  history.estimated_state = state_est;
+  if (cov.has_value()) {
+    history.est_variance = cov->diagonal();
+  }
+
+  // 1. Check Waypoint
+  if (auto has_command = getCurrentCommand(state_est, sp_buf)) {
+    history.command = sp_buf[0];
+    if (has_command.value()) {
+      logger_->info(
+          "Mission completed at t={:.2f}s, within acceptance radius of "
+          "target!",
+          state.timestamp_secs);
+      return {.success = true, .completed = true, .hist = history};
+    }
+  } else {
+    logger_->error("Failed to get command at t={:.2f}s: {}",
+                   state.timestamp_secs, has_command.error());
+    return {.success = false, .completed = false};
+  }
+
+  if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {
+    logger_->error("Controller failed at t={:.2f}s, because: {}",
+                   state.timestamp_secs, result.error());
+    return {.success = false, .completed = false};
+  }
+
+  // 3. Sim
+  for (std::size_t i = 0; i < sim_substeps_; ++i) {
+    onStepStart(step);
+    sim_->step(out_buf[0], cfg_.dt_sim);
+    onSimStepEnd(step);
+  }
+
+  if (detectGeofenceViolation(state)) {
+    return {.success = false, .completed = false};
+  }
+
+  // 4. Record
+
+  if (!onStepEnd(step)) {
+    return {.success = false, .completed = false};
+  }
+  return {.success = true, .completed = false, .hist = history};
+}
 
 SimulationResult RunnerBase::run() {
   SimulationResult res;
 
-  // Future proof: Query controller for number of setpoints (prediction horizon)
-  std::vector<QuadrotorCommand> sp_buf(1);
-  std::vector<QuadrotorCommand> out_buf(1);
-
   const int sim_substeps =
       static_cast<int>(std::ceil(cfg_.dt_control / cfg_.dt_sim));
-  spdlog::info(
+  logger_->info(
       "Starting Mission Runner for up to {} steps, with {} simulation substeps",
       cfg_.max_steps, sim_substeps);
 
-  for (int step = 0; step < cfg_.max_steps; ++step) {
-    if (!onStepStart(step)) {
+  for (int k = 0; k < cfg_.max_steps; ++k) {
+    auto step_result = step(k);
+    if (!step_result.success) {
+      logger_->error("Step {} failed. Terminating simulation.", k);
       break;
     }
 
-    auto [state_est, cov] = getStateEstimate(step);
-    auto state = sim_->state();
+    if (step_result.completed) {
+      logger_->info("Mission completed successfully at step {}!", k);
+      res.completed = true;
+      break;
+    }
 
-    // 1. Check Waypoint
-    if (auto has_command = getCurrentCommand(state_est, sp_buf)) {
-      if (has_command.value()) {
-        res.completed = true;
-        break;
-      }
-
+    if (step_result.hist.has_value()) {
+      res.time.push_back(sim_->state().timestamp_secs);
+      res.hist.push_back(step_result.hist.value());
     } else {
-      res.completed = false;
-      break;
-    }
-
-    if (auto result = ctrl_->compute(state_est, sp_buf, out_buf); !result) {
-      logger_->error("Controller failed at t={:.2f}s, because: {}",
-                     state.timestamp_secs, result.error());
-      break;
-    }
-
-    // 3. Sim
-    for (int i = 0; i < sim_substeps; ++i) {
-      onStepStart(step);
-      sim_->step(out_buf[0], cfg_.dt_sim);
-      onSimStepEnd(step);
-    }
-
-    if (detectGeofenceViolation(state)) {
-      break;
-    }
-
-    // 4. Record
-    res.time.push_back(state.timestamp_secs);
-    History history = {
-        .real_state = state,
-        .estimated_state = state_est,
-        .command = sp_buf[0],
-    };
-    if (cov.has_value()) {
-      history.est_variance = cov->diagonal();
-    }
-    res.hist.push_back(history);
-
-    if (!onStepEnd(step)) {
-      break;
+      logger_->warn("No history recorded for step {}.", k);
     }
   }
   return res;
@@ -151,7 +176,8 @@ std::expected<bool, AutopilotErrc> MissionRunner::getCurrentCommand(
                                .sampling_interval = cfg_.dt_control};
 
   // 1. Get the Intent (Horizon)
-  // This handles the equilibrium gating internally using last_sample_finished_
+  // This handles the equilibrium gating internally using
+  // last_sample_finished_
   auto horizon = mission_.getUpdatedTrajectory(state, last_sample_finished_);
 
   // 2. Interpret the Intent (Sampling)
@@ -166,7 +192,8 @@ std::expected<bool, AutopilotErrc> MissionRunner::getCurrentCommand(
   last_sample_finished_ = sample_res->all_finished;
 
   // 3. Global Completion Check
-  // We are done if the planned queue is dry AND we've settled at the fallback.
+  // We are done if the planned queue is dry AND we've settled at the
+  // fallback.
   if (mission_.empty()) {
     // horizon[0] is the fallback_hover_ here.
     return horizon[0]

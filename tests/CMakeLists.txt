@@ -45,6 +45,7 @@ add_executable(
   src/unit/test_quadrotor_model.cpp
   src/unit/test_polynomial.cpp
   src/unit/test_attitude_error.cpp
+  src/unit/test_mission_system.cpp
   src/unit/test_minimum_snap_solver.cpp)
 target_link_libraries(
   test_unit
