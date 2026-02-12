@@ -23,7 +23,8 @@ target_sources(
   PRIVATE src/testing/mock_factory.cpp)
 target_link_libraries(testing PUBLIC GTest::gmock autopilot::autopilot)
 
-add_executable(test_integration src/integration/test_trajectory_execution.cpp)
+add_executable(test_integration src/integration/test_trajectory_execution.cpp
+                                src/integration/test_mission_execution.cpp)
 target_link_libraries(
   test_integration
   PRIVATE autopilot::autopilot
