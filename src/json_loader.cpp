@@ -1,4 +1,4 @@
-#include "autopilot/extensions/json_loader.hpp"
+#include "autopilot/core/json_loader.hpp"
 
 #include <fstream>
 #include <utility>

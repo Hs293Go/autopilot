@@ -1,4 +1,4 @@
-#include "autopilot/extensions/pretty_printer.hpp"
+#include "autopilot/core/pretty_printer.hpp"
 
 #include <fstream>
 #include <sstream>

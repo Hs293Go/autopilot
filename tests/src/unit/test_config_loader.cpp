@@ -2,7 +2,7 @@
 
 #include "autopilot/base/config_base.hpp"
 #include "autopilot/core/common.hpp"
-#include "autopilot/extensions/json_loader.hpp"
+#include "autopilot/core/json_loader.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "testing/matchers.hpp"

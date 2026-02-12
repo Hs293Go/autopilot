@@ -1,9 +1,9 @@
 #include <ranges>
 
+#include "autopilot/core/json_loader.hpp"
+#include "autopilot/core/pretty_printer.hpp"
 #include "autopilot/core/quadrotor_model.hpp"
 #include "autopilot/estimators/async_estimator.hpp"
-#include "autopilot/extensions/json_loader.hpp"
-#include "autopilot/extensions/pretty_printer.hpp"
 #include "autopilot/planning/minimum_snap_solver.hpp"
 #include "examples/visualization.hpp"
 #include "rerun/recording_stream.hpp"
