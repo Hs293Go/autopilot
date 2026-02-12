@@ -105,6 +105,10 @@ class TransformBase {
     return rotation().toRotationMatrix();
   }
 
+  bool allFinite() const {
+    return translation().allFinite() && rotation().coeffs().allFinite();
+  }
+
   ParamVector params() const {
     ParamVector params;
     params.template head<3>() = translation();
@@ -320,6 +324,10 @@ class TwistBase {
   DerivedVector& linear() { return derived().linear(); }
   DerivedVector& angular() { return derived().angular(); }
 
+  bool allFinite() const {
+    return linear().allFinite() && angular().allFinite();
+  }
+
   ParamVector params() const {
     ParamVector params;
     params.template head<3>() = linear();
@@ -501,6 +509,11 @@ class AccelBase {
   const DerivedVector& angular() const { return derived().angular(); }
   DerivedVector& linear() { return derived().linear(); }
   DerivedVector& angular() { return derived().angular(); }
+
+  bool allFinite() const {
+    return linear().allFinite() && angular().allFinite();
+  }
+
   ParamVector params() const {
     ParamVector params;
     params.template head<3>() = linear();
@@ -688,6 +701,8 @@ class WrenchBase {
     return params;
   }
 
+  bool allFinite() const { return force().allFinite() && torque().allFinite(); }
+
  private:
   friend Derived;
 
@@ -800,6 +815,8 @@ class OdometryBase {
 
   TransformType& pose() { return derived().pose(); }
   TwistType& twist() { return derived().twist(); }
+
+  bool allFinite() const { return pose().allFinite() && twist().allFinite(); }
 
   ParamVector params() const {
     ParamVector params;
