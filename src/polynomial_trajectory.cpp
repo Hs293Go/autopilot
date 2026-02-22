@@ -36,7 +36,7 @@ PolynomialTrajectory::PolynomialTrajectory(
   cumulative_times_.push_back(0.0);
   std::transform_inclusive_scan(
       segments_.begin(), segments_.end(), std::back_inserter(cumulative_times_),
-      std::plus(), std::mem_fn(&TrajectorySegment::duration));
+      std::plus(), std::mem_fn(&TrajectorySegment::duration), 0.0);
 }
 
 [[nodiscard]] KinematicState PolynomialTrajectory::sample(

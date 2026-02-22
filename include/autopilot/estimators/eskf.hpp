@@ -163,9 +163,10 @@ class EskfEstimator final : public EstimatorBase {
   // Returns success/failure code
   AutopilotErrc correctGps(
       QuadrotorState& state, Context& context,
-      const std::shared_ptr<const class LocalPositionData>& z) const;
-  AutopilotErrc correctMag(QuadrotorState& state, Context& context,
-                           const std::shared_ptr<const class MagData>& z) const;
+      const std::shared_ptr<const struct LocalPositionData>& z) const;
+  AutopilotErrc correctMag(
+      QuadrotorState& state, Context& context,
+      const std::shared_ptr<const struct MagData>& z) const;
 
   // Helpers
   void injectError(QuadrotorState& state, Context& context,

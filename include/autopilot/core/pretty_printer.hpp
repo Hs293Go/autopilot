@@ -44,7 +44,7 @@ struct formatter<Derived> {
     const auto* end = ctx.end();
 
     const auto* needle = std::ranges::find_if_not(
-        it, end, [](auto c) { return std::isdigit(c); });
+        it, end, [](auto c) { return c >= '0' && c <= '9'; });
     if (needle != end && needle != it) {
       if (const auto res = FromChars(it, needle, opts_.indent_width)) {
         it = *res;

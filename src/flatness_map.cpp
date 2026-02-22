@@ -1,5 +1,7 @@
 #include "autopilot/planning/flatness_map.hpp"
 
+#include <expected>
+
 #include "autopilot/core/math.hpp"
 
 #define TRY(expr)                                                    \

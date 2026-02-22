@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <memory>
+#include <numbers>
 
 #include "Eigen/Dense"
 #include "autopilot/base/config_base.hpp"

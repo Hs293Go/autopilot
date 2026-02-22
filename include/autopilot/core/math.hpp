@@ -1,6 +1,8 @@
 #ifndef AUTOPILOT_ROTATION_HPP_
 #define AUTOPILOT_ROTATION_HPP_
 
+#include <numbers>
+
 #include "Eigen/Dense"
 #include "autopilot/core/common.hpp"
 #include "autopilot/core/definitions.hpp"

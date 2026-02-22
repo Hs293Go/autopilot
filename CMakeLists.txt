@@ -63,13 +63,8 @@ FetchContent_MakeAvailable(fmt spdlog nlohmann_json Eigen3 Boost)
 add_library(autopilot_autopilot)
 target_sources(
   autopilot_autopilot
-  PRIVATE src/definitions.cpp
-          src/ekf.cpp
-          src/eskf.cpp
-          src/quadrotor_model.cpp
-          src/quadrotor_simulator.cpp
-          src/sensors.cpp
-          src/json_loader.cpp
+  PRIVATE src/definitions.cpp src/quadrotor_model.cpp
+          src/quadrotor_simulator.cpp src/sensors.cpp src/json_loader.cpp
           src/pretty_printer.cpp
   PUBLIC FILE_SET
          HEADERS
